@@ -1,0 +1,61 @@
+flowchart TB
+    subgraph BEFORE["ANTES: Integración Fragmentada N x M (Complejidad Cuadrática N × M)"]
+        direction LR
+        subgraph H_BEFORE["AI Hosts (N)"]
+            H1["Claude Desktop"]
+            H2["VS Code / Cursor"]
+            H3["Agentes CLI Custom"]
+        end
+        subgraph S_BEFORE["Fuentes de Datos / Tools (M)"]
+            S1["PostgreSQL"]
+            S2["GitHub API"]
+            S3["Slack API"]
+            S4["FileSystem Local"]
+        end
+        H1 -->|Plugin Ad-hoc 1| S1
+        H1 -->|Plugin Ad-hoc 2| S2
+        H1 -->|Plugin Ad-hoc 3| S3
+        H1 -->|Plugin Ad-hoc 4| S4
+        H2 -->|Extension Custom 1| S1
+        H2 -->|Extension Custom 2| S2
+        H2 -->|Extension Custom 3| S3
+        H2 -->|Extension Custom 4| S4
+        H3 -->|Connector Custom 1| S1
+        H3 -->|Connector Custom 2| S2
+        H3 -->|Connector Custom 3| S3
+        H3 -->|Connector Custom 4| S4
+    end
+
+    subgraph AFTER["DESPUÉS: Estándar MCP N + M (Complejidad Lineal N + M)"]
+        direction LR
+        subgraph H_AFTER["AI Hosts / Clients (N)"]
+            AH1["Claude Desktop"]
+            AH2["VS Code / Cursor"]
+            AH3["Agentes CLI Custom"]
+        end
+        
+        BUS(("Protocolo MCP\n(JSON-RPC 2.0 sobre stdio / SSE)"))
+        
+        subgraph S_AFTER["MCP Servers (M)"]
+            AS1["PostgreSQL MCP Server"]
+            AS2["GitHub MCP Server"]
+            AS3["Slack MCP Server"]
+            AS4["FileSystem MCP Server"]
+        end
+
+        AH1 === BUS
+        AH2 === BUS
+        AH3 === BUS
+        BUS === AS1
+        BUS === AS2
+        BUS === AS3
+        BUS === AS4
+    end
+
+    classDef beforeClass fill:#ffebee,stroke:#c62828,stroke-width:2px;
+    classDef afterClass fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef busClass fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
+
+    class BEFORE,H_BEFORE,S_BEFORE beforeClass;
+    class AFTER,H_AFTER,S_AFTER afterClass;
+    class BUS busClass;

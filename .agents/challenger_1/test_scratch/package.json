@@ -1,0 +1,11 @@
+{
+  "name": "test_scratch",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "*",
+    "@types/node": "*",
+    "typescript": "*",
+    "zod": "*"
+  }
+}

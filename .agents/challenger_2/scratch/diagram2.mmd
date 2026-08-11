@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor User as Usuario / LLM
+    participant Host as AI Host (App)
+    participant Client as MCP Client
+    participant Server as MCP Server (Sidecar/Remote)
+
+    Note over Host,Server: FASE 1: Inicialización y Negociación de Capacidades (Handshake)
+    Host->>Client: Iniciar conexión con MCP Server (stdio / SSE)
+    Client->>Server: JSON-RPC Request: "initialize" (protocolVersion, capabilities, clientInfo)
+    Server-->>Client: JSON-RPC Response: result (protocolVersion, capabilities, serverInfo)
+    Client->>Server: JSON-RPC Notification: "notifications/initialized"
+
+    Note over Host,Server: FASE 2: Descubrimiento de Primitivas (Discovery)
+    Client->>Server: JSON-RPC Request: "tools/list"
+    Server-->>Client: JSON-RPC Response: result { tools: [ { name, description, inputSchema } ] }
+    Client->>Server: JSON-RPC Request: "resources/list"
+    Server-->>Client: JSON-RPC Response: result { resources: [ { uri, name, mimeType } ] }
+
+    Note over Host,Server: FASE 3: Ejecución de Herramientas y Lectura de Recursos
+    User->>Host: Solicitud ("Busca los datos de ventas en PostgreSQL")
+    Host->>Host: El LLM determina invocar la tool "query_sales"
+    Host->>Client: Solución aprobada: ejecutar tool
+    Client->>Server: JSON-RPC Request: "tools/call" { name: "query_sales", arguments: { region: "EU" } }
+    Server->>Server: Ejecutar consulta en Base de Datos
+    Server-->>Client: JSON-RPC Response: result { content: [ { type: "text", text: "..." } ] }
+    Client-->>Host: Retornar resultado al LLM
+    Host-->>User: Presentar respuesta final al usuario
