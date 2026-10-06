@@ -1,0 +1,79 @@
+GUION NARRATIVO: APARTADO 5 DEL CAPÍTULO 5
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 5: El Pipeline Gráfico Completo, Rasterización y la Síntesis Compute-to-Render en WebGPU
+Apartado 5: Pases de Render (beginRenderPass), Z-Buffer y Operaciones de Mezcla (Blending)
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Título cinematográfico del apartado: "Apartado 5: Pases de Render (beginRenderPass), Z-Buffer y Operaciones de Mezcla (Blending)". De fondo, animación 3D de alta complejidad: una ciudad futurista con cristales reflectantes, humo volumétrico y capas translúcidas superpuestas; la cámara atraviesa los rascacielos mostrando cómo cada píxel resuelve su oclusión y transparencia en tiempo real en WebGPU]
+
+Una vez que el Fragment Shader ha calculado la radiometría de cada fragmento, la imagen aún no está completa. La tarjeta gráfica debe resolver dos incógnitas fundamentales de la física visual antes de escribir en la memoria de pantalla: la oclusión y la translucidez.
+
+Si una columna en primer plano coincide en pantalla con una pared situada al fondo, ¿cómo sabe el hardware cuál está más cerca del observador para tapar a la otra? Y si el objeto delantero es una ventana de cristal ahumado o una nube de fuego, ¿cómo se fusionan matemáticamente sus colores con lo que existe detrás?
+
+El territorio de silicio donde se dirimen estas dos cuestiones finales se denomina Unidades de Salida de Renderizado, o ROPs. En WebGPU, este proceso se formaliza mediante la estructura más determinante de la etapa gráfica: el Pase de Render.
+
+[00:01:05]
+[En pantalla: Diagrama de la llamada beginRenderPass recibiendo la estructura GPURenderPassDescriptor. Se iluminan los bloques colorAttachments y depthStencilAttachment. A continuación, animación esquemática de la microarquitectura TBDR de Apple Silicon y chips móviles: la pantalla se divide en teselas de 16x16 píxeles que se procesan íntegramente dentro de una memoria SRAM ultrarrápida on-chip]
+
+En las APIs antiguas como OpenGL, los búferes de dibujo se modificaban sobre la marcha en cualquier punto del programa mediante estados globales. WebGPU rompe con ese modelo e implementa la arquitectura moderna de Vulkan y Metal: los límites de renderizado se declaran de antemano mediante GPURenderPassDescriptor.
+
+Aquí configuramos las texturas de salida y sus operaciones de carga y almacenamiento. Esta decisión tiene consecuencias físicas colosales en el silicio:
+Si indicamos loadOp con el valor clear, el hardware reinicia la memoria a coste cero.
+Pero en chips móviles y procesadores Apple Silicon con arquitectura basada en teselas, si ponéis erróneamente el valor load, obligáis a la GPU a traer megabytes de datos desde la DRAM externa a través del bus de memoria hacia la SRAM local antes de pintar un solo píxel. Esto estrangula el ancho de banda y agota la batería. La regla de oro en WebGPU es rotunda: salvo que dibujéis sobre una escena previa, utilizad siempre clear.
+
+[00:02:20]
+[En pantalla: Animación 3D del funcionamiento del Zeta Buffer inventado por Edwin Catmull en 1974. Una textura bidimensional paralela almacena la distancia normalizada de cada píxel en el rango de cero punto cero a uno punto cero. Se ilustra la distribución hiperbólica: una gráfica muestra cómo el noventa por ciento de la precisión matemática se amontona absurdamente pegada a la cámara, provocando el artefacto de Zeta-fighting en la lejanía]
+
+Para resolver la oclusión en escenas con millones de triángulos arbitrarios, la GPU recurre al clásico algoritmo del Zeta Buffer, ideado por Edwin Catmull en mil novecientos setenta y cuatro.
+
+El Zeta Buffer es una textura bidimensional con la misma resolución que la pantalla, donde cada celda almacena la distancia de profundidad del fragmento más cercano visto hasta ese instante. En WebGPU, este rango abarca estrictamente de cero punto cero a uno punto cero.
+
+Pero aquí la física matemática nos tiende una trampa. Debido a la división por la coordenada homogénea uve doble en la proyección en perspectiva, la profundidad no se distribuye de forma lineal respecto a la distancia real. Más del noventa por ciento de todos los valores posibles se agotan en el primer diez por ciento del espacio pegado a la cámara. En el noventa por ciento restante hacia el horizonte, los valores están tan astronómicamente comprimidos que objetos separados por centímetros en el mundo virtual colapsan sobre el mismo número exacto. El resultado es el temido Zeta-fighting: un parpadeo caótico donde dos superficies coplanares luchan píxel a píxel por ganar la pantalla.
+
+[00:03:45]
+[En pantalla: Demostración visual de la técnica Reverse-Zeta. A la izquierda: render tradicional sufriendo Zeta-fighting en montañas lejanas. A la derecha: Reverse-Zeta perfecto hasta el infinito. Se ilustra la mantisa del estándar IEEE 754 de coma flotante de 32 bits concentrando millones de números cerca del cero absoluto, contrarrestando con exactitud la curva de la perspectiva]
+
+La solución canónica adoptada por los motores modernos es una proeza de ingenio matemático: la Profundidad Invertida o Reverse-Zeta.
+
+En lugar de situar el plano cercano en cero y el plano lejano en uno, invertimos la polaridad: mapeamos el plano cercano a uno punto cero y el plano lejano al cero absoluto.
+
+¿Por qué este cambio elimina el conflicto? Porque el formato de coma flotante de treinta y dos bits IEEE setecientos cincuenta y cuatro concentra la inmensa mayoría de sus valores representables precisamente en las proximidades del cero. Al colocar el infinito en cero punto cero, la densidad matemática de los números flotantes en silicio contrarresta con precisión milimétrica la compresión de la perspectiva. Con Reverse-Zeta y un formato de textura depth32float, la precisión se reparte de forma homogénea a lo largo de kilómetros, eliminando el Zeta-fighting por completo incluso con un plano lejano infinito.
+
+[00:05:00]
+[En pantalla: Esquema del circuito Early-Zeta en el silicio de la GPU. Los fragmentos procedentes del rasterizador son evaluados contra el Zeta Buffer ANTES de invocar el Fragment Shader. Si el píxel está oculto, se cancela al instante. Se muestra la pirámide de memoria Hi-Zeta descartando bloques de 16x16 píxeles. Aparece una señal de advertencia sobre frag_depth y discard]
+
+Pero el silicio no solo busca precisión; persigue una eficiencia extrema. Si la GPU tuviera que ejecutar el Fragment Shader para millones de píxeles que luego serán tapados por objetos delanteros, desperdiciaríamos una cantidad descomunal de energía y ciclos de cómputo, un defecto conocido como Overdraw.
+
+Para evitarlo, las tarjetas gráficas integran el circuito de Early-Zeta Culling. El hardware compara la profundidad interpolada del fragmento contra el Zeta Buffer antes de activar el Fragment Shader. Si el fragmento cae detrás de algo ya dibujado, el hilo se cancela de inmediato, ahorrando costosos cálculos de iluminación PBR y lecturas de textura. Además, mediante Hi-Zeta, el procesador descarta teselas completas de dieciséis por dieciséis píxeles en un solo ciclo de reloj.
+
+Sin embargo, esta aceleración exige respetar una regla sagrada: si vuestro Fragment Shader escribe manualmente en frag depth o utiliza la instrucción discard para recorte condicional, el circuito Early-Zeta se desactiva por hardware. Para maximizar el rendimiento, dibujad siempre la geometría opaca de adelante hacia atrás, desde lo más cercano a lo más lejano.
+
+[00:06:25]
+[En pantalla: Animación de la unidad de mezcla (Blending) en los ROPs. Se desglosa la fórmula de Porter y Duff: Color Resultado = Color Origen multiplicado por Factor Origen más Color Destino multiplicado por Factor Destino. Demostración interactiva alternando entre mezcla translúcida normal (vidrio), aditiva (fuego y magia) y multiplicativa (sombras)]
+
+Cuando un material no es opaco sino transparente, entra en acción la circuitería de Alpha Blending en los ROPs.
+
+Aquí el hardware toma el color que acaba de emitir el Fragment Shader, denominado Color de Origen, y lo combina algebraicamente con el color que ya residía en la memoria de pantalla, llamado Color de Destino.
+
+En WebGPU gobernamos esta física mediante la ecuación canónica de mezcla: escalamos cada color por un factor de mezcla y aplicamos una operación aritmética. El estándar universal para superficies translúcidas es el operador Over, formulado por Thomas Porter y Tom Duff en mil novecientos ochenta y cuatro: el objeto aporta su propio color multiplicado por su canal alfa, mientras deja pasar el fondo multiplicado por uno menos su alfa. En materiales luminosos como chispas o rayos, cambiamos a mezcla aditiva sumando ambos colores al cien por cien para generar intensidades deslumbrantes.
+
+[00:07:45]
+[En pantalla: Animación pedagógica del dilema de la transparencia frente al Zeta Buffer. Si una ventana translúcida escribe en el Zeta Buffer, la mesa detrás desaparece en el vacío. Se destacan en pantalla las dos reglas de oro: depthWriteEnabled en false y ordenamiento Back-to-Front por la CPU]
+
+Pero la transparencia plantea un dilema insalvable con el Zeta Buffer: la profundidad es una propiedad binaria; un píxel está delante o está detrás, pero no existe la distancia semitransparente.
+
+Si una ventana de cristal escribiera su profundidad en el Zeta Buffer, la GPU pensaría que el píxel está ocupado y descartaría la mesa que intentáramos dibujar detrás, dejándola invisible.
+
+Por ello, el pipeline gráfico impone dos leyes obligatorias para los materiales translúcidos:
+Primera: desactivar la escritura en el Zeta Buffer mediante depthWriteEnabled en false. Los objetos transparentes deben comprobar si chocan con paredes sólidas, pero jamás deben bloquear lo que hay detrás.
+Segunda: ordenamiento estricto de atrás hacia adelante, o Back-to-Front. Dado que la fórmula de mezcla necesita que el fondo ya esté pintado para calcular la fusión, la CPU debe ordenar los objetos translúcidos desde el más lejano al más cercano antes de emitir los comandos de dibujo.
+
+[00:09:05]
+[En pantalla: La cámara retrocede desde el monitor mostrando la arquitectura completa del pipeline gráfico. Se conectan los módulos de Compute y Render a través de un búfer de memoria compartida en VRAM con el rótulo: "Compute-to-Render Interoperability". Aparece el título del próximo apartado: "Apartado 6: La Gran Síntesis: Interoperabilidad Compute-to-Render sin Sobrecarga de Host"]
+
+Con el dominio de los pases de render, el control milimétrico de la profundidad y las matemáticas de la mezcla de colores, hemos completado los cimientos de la arquitectura gráfica tridimensional en WebGPU.
+
+Ha llegado el momento más esperado de nuestra serie. En el Apartado 6, abordaremos la gran síntesis arquitectónica de BrowserOS: la Interoperabilidad directa Compute-to-Render. Descubriremos cómo simular millones de partículas físicas y redes neuronales en Compute Shaders que alimentan de forma instantánea al pipeline gráfico compartiendo búferes en VRAM con latencia cero absoluta.

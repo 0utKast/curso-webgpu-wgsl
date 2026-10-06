@@ -1,0 +1,37 @@
+A lo largo de este curso hemos conquistado dos continentes que en la historia de la informática gráfica siempre estuvieron separados por un abismo: la computación masiva de propósito general y el pipeline de renderizado tridimensional.
+
+Hasta hoy, si queríais simular un enjambre de partículas, una superficie de tela ondeando al viento o la inferencia de una red neuronal, teníais que resignaros a pagar un peaje intolerable: calcular los datos, enviarlos de vuelta al procesador central y transferirlos a través del bus del sistema para intentar pintarlos en la pantalla.
+
+WebGPU derriba esta frontera para siempre. En este apartado exploramos la cumbre de la ingeniería de silicio de BrowserOS: la Interoperabilidad directa Compute to Render. La capacidad de alimentar al pipeline gráfico desde los núcleos de cómputo compartiendo la misma memoria de vídeo con latencia cero absoluta y sin sobrecargar el hilo de JavaScript.
+
+Para entender la magnitud de esta revolución, basta recordar el tormento que suponía la simulación física en WebGL.
+
+Si intentabais calcular medio millón de partículas en JavaScript o WebAssembly, la CPU tenía que empaquetar megabytes de datos cada dieciséis milisegundos y enviarlos por el bus P C I Express hacia la tarjeta gráfica. Ese bus, con un ancho de banda limitado a dieciséis o treinta y dos gigabytes por segundo, se estrangulaba de inmediato, disparando el recolector de basura y hundiendo la tasa de refresco a diez fotogramas por segundo.
+
+La alternativa en WebGL tampoco era mejor: recurrir al artificio de renderizar en texturas de coma flotante, codificando las posiciones espaciales en los canales rojo, verde y azul para luego intentar leerlas mediante llamadas síncronas bloqueantes. Como enseñan David Patterson y John Hennessy, el secreto del rendimiento masivo no consiste en calcular más rápido, sino en erradicar por completo el trasvase de datos entre memorias separadas.
+
+La solución magistral de WebGPU es el Búfer Polimórfico de silicio.
+
+En WebGPU, los búferes de memoria no están encasillados en un único propósito rígido. El parámetro de uso es una máscara de bits binaria. Podemos declarar que un único búfer posea a la vez la bandera Storage para que los Compute Shaders escriban en él, y la bandera Vertex para que el ensamblador de vértices lo lea directamente.
+
+Físicamente, este búfer reside en un bloque contiguo de la memoria de vídeo de alta velocidad, la V-RAM, funcionando a más de un terabyte por segundo. En la primera mitad del fotograma, los núcleos de cómputo calculan las posiciones de las partículas y las escriben en ese bloque. En la segunda mitad del fotograma, la circuitería de función fija de vértices lee exactamente esas mismas posiciones para dibujar los polígonos. No hay transferencias a la CPU, no hay duplicación de memoria y no hay latencia de puente.
+
+Para que esta maquinaria opere a la velocidad de la luz, WebGPU permite orquestar ambas etapas dentro de un único codificador de comandos monolítico.
+
+En cada fotograma abrimos un codificador de comandos. Primero iniciamos el pase de cómputo, enlazamos el búfer polimórfico y despachamos los grupos de trabajo para resolver la física. Cerramos el pase de cómputo e inmediatamente abrimos el pase de renderizado, enlazando exactamente el mismo búfer como flujo de vértices de instancia para dibujar las primitivas.
+
+Finalmente, enviamos la lista completa a la cola del dispositivo con una única llamada de sumisión atómica. El hilo principal de JavaScript tarda apenas cero punto un milisegundos en registrar todo el fotograma, quedando libre de inmediato para gestionar eventos del usuario o lógica de negocio.
+
+Pero aquí surge una pregunta vital de arquitectura de hardware: ¿cómo sabe la tarjeta gráfica que no debe empezar a leer los vértices antes de que los hilos de cómputo hayan terminado de escribir las nuevas posiciones?
+
+En APIs explícitas de bajo nivel como Vulkan o Direct3D doce, el programador está obligado a insertar manualmente complejas barreras de memoria de tubería. Si olvida una sola máscara de sincronización, se produce una carrera de lectura tras escritura, provocando parpadeos caóticos o el bloqueo del controlador de pantalla.
+
+WebGPU adopta un diseño determinista superior: la Sincronización Automática por Límites de Pase. Al cerrar el pase de cómputo, el controlador analiza las máscaras de uso e inyecta de forma transparente en el flujo de silicio las barreras nativas del procesador. El hardware drena las unidades de cómputo, vuelca las cachés locales y garantiza la coherencia absoluta de los datos antes de que el motor de geometría despierte. Rendimiento nativo sin fisuras y seguridad matemática garantizada.
+
+En nuestro taller práctico implementamos esta arquitectura al completo. El Compute Shader en uve doble ge ese ele actualiza las partículas mediante integración de Euler semi-implícita, aplicando campos de atracción gravitatoria y rebotes elásticos contra los límites del espacio tridimensional. Y el Vertex Shader consume directamente esa memoria mediante instanciación por hardware, expandiendo cada punto en un cartel orientado hacia la cámara mientras el Fragment Shader aplica un recorte circular analítico con caída suave.
+
+El resultado es asombroso: más de dos millones de entidades tridimensionales dinámicas simuladas e iluminadas a sesenta fotogramas por segundo estables en un simple ordenador portátil, con un consumo de procesador central prácticamente invisible.
+
+Con la interoperabilidad Compute to Render, el navegador web deja de ser un visor pasivo de documentos y se convierte en el entorno de ejecución nativo más versátil y potente del planeta.
+
+En el Apartado 7, descenderemos al terreno de la orquestación en el host: cómo sincronizar esta maquinaria con el refresco de pantalla mediante request animation frame, cómo gestionar el redimensionamiento dinámico del lienzo con Resize Observer sin fugas de memoria y cómo gobernar el ciclo de presentación del Swapchain para construir aplicaciones de producción indestructibles.

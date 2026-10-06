@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taller Práctico 07: Visión Artificial, Convolución y Curva de Morton — WebGPU & WGSL</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #131b2e;
+      --card-border: #23304d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --purple: #c084fc;
+      --code-bg: #090d16;
+      --tab-active: #1e293b;
+      --tab-inactive: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge-bar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-primary {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .badge-gpu {
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 950px;
+    }
+
+    /* Pestañas de Navegación */
+    .tabs-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: var(--tab-inactive);
+      color: var(--text-muted);
+      border: 1px solid var(--card-border);
+      padding: 0.65rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn:hover {
+      background: #1e293b;
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    .tab-btn.active {
+      background: var(--tab-active);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Paneles y Layouts */
+    .panel-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .panel-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 0.6rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    select, button, input[type="file"] {
+      width: 100%;
+      background: #090d16;
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.88rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    select:focus, button:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .btn-action {
+      background: #0284c7;
+      color: #ffffff;
+      font-weight: 700;
+      border: 1px solid #38bdf8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn-action:hover {
+      background: #0369a1;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+
+    .btn-secondary {
+      background: #1e293b;
+      color: var(--text-main);
+      border: 1px solid #475569;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+    }
+
+    /* Telemetría */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .telemetry-card {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .telemetry-val {
+      font-size: 1.4rem;
+      font-weight: 800;
+      font-family: monospace;
+      color: var(--accent);
+    }
+
+    .telemetry-val.good { color: var(--success); }
+    .telemetry-val.warn { color: var(--warning); }
+    .telemetry-val.bad { color: var(--danger); }
+
+    .telemetry-lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-top: 0.2rem;
+    }
+
+    /* Área de Visión */
+    .viewport-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .viewport-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .viewport-box {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .viewport-header {
+      background: #1e293b;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .viewport-body {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000000;
+      overflow: hidden;
+    }
+
+    video, canvas, img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    /* Tab 2: Visualizador Curva de Morton */
+    .morton-container {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .morton-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .morton-canvas-box {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #canvasMorton {
+      background: #0b0f19;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      cursor: crosshair;
+    }
+
+    .morton-info-box {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .bit-interleave-display {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+
+    .bit-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .bit-highlight-x { color: var(--accent); font-weight: bold; }
+    .bit-highlight-y { color: var(--purple); font-weight: bold; }
+    .bit-highlight-res { color: var(--success); font-weight: bold; font-size: 1.1rem; }
+
+    /* Tab 3: Halo Inspector */
+    .halo-grid-display {
+      display: grid;
+      grid-template-columns: repeat(18, 1fr);
+      gap: 2px;
+      max-width: 580px;
+      margin: 1.5rem auto;
+      background: #090d16;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+    }
+
+    .halo-cell {
+      aspect-ratio: 1;
+      border-radius: 2px;
+      font-size: 0.55rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.4);
+      user-select: none;
+    }
+
+    .halo-cell.apron {
+      background: rgba(248, 113, 113, 0.25);
+      border: 1px solid rgba(248, 113, 113, 0.4);
+      color: #f87171;
+    }
+
+    .halo-cell.inner {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+    }
+
+    .legend-box {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    .legend-color.apron { background: #f87171; }
+    .legend-color.inner { background: #38bdf8; }
+
+    .status-banner {
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid var(--success);
+      color: var(--success);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ENCABEZADO PRINCIPAL -->
+  <header>
+    <div class="badge-bar">
+      <span class="badge badge-primary">Taller Práctico 07 • WebGPU WGSL</span>
+      <span class="badge badge-gpu" id="badgeGpu">WebGPU: Verificando...</span>
+      <span class="badge" style="background: rgba(192, 132, 252, 0.15); color: var(--purple); border: 1px solid rgba(192, 132, 252, 0.35);">Curvas de Morton & TFUs</span>
+    </div>
+    <h1>Procesamiento de Imágenes, Visión Artificial y Texturas en Silicio</h1>
+    <p class="subtitle">
+      Laboratorio interactivo para experimentar con la <strong>Curva de Morton (Z-Order)</strong>, filtros de convolución bidimensional en compute shaders (Sobel, Gauss, Sharpen, Relieve) y la optimización de ancho de banda mediante <strong>caching con halo en memoria compartida (SRAM)</strong>.
+    </p>
+  </header>
+
+  <!-- BANNER DE ERRORES WEBGPU -->
+  <div id="errorBanner" style="display:none; background:rgba(239, 68, 68, 0.15); border:1px solid #ef4444; color:#fca5a5; padding:0.75rem 1rem; border-radius:8px; margin-bottom:1rem; font-family:monospace; font-size:0.85rem; word-break:break-all;"></div>
+
+  <!-- PESTAÑAS DE NAVEGACIÓN -->
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('lab', this)">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      1. Laboratorio de Visión (Webcam & GPU)
+    </button>
+    <button class="tab-btn" onclick="switchTab('morton', this)">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+      2. Explorador de la Curva de Morton (Z-Order)
+    </button>
+    <button class="tab-btn" onclick="switchTab('halo', this)">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      3. Inspector de Baldosa con Halo (SRAM 18x18)
+    </button>
+  </div>
+
+  <!-- PESTAÑA 1: LABORATORIO DE VISIÓN ARTIFICIAL -->
+  <div class="tab-content active" id="tab-lab">
+    <div class="panel-grid">
+      
+      <!-- Panel de Controles -->
+      <div class="card">
+        <div class="card-title">
+          <span>Controles de Silicio</span>
+          <span style="font-size: 0.75rem; color: var(--accent);">WebGPU Compute</span>
+        </div>
+
+        <div class="form-group">
+          <label>Fuente de Imagen de Entrada</label>
+          <select id="sourceSelect" onchange="changeSource()">
+            <option value="webcam">Cámara Web en Vivo (getUserMedia)</option>
+            <option value="test_pattern" selected>Patrón Sintético (Geometría y Aristas)</option>
+            <option value="custom_file">Subir Imagen Local...</option>
+          </select>
+          <input type="file" id="fileInput" accept="image/*" style="display:none; margin-top:0.5rem;" onchange="handleFileUpload(event)">
+        </div>
+
+        <div class="form-group">
+          <label>Filtro de Convolución (Shader WGSL)</label>
+          <select id="filterSelect" onchange="changeFilter()">
+            <option value="sobel" selected>Filtro de Sobel (Detección de Bordes Gx / Gy)</option>
+            <option value="gaussian">Desenfoque Gaussiano 3x3 (Filtro Pasa-Bajo)</option>
+            <option value="sharpen">Realce Laplaciano (Sharpening)</option>
+            <option value="emboss">Relieve Asimétrico (Emboss 3D)</option>
+            <option value="grayscale">Luminancia Perceptual (ITU-R BT.601)</option>
+            <option value="passthrough">Paso Directo (Sin Filtrar)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Modo de Aceleración en Hardware</label>
+          <select id="modeSelect" onchange="changeMode()">
+            <option value="halo" selected>Modo B: Optimizado Halo SRAM (var&lt;workgroup&gt;)</option>
+            <option value="direct">Modo A: Directo Global VRAM (9 lecturas / px)</option>
+          </select>
+        </div>
+
+        <button class="btn-action" id="btnToggleCam" onclick="toggleWebcam()">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Encender Cámara Web
+        </button>
+
+        <button class="btn-secondary" onclick="generateRandomPattern()">
+          Generar Nuevo Patrón Sintético
+        </button>
+
+        <!-- Métricas de Telemetría -->
+        <div class="telemetry-grid">
+          <div class="telemetry-card">
+            <div class="telemetry-val" id="fpsVal">60</div>
+            <div class="telemetry-lbl">FPS en Vivo</div>
+          </div>
+          <div class="telemetry-card">
+            <div class="telemetry-val" id="computeTimeVal">0.42 ms</div>
+            <div class="telemetry-lbl">Tiempo de Kernel</div>
+          </div>
+          <div class="telemetry-card">
+            <div class="telemetry-val" id="threadsVal">921.6K</div>
+            <div class="telemetry-lbl">Hilos Despachados</div>
+          </div>
+          <div class="telemetry-card">
+            <div class="telemetry-val good" id="savingVal">-85.9%</div>
+            <div class="telemetry-lbl">Tráfico VRAM Ahorrado</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Lienzos de Visualización -->
+      <div class="viewport-grid">
+        <!-- Entrada -->
+        <div class="viewport-box">
+          <div class="viewport-header">
+            <span>ENTRADA (Host / Texture_2D)</span>
+            <span id="resInput">1280 x 720</span>
+          </div>
+          <div class="viewport-body">
+            <video id="videoElement" autoplay playsinline muted style="display:none;"></video>
+            <canvas id="canvasInput" width="1280" height="720"></canvas>
+          </div>
+        </div>
+
+        <!-- Salida WebGPU -->
+        <div class="viewport-box">
+          <div class="viewport-header">
+            <span style="color: var(--accent);">SALIDA WEBGPU (Storage Texture)</span>
+            <span id="activeFilterBadge">Sobel (Halo SRAM)</span>
+          </div>
+          <div class="viewport-body">
+            <canvas id="canvasWebGPU" width="1280" height="720"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PESTAÑA 2: EXPLORADOR DE LA CURVA DE MORTON (Z-ORDER) -->
+  <div class="tab-content" id="tab-morton">
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <div class="card-title">
+        <span>Simulador de Entrelazado de Bits (Bit-Interleaving) y Geometría en Z</span>
+        <span style="font-size: 0.8rem; color: var(--accent);">Resolución de Baldosa: 8x8 (64 texels)</span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+        Pasa el ratón sobre cualquier celda de la cuadrícula para ver cómo las coordenadas 2D <code>(x, ye)</code> se descomponen en bits binarios y se entrelazan alternativamente para generar la dirección física 1D en memoria. Observa cómo un bloque de <strong>4x4 texels (16 texels = 64 bytes)</strong> encaja exactamente en una sola línea de caché L1.
+      </p>
+
+      <div class="morton-container">
+        <div class="morton-canvas-box">
+          <canvas id="canvasMorton" width="480" height="480"></canvas>
+          <div style="margin-top: 1rem; font-size: 0.82rem; color: var(--text-muted);">
+            Trazo verde continuo: Recorrido jerárquico de la <strong>Curva de Morton (Z-Order)</strong>.
+          </div>
+        </div>
+
+        <div class="morton-info-box">
+          <div class="card" style="background:#090d16;">
+            <div class="card-title" style="font-size:0.9rem;">Descomposición de Coordenadas</div>
+            <div class="bit-interleave-display">
+              <div class="bit-row">
+                <span>Coordenada X (Horizontal):</span>
+                <span class="bit-highlight-x" id="dispX">x = 5 (binario: 101)</span>
+              </div>
+              <div class="bit-row">
+                <span>Coordenada YE (Vertical):</span>
+                <span class="bit-highlight-y" id="dispY">ye = 3 (binario: 011)</span>
+              </div>
+              <div class="bit-row" style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed var(--card-border);">
+                <span>Entrelazado de Bits:</span>
+                <span style="color:#ffffff;" id="dispBits">y2 x2 y1 x1 y0 x0 = 011011</span>
+              </div>
+              <div class="bit-row">
+                <span>Dirección Morton (Z-Order):</span>
+                <span class="bit-highlight-res" id="dispMorton">27 (0x1B)</span>
+              </div>
+              <div class="bit-row">
+                <span>Dirección Lineal (Row-Major):</span>
+                <span style="color:var(--danger); font-weight:bold;" id="dispLinear">29 (y * 8 + x)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="background:#090d16;">
+            <div class="card-title" style="font-size:0.9rem;">Preservación de Línea de Caché L1 (64 Bytes)</div>
+            <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5;">
+              En formato <code>rgba8unorm</code> (4 bytes/texel), una línea de caché de 64 bytes almacena <strong>16 texels</strong>.
+              <br><br>
+              • <strong>Memoria Lineal:</strong> Guarda una tira delgada de 16x1 píxeles. Saltar a <code>ye+1</code> requiere saltar miles de bytes en VRAM.
+              <br>
+              • <strong>Curva de Morton:</strong> Guarda un cuadrante compacto de <strong>4x4 píxeles</strong>. Todos los vecinos 2D conviven en la misma línea física.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PESTAÑA 3: INSPECTOR DE BALDOSA CON HALO (SRAM 18x18) -->
+  <div class="tab-content" id="tab-halo">
+    <div class="card">
+      <div class="card-title">
+        <span>Arquitectura del Delantal de Frontera (Apron / Halo Caching)</span>
+        <span style="font-size: 0.8rem; color: var(--accent);">var&lt;workgroup&gt; baldosa_halo: array&lt;array&lt;f32, 18&gt;, 18&gt;</span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+        Para procesar una baldosa interna de <strong>16x16 hilos (256 píxeles azules)</strong> con un stencil 3x3, los hilos cooperan cargando previamente el perímetro exterior de <strong>1 píxel de halo (68 celdas rojas)</strong> en la memoria SRAM on-chip. De este modo, todas las lecturas de convolución se resuelven en 1 ciclo de reloj en lugar de viajar a la DRAM global.
+      </p>
+
+      <div class="halo-grid-display" id="haloGrid">
+        <!-- Generado dinámicamente con JS -->
+      </div>
+
+      <div class="legend-box">
+        <div class="legend-item">
+          <div class="legend-color inner"></div>
+          <span>Baldosa Interna de Trabajo (16x16 = 256 píxeles procesados)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color apron"></div>
+          <span>Región de Halo / Delantal (68 píxeles de frontera en SRAM)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- CÓDIGO WEBGPU Y LÓGICA DE CONTROL -->
+<script type="module">
+  // ==========================================================================
+  // WGSL COMPUTE SHADERS: DIRECTO vs HALO OPTIMIZADO
+  // ==========================================================================
+  
+  const SHADER_WGSL = `
+    @group(0) @binding(0) var textura_entrada: texture_2d<f32>;
+    @group(0) @binding(1) var textura_salida: texture_storage_2d<rgba8unorm, write>;
+
+    // Parámetros uniformes del filtro
+    struct Params {
+      modo: u32,        // 0: Sobel, 1: Gauss, 2: Sharpen, 3: Emboss, 4: Grayscale, 5: Passthrough
+      optimizacion: u32, // 0: Directo VRAM, 1: Halo SRAM
+      ancho: u32,
+      alto: u32
+    };
+    @group(0) @binding(2) var<uniform> params: Params;
+
+    // Memoria compartida SRAM on-chip para el modo Halo (18x18 = 324 celdas = 1296 bytes)
+    var<workgroup> baldosa_halo: array<array<f32, 18>, 18>;
+
+    fn rgb_to_gray(c: vec4<f32>) -> f32 {
+      return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+    }
+
+    fn load_gray_clamped(coords: vec2<i32>, dims: vec2<i32>) -> f32 {
+      let sc = clamp(coords, vec2<i32>(0, 0), dims - vec2<i32>(1, 1));
+      return rgb_to_gray(textureLoad(textura_entrada, vec2<u32>(sc), 0u));
+    }
+
+    // ========================================================================
+    // KERNEL: CONVOLUCIÓN DIRECTA (MODO A)
+    // ========================================================================
+    @compute @workgroup_size(16, 16)
+    fn cs_main_direct(@builtin(global_invocation_id) gid: vec3<u32>) {
+      let dims = vec2<i32>(i32(params.ancho), i32(params.alto));
+      let x = i32(gid.x);
+      let y = i32(gid.y);
+
+      if (x >= dims.x || y >= dims.y) { return; }
+
+      // Passthrough / Grayscale directo
+      if (params.modo == 5u) {
+        textureStore(textura_salida, gid.xy, textureLoad(textura_entrada, gid.xy, 0u));
+        return;
+      }
+      if (params.modo == 4u) {
+        let g = load_gray_clamped(vec2<i32>(x, y), dims);
+        textureStore(textura_salida, gid.xy, vec4<f32>(g, g, g, 1.0));
+        return;
+      }
+
+      // 9 lecturas directas a VRAM global (Cuello de botella)
+      let l00 = load_gray_clamped(vec2<i32>(x - 1, y - 1), dims);
+      let l10 = load_gray_clamped(vec2<i32>(x,     y - 1), dims);
+      let l20 = load_gray_clamped(vec2<i32>(x + 1, y - 1), dims);
+
+      let l01 = load_gray_clamped(vec2<i32>(x - 1, y),     dims);
+      let l11 = load_gray_clamped(vec2<i32>(x,     y),     dims);
+      let l21 = load_gray_clamped(vec2<i32>(x + 1, y),     dims);
+
+      let l02 = load_gray_clamped(vec2<i32>(x - 1, y + 1), dims);
+      let l12 = load_gray_clamped(vec2<i32>(x,     y + 1), dims);
+      let l22 = load_gray_clamped(vec2<i32>(x + 1, y + 1), dims);
+
+      var out_color = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+
+      if (params.modo == 0u) { // Sobel
+        let gx = (-1.0 * l00) + (1.0 * l20) + (-2.0 * l01) + (2.0 * l21) + (-1.0 * l02) + (1.0 * l22);
+        let gy = (-1.0 * l00) + (-2.0 * l10) + (-1.0 * l20) + (1.0 * l02) + (2.0 * l12) + (1.0 * l22);
+        let mag = sqrt(gx * gx + gy * gy);
+        out_color = vec4<f32>(mag, mag, mag, 1.0);
+      } else if (params.modo == 1u) { // Gauss 3x3
+        let sum = (l00 + 2.0*l10 + l20 + 2.0*l01 + 4.0*l11 + 2.0*l21 + l02 + 2.0*l12 + l22) / 16.0;
+        out_color = vec4<f32>(sum, sum, sum, 1.0);
+      } else if (params.modo == 2u) { // Sharpen
+        let sum = (-1.0*l10 - 1.0*l01 + 5.0*l11 - 1.0*l21 - 1.0*l12);
+        out_color = vec4<f32>(clamp(sum, 0.0, 1.0), clamp(sum, 0.0, 1.0), clamp(sum, 0.0, 1.0), 1.0);
+      } else if (params.modo == 3u) { // Emboss
+        let sum = (-2.0*l00 - 1.0*l10 - 1.0*l01 + 1.0*l11 + 1.0*l21 + 1.0*l12 + 2.0*l22) + 0.5;
+        out_color = vec4<f32>(clamp(sum, 0.0, 1.0), clamp(sum, 0.0, 1.0), clamp(sum, 0.0, 1.0), 1.0);
+      }
+
+      textureStore(textura_salida, gid.xy, out_color);
+    }
+
+    // ========================================================================
+    // KERNEL: CONVOLUCIÓN OPTIMIZADA CON HALO SRAM (MODO B)
+    // ========================================================================
+    @compute @workgroup_size(16, 16)
+    fn cs_main_halo(
+      @builtin(global_invocation_id) gid: vec3<u32>,
+      @builtin(local_invocation_id) lid: vec3<u32>,
+      @builtin(workgroup_id) wid: vec3<u32>
+    ) {
+      let dims = vec2<i32>(i32(params.ancho), i32(params.alto));
+      
+      let lx = lid.x + 1u;
+      let ly = lid.y + 1u;
+
+      let gx = i32(gid.x);
+      let gy = i32(gid.y);
+
+      let base_x = i32(wid.x * 16u) - 1;
+      let base_y = i32(wid.y * 16u) - 1;
+
+      // 1. Carga cooperativa del área interna (256 píxeles)
+      baldosa_halo[ly][lx] = load_gray_clamped(vec2<i32>(gx, gy), dims);
+
+      // 2. Carga cooperativa del perímetro (68 celdas de halo)
+      let linear_id = lid.y * 16u + lid.x;
+      if (linear_id < 68u) {
+        var hx = 0;
+        var hy = 0;
+        if (linear_id < 18u) {
+          hx = i32(linear_id);
+          hy = 0;
+        } else if (linear_id < 36u) {
+          hx = i32(linear_id - 18u);
+          hy = 17;
+        } else if (linear_id < 52u) {
+          hx = 0;
+          hy = i32(linear_id - 36u) + 1;
+        } else {
+          hx = 17;
+          hy = i32(linear_id - 52u) + 1;
+        }
+        baldosa_halo[hy][hx] = load_gray_clamped(vec2<i32>(base_x + hx, base_y + hy), dims);
+      }
+
+      // 3. Barrera de sincronización obligatoria
+      workgroupBarrier();
+
+      if (gx >= dims.x || gy >= dims.y) { return; }
+
+      // Passthrough / Grayscale directo
+      if (params.modo == 5u) {
+        textureStore(textura_salida, gid.xy, textureLoad(textura_entrada, gid.xy, 0u));
+        return;
+      }
+      if (params.modo == 4u) {
+        let g = baldosa_halo[ly][lx];
+        textureStore(textura_salida, gid.xy, vec4<f32>(g, g, g, 1.0));
+        return;
+      }
+
+      // Lecturas resueltas al 100% desde la memoria SRAM on-chip
+      let l00 = baldosa_halo[ly - 1u][lx - 1u];
+      let l10 = baldosa_halo[ly - 1u][lx];
+      let l20 = baldosa_halo[ly - 1u][lx + 1u];
+
+      let l01 = baldosa_halo[ly][lx - 1u];
+      let l11 = baldosa_halo[ly][lx];
+      let l21 = baldosa_halo[ly][lx + 1u];
+
+      let l02 = baldosa_halo[ly + 1u][lx - 1u];
+      let l12 = baldosa_halo[ly + 1u][lx];
+      let l22 = baldosa_halo[ly + 1u][lx + 1u];
+
+      var out_color = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+
+      if (params.modo == 0u) { // Sobel
+        let sx = (-1.0 * l00) + (1.0 * l20) + (-2.0 * l01) + (2.0 * l21) + (-1.0 * l02) + (1.0 * l22);
+        let sy = (-1.0 * l00) + (-2.0 * l10) + (-1.0 * l20) + (1.0 * l02) + (2.0 * l12) + (1.0 * l22);
+        let mag = sqrt(sx * sx + sy * sy);
+        out_color = vec4<f32>(mag, mag, mag, 1.0);
+      } else if (params.modo == 1u) { // Gauss
+        let sum = (l00 + 2.0*l10 + l20 + 2.0*l01 + 4.0*l11 + 2.0*l21 + l02 + 2.0*l12 + l22) / 16.0;
+        out_color = vec4<f32>(sum, sum, sum, 1.0);
+      } else if (params.modo == 2u) { // Sharpen
+        let sum = (-1.0*l10 - 1.0*l01 + 5.0*l11 - 1.0*l21 - 1.0*l12);
+        out_color = vec4<f32>(clamp(sum, 0.0, 1.0), clamp(sum, 0.0, 1.0), clamp(sum, 0.0, 1.0), 1.0);
+      } else if (params.modo == 3u) { // Emboss
+        let sum = (-2.0*l00 - 1.0*l10 - 1.0*l01 + 1.0*l11 + 1.0*l21 + 1.0*l12 + 2.0*l22) + 0.5;
+        out_color = vec4<f32>(clamp(sum, 0.0, 1.0), clamp(sum, 0.0, 1.0), clamp(sum, 0.0, 1.0), 1.0);
+      }
+
+      textureStore(textura_salida, gid.xy, out_color);
+    }
+  `;
+
+  // ==========================================================================
+  // ESTADO GLOBAL Y VARIABLES DE LA APP
+  // ==========================================================================
+  let adapter, device;
+  let pipelineDirect, pipelineHalo;
+  let uniformBuffer;
+  let texInput, texOutput;
+  let bindGroupDirect, bindGroupHalo;
+  let presentPipeline, presentBindGroup, presentSampler;
+  let presentationFormat;
+  let isWebcamRunning = false;
+  let videoStream = null;
+  let currentSource = 'test_pattern';
+  let currentFilter = 0; // 0: Sobel
+  let currentMode = 'halo'; // 'halo' o 'direct'
+
+  const videoElement = document.getElementById('videoElement');
+  const canvasInput = document.getElementById('canvasInput');
+  const ctxInput = canvasInput.getContext('2d');
+  const canvasWebGPU = document.getElementById('canvasWebGPU');
+  const contextWebGPU = canvasWebGPU.getContext('webgpu');
+
+  let width = 1280;
+  let height = 720;
+
+  function showError(msg) {
+    const banner = document.getElementById('errorBanner');
+    if (banner) {
+      banner.style.display = 'block';
+      banner.innerText = `WebGPU Error: ${msg}`;
+    }
+  }
+
+  // ==========================================================================
+  // INICIALIZACIÓN WEBGPU
+  // ==========================================================================
+  async function initWebGPU() {
+    const badgeGpu = document.getElementById('badgeGpu');
+    if (!navigator.gpu) {
+      badgeGpu.className = "badge";
+      badgeGpu.style.background = "rgba(248, 113, 113, 0.2)";
+      badgeGpu.style.color = "var(--danger)";
+      badgeGpu.innerText = "WebGPU NO disponible";
+      showError("Tu navegador no tiene WebGPU activado. Prueba con Google Chrome o Microsoft Edge.");
+      return false;
+    }
+
+    try {
+      adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      device = await adapter.requestDevice();
+      badgeGpu.innerText = `GPU: ${adapter.info?.architecture || 'Hardware Acelerado'}`;
+    } catch (e) {
+      badgeGpu.innerText = "WebGPU: Error al inicializar dispositivo";
+      showError(e.message);
+      return false;
+    }
+
+    device.onuncapturederror = (event) => {
+      console.error("WebGPU uncaptured error:", event.error.message);
+      showError(event.error.message);
+    };
+
+    presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+
+    // Compilar módulo de sombreadores
+    const shaderModule = device.createShaderModule({ code: SHADER_WGSL });
+
+    // Pipeline Directo
+    pipelineDirect = device.createComputePipeline({
+      layout: 'auto',
+      compute: { module: shaderModule, entryPoint: 'cs_main_direct' }
+    });
+
+    // Pipeline Halo SRAM
+    pipelineHalo = device.createComputePipeline({
+      layout: 'auto',
+      compute: { module: shaderModule, entryPoint: 'cs_main_halo' }
+    });
+
+    // Buffer uniforme de parámetros
+    uniformBuffer = device.createBuffer({
+      size: 16,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+
+    // Sampler para presentación en pantalla
+    presentSampler = device.createSampler({
+      magFilter: 'linear',
+      minFilter: 'linear',
+    });
+
+    // Pipeline de presentación (Render Pass blit de pantalla completa)
+    presentPipeline = device.createRenderPipeline({
+      layout: 'auto',
+      vertex: {
+        module: device.createShaderModule({
+          code: `
+            struct VertexOutput {
+              @builtin(position) pos: vec4<f32>,
+              @location(0) uv: vec2<f32>,
+            };
+
+            @vertex
+            fn vs_main(@builtin(vertex_index) id: u32) -> VertexOutput {
+              var pos = array<vec2<f32>, 6>(
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>( 1.0, -1.0),
+                vec2<f32>(-1.0,  1.0),
+                vec2<f32>(-1.0,  1.0),
+                vec2<f32>( 1.0, -1.0),
+                vec2<f32>( 1.0,  1.0)
+              );
+              var uv = array<vec2<f32>, 6>(
+                vec2<f32>(0.0, 1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(0.0, 0.0),
+                vec2<f32>(0.0, 0.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(1.0, 0.0)
+              );
+              var out: VertexOutput;
+              out.pos = vec4<f32>(pos[id], 0.0, 1.0);
+              out.uv = uv[id];
+              return out;
+            }
+          `
+        }),
+        entryPoint: 'vs_main'
+      },
+      fragment: {
+        module: device.createShaderModule({
+          code: `
+            @group(0) @binding(0) var tex: texture_2d<f32>;
+            @group(0) @binding(1) var samp: sampler;
+
+            @fragment
+            fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+              return textureSample(tex, samp, uv);
+            }
+          `
+        }),
+        entryPoint: 'fs_main',
+        targets: [{ format: presentationFormat }]
+      }
+    });
+
+    setupTextures(width, height);
+    updateUniforms();
+    return true;
+  }
+
+  function setupTextures(w, h) {
+    width = w;
+    height = h;
+    canvasInput.width = w;
+    canvasInput.height = h;
+    canvasWebGPU.width = w;
+    canvasWebGPU.height = h;
+    document.getElementById('resInput').innerText = `${w} x ${h}`;
+
+    // Reconfiguración obligatoria del contexto con las dimensiones del canvas
+    contextWebGPU.configure({
+      device: device,
+      format: presentationFormat,
+      alphaMode: 'opaque'
+    });
+
+    if (texInput) texInput.destroy();
+    if (texOutput) texOutput.destroy();
+
+    texInput = device.createTexture({
+      size: [w, h, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
+    });
+
+    texOutput = device.createTexture({
+      size: [w, h, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+    });
+
+    bindGroupDirect = device.createBindGroup({
+      layout: pipelineDirect.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: texInput.createView() },
+        { binding: 1, resource: texOutput.createView() },
+        { binding: 2, resource: { buffer: uniformBuffer } }
+      ]
+    });
+
+    bindGroupHalo = device.createBindGroup({
+      layout: pipelineHalo.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: texInput.createView() },
+        { binding: 1, resource: texOutput.createView() },
+        { binding: 2, resource: { buffer: uniformBuffer } }
+      ]
+    });
+
+    presentBindGroup = device.createBindGroup({
+      layout: presentPipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: texOutput.createView() },
+        { binding: 1, resource: presentSampler }
+      ]
+    });
+
+    // Actualizar telemetría de hilos
+    const totalThreads = w * h;
+    document.getElementById('threadsVal').innerText = `${(totalThreads / 1000).toFixed(1)}K`;
+
+    updateUniforms();
+  }
+
+  function updateUniforms() {
+    const data = new Uint32Array([
+      currentFilter,
+      currentMode === 'halo' ? 1 : 0,
+      width,
+      height
+    ]);
+    device.queue.writeBuffer(uniformBuffer, 0, data);
+  }
+
+  // ==========================================================================
+  // GENERACIÓN DE PATRÓN SINTÉTICO (Para pruebas sin webcam)
+  // ==========================================================================
+  window.generateRandomPattern = function() {
+    ctxInput.fillStyle = '#0f172a';
+    ctxInput.fillRect(0, 0, width, height);
+
+    // Rejilla de fondo
+    ctxInput.strokeStyle = '#1e293b';
+    ctxInput.lineWidth = 2;
+    for (let x = 0; x < width; x += 40) {
+      ctxInput.beginPath(); ctxInput.moveTo(x, 0); ctxInput.lineTo(x, height); ctxInput.stroke();
+    }
+    for (let y = 0; y < height; y += 40) {
+      ctxInput.beginPath(); ctxInput.moveTo(0, y); ctxInput.lineTo(width, y); ctxInput.stroke();
+    }
+
+    // Geometría contrastada para probar Sobel y aristas
+    ctxInput.fillStyle = '#ffffff';
+    ctxInput.beginPath();
+    ctxInput.arc(width * 0.3, height * 0.5, 120, 0, Math.PI * 2);
+    ctxInput.fill();
+
+    ctxInput.fillStyle = '#38bdf8';
+    ctxInput.fillRect(width * 0.55, height * 0.3, 220, 220);
+
+    ctxInput.strokeStyle = '#facc15';
+    ctxInput.lineWidth = 14;
+    ctxInput.beginPath();
+    ctxInput.moveTo(width * 0.15, height * 0.2);
+    ctxInput.lineTo(width * 0.85, height * 0.8);
+    ctxInput.stroke();
+
+    // Texto con aristas afiladas
+    ctxInput.font = 'bold 54px monospace';
+    ctxInput.fillStyle = '#34d399';
+    ctxInput.fillText("WEBGPU WGSL SILICON", width * 0.2, height * 0.85);
+
+    // Subir a la textura
+    device.queue.copyExternalImageToTexture(
+      { source: canvasInput },
+      { texture: texInput },
+      [width, height]
+    );
+  };
+
+  // ==========================================================================
+  // CÁMARA WEB
+  // ==========================================================================
+  window.toggleWebcam = async function() {
+    const btn = document.getElementById('btnToggleCam');
+    if (!isWebcamRunning) {
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        videoElement.srcObject = videoStream;
+        await videoElement.play();
+        if (videoElement.videoWidth === 0) {
+          await new Promise(r => videoElement.onloadedmetadata = r);
+        }
+        const vw = videoElement.videoWidth || 1280;
+        const vh = videoElement.videoHeight || 720;
+        isWebcamRunning = true;
+        btn.innerText = "Detener Cámara Web";
+        btn.style.background = "var(--danger)";
+        btn.style.borderColor = "#f87171";
+        document.getElementById('sourceSelect').value = 'webcam';
+        currentSource = 'webcam';
+        setupTextures(vw, vh);
+      } catch (err) {
+        alert("No se pudo acceder a la cámara web: " + err.message);
+      }
+    } else {
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+      }
+      isWebcamRunning = false;
+      btn.innerText = "Encender Cámara Web";
+      btn.style.background = "#0284c7";
+      btn.style.borderColor = "#38bdf8";
+      document.getElementById('sourceSelect').value = 'test_pattern';
+      currentSource = 'test_pattern';
+      setupTextures(1280, 720);
+      generateRandomPattern();
+    }
+  };
+
+  window.changeSource = function() {
+    const val = document.getElementById('sourceSelect').value;
+    currentSource = val;
+    if (val === 'webcam') {
+      if (!isWebcamRunning) toggleWebcam();
+    } else if (val === 'test_pattern') {
+      if (isWebcamRunning) toggleWebcam();
+      document.getElementById('fileInput').style.display = 'none';
+      setupTextures(1280, 720);
+      generateRandomPattern();
+    } else if (val === 'custom_file') {
+      if (isWebcamRunning) toggleWebcam();
+      document.getElementById('fileInput').style.display = 'block';
+    }
+  };
+
+  window.handleFileUpload = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      setupTextures(img.width, img.height);
+      ctxInput.drawImage(img, 0, 0);
+      device.queue.copyExternalImageToTexture(
+        { source: canvasInput },
+        { texture: texInput },
+        [img.width, img.height]
+      );
+    };
+    img.src = URL.createObjectURL(file);
+  };
+
+  window.changeFilter = function() {
+    const val = document.getElementById('filterSelect').value;
+    const filterMap = {
+      'sobel': 0, 'gaussian': 1, 'sharpen': 2, 'emboss': 3, 'grayscale': 4, 'passthrough': 5
+    };
+    currentFilter = filterMap[val];
+    updateUniforms();
+    updateBadge();
+  };
+
+  window.changeMode = function() {
+    currentMode = document.getElementById('modeSelect').value;
+    updateUniforms();
+    updateBadge();
+
+    // Actualizar telemetría de ahorro
+    const savingEl = document.getElementById('savingVal');
+    if (currentMode === 'halo') {
+      savingEl.className = "telemetry-val good";
+      savingEl.innerText = "-85.9%";
+    } else {
+      savingEl.className = "telemetry-val bad";
+      savingEl.innerText = "0% (Desperdicio)";
+    }
+  };
+
+  function updateBadge() {
+    const fNames = ["Sobel", "Gauss 3x3", "Sharpen", "Relieve", "Grayscale", "Original"];
+    const modeName = currentMode === 'halo' ? "Halo SRAM" : "Directo VRAM";
+    document.getElementById('activeFilterBadge').innerText = `${fNames[currentFilter]} (${modeName})`;
+  }
+
+  // ==========================================================================
+  // BUCLE DE EJECUCIÓN (RENDER LOOP)
+  // ==========================================================================
+  let lastTime = performance.now();
+  let frameCount = 0;
+  let fpsTimer = performance.now();
+
+  function renderLoop() {
+    const now = performance.now();
+    frameCount++;
+    if (now - fpsTimer >= 1000) {
+      document.getElementById('fpsVal').innerText = frameCount;
+      frameCount = 0;
+      fpsTimer = now;
+    }
+
+    if (device && texInput && texOutput) {
+      const t0 = performance.now();
+
+      // Si la cámara web está activa, inyectar fotograma directamente en VRAM
+      if (currentSource === 'webcam' && isWebcamRunning && videoElement.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        if (videoElement.videoWidth > 0 && (videoElement.videoWidth !== width || videoElement.videoHeight !== height)) {
+          setupTextures(videoElement.videoWidth, videoElement.videoHeight);
+        }
+        try {
+          device.queue.copyExternalImageToTexture(
+            { source: videoElement },
+            { texture: texInput },
+            [width, height]
+          );
+        } catch (err) {
+          console.warn("Error copiando fotograma de webcam:", err);
+        }
+        // Dibujar en canvas input para referencia visual
+        ctxInput.drawImage(videoElement, 0, 0, width, height);
+      }
+
+      const commandEncoder = device.createCommandEncoder();
+
+      // Pase de Cómputo
+      const cPass = commandEncoder.beginComputePass();
+      const pipeline = currentMode === 'halo' ? pipelineHalo : pipelineDirect;
+      const bindGroup = currentMode === 'halo' ? bindGroupHalo : bindGroupDirect;
+
+      cPass.setPipeline(pipeline);
+      cPass.setBindGroup(0, bindGroup);
+      cPass.dispatchWorkgroups(Math.ceil(width / 16), Math.ceil(height / 16));
+      cPass.end();
+
+      // Pase de Renderizado en Canvas
+      const rPass = commandEncoder.beginRenderPass({
+        colorAttachments: [{
+          view: contextWebGPU.getCurrentTexture().createView(),
+          loadOp: 'clear',
+          storeOp: 'store',
+          clearValue: { r: 0, g: 0, b: 0, a: 1 }
+        }]
+      });
+      rPass.setPipeline(presentPipeline);
+      rPass.setBindGroup(0, presentBindGroup);
+      rPass.draw(6);
+      rPass.end();
+
+      device.queue.submit([commandEncoder.finish()]);
+
+      const dt = performance.now() - t0;
+      document.getElementById('computeTimeVal').innerText = `${dt.toFixed(2)} ms`;
+    }
+
+    requestAnimationFrame(renderLoop);
+  }
+
+  // ==========================================================================
+  // TAB 2: SIMULADOR DE CURVA DE MORTON (Z-ORDER)
+  // ==========================================================================
+  const canvasMorton = document.getElementById('canvasMorton');
+  const ctxMorton = canvasMorton.getContext('2d');
+  const GRID_SIZE = 8;
+  const CELL_PX = 480 / GRID_SIZE;
+
+  function morton2D(x, y) {
+    let d = 0;
+    for (let i = 0; i < 4; i++) {
+      d |= ((x & (1 << i)) << i) | ((y & (1 << i)) << (i + 1));
+    }
+    return d;
+  }
+
+  let selectedX = 5;
+  let selectedY = 3;
+
+  function drawMortonGrid() {
+    ctxMorton.clearRect(0, 0, 480, 480);
+
+    // 1. Dibujar celdas
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        const mIndex = morton2D(x, y);
+        const px = x * CELL_PX;
+        const py = y * CELL_PX;
+
+        // Cuadrantes 4x4 (Líneas de caché de 64 bytes)
+        const quadX = Math.floor(x / 4);
+        const quadY = Math.floor(y / 4);
+        const isQuadEven = (quadX + quadY) % 2 === 0;
+
+        ctxMorton.fillStyle = isQuadEven ? '#131b2e' : '#0f172a';
+        if (x === selectedX && y === selectedY) {
+          ctxMorton.fillStyle = 'rgba(56, 189, 248, 0.4)';
+        }
+        ctxMorton.fillRect(px, py, CELL_PX, CELL_PX);
+
+        ctxMorton.strokeStyle = '#23304d';
+        ctxMorton.strokeRect(px, py, CELL_PX, CELL_PX);
+
+        // Número Morton en la esquina
+        ctxMorton.fillStyle = '#64748b';
+        ctxMorton.font = '10px monospace';
+        ctxMorton.fillText(mIndex, px + 5, py + 15);
+      }
+    }
+
+    // 2. Trazar el recorrido continuo de la Curva de Morton
+    ctxMorton.strokeStyle = '#34d399';
+    ctxMorton.lineWidth = 2;
+    ctxMorton.beginPath();
+
+    for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+      // Buscar coordenadas del índice i
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          if (morton2D(x, y) === i) {
+            const cx = x * CELL_PX + CELL_PX / 2;
+            const cy = y * CELL_PX + CELL_PX / 2;
+            if (i === 0) ctxMorton.moveTo(cx, cy);
+            else ctxMorton.lineTo(cx, cy);
+          }
+        }
+      }
+    }
+    ctxMorton.stroke();
+
+    // 3. Resaltar celda seleccionada
+    const selPx = selectedX * CELL_PX;
+    const selPy = selectedY * CELL_PX;
+    ctxMorton.strokeStyle = '#38bdf8';
+    ctxMorton.lineWidth = 3;
+    ctxMorton.strokeRect(selPx, selPy, CELL_PX, CELL_PX);
+  }
+
+  function updateMortonDisplay(x, y) {
+    selectedX = x;
+    selectedY = y;
+    drawMortonGrid();
+
+    const binX = x.toString(2).padStart(3, '0');
+    const binY = y.toString(2).padStart(3, '0');
+    const morton = morton2D(x, y);
+    const binMorton = morton.toString(2).padStart(6, '0');
+    const linear = y * 8 + x;
+
+    document.getElementById('dispX').innerText = `x = ${x} (binario: ${binX})`;
+    document.getElementById('dispY').innerText = `ye = ${y} (binario: ${binY})`;
+    document.getElementById('dispBits').innerText = `y2 x2 y1 x1 y0 x0 = ${binMorton}`;
+    document.getElementById('dispMorton').innerText = `${morton} (0x${morton.toString(16).toUpperCase()})`;
+    document.getElementById('dispLinear').innerText = `${linear} (ye * 8 + x)`;
+  }
+
+  canvasMorton.addEventListener('mousemove', (e) => {
+    const rect = canvasMorton.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const x = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(mx / CELL_PX)));
+    const y = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(my / CELL_PX)));
+    updateMortonDisplay(x, y);
+  });
+
+  // ==========================================================================
+  // TAB 3: GENERACIÓN DINÁMICA DE LA BALDOSA CON HALO (18x18)
+  // ==========================================================================
+  function initHaloGrid() {
+    const container = document.getElementById('haloGrid');
+    container.innerHTML = '';
+
+    for (let y = 0; y < 18; y++) {
+      for (let x = 0; x < 18; x++) {
+        const cell = document.createElement('div');
+        const isApron = (x === 0 || x === 17 || y === 0 || y === 17);
+        cell.className = `halo-cell ${isApron ? 'apron' : 'inner'}`;
+        cell.title = `(${x}, ${y}) - ${isApron ? 'Halo / Apron' : 'Píxel de Trabajo'}`;
+        container.appendChild(cell);
+      }
+    }
+  }
+
+  // ==========================================================================
+  // GESTOR DE PESTAÑAS
+  // ==========================================================================
+  window.switchTab = function(tabId, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+
+    if (tabId === 'morton') {
+      drawMortonGrid();
+    }
+  };
+
+  // INICIO
+  initWebGPU().then(ok => {
+    if (ok) {
+      generateRandomPattern();
+      requestAnimationFrame(renderLoop);
+    }
+  });
+
+  drawMortonGrid();
+  initHaloGrid();
+  updateMortonDisplay(5, 3);
+</script>
+
+</body>
+</html>

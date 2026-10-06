@@ -1,0 +1,60 @@
+GUION NARRATIVO: APARTADO 1 DEL CAPÍTULO 5
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 5: El Pipeline Gráfico Completo, Rasterización y la Síntesis Compute-to-Render en WebGPU
+Apartado 1: La Dualidad del Silicio: De la Computación Masiva al Pipeline de Renderizado Gráfico
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Título cinematográfico: "Capítulo 5 — El Pipeline Gráfico Completo en WebGPU". Subtítulo: "Apartado 1: La Dualidad del Silicio — De la Computación Masiva a la Rasterización 3D". De fondo, una animación 3D estilizada muestra un chip de silicio dividiéndose en dos mitades: a la izquierda, núcleos de cálculo vectorial parpadeando en azul; a la derecha, una línea de montaje geométrica fija brillando en naranja]
+
+Bienvenidos al quinto y último capítulo de nuestra serie sobre computación nativa en el navegador. Hasta este momento hemos recorrido un viaje fascinante a través de las profundidades del hardware: en los capítulos anteriores conquistamos los compute shaders, aprendimos a exprimir la memoria compartida ese ram on chip y descubrimos cómo las texturas organizan sus píxeles en baldosas espaciales siguiendo la Curva de Morton. 
+
+Sin embargo, hasta hoy, solo hemos utilizado la tarjeta gráfica como una supercalculadora de álgebra lineal. Ha llegado el momento de cerrar el círculo y enfrentarnos al propósito original para el que nació este silicio: el renderizado gráfico tridimensional en tiempo real.
+
+[00:00:52]
+[En pantalla: Diagrama conceptual interactivo que compara una CPU multinúcleo con una GPU. Aparece una cita destacada de Patterson y Hennessy: "Domain-Specific Hardware always outperforms general-purpose execution". La mitad derecha del diagrama resalta los bloques de hardware de función fija]
+
+Existe una creencia muy extendida entre los programadores que se acercan a la inteligencia artificial o al cálculo numérico: pensar que una tarjeta gráfica moderna es simplemente una cuadrícula homogénea de miles de procesadores vectoriales idénticos. Pero la física de semiconductores no funciona así.
+
+Como demuestran David Patterson y John Hennessy en su obra canónica Computer Organization and Design, la especialización del silicio para un dominio concreto siempre destruye en velocidad, en latencia y en eficiencia energética a cualquier procesador de propósito general. Una tarjeta gráfica no es solo un acelerador de cálculo paralelo; es, en su arquitectura física íntima, una fábrica heterogénea donde conviven dos mundos complementarios: las unidades de cálculo programables y los circuitos de silicio de función fija.
+
+[00:01:58]
+[En pantalla: Esquema visual de un chip GPU moderno. Se iluminan los núcleos programables (SMs en Nvidia, Compute Units en AMD) donde se ejecutan los shaders en uve doble ge ese ele. A continuación, se iluminan los bloques de función fija: Vertex Fetch, Primitive Assembler, Clipper, Rasterizer por hardware, Early-Z y ROPs]
+
+Fijaos en la anatomía del chip que tenéis en pantalla. En la parte programable residen los multiprocesadores donde se ejecutan vuestros programas en uve doble ge ese ele, tanto los compute shaders como los vertex y fragment shaders. Pero a su lado se encuentran enormes bloques de silicio cableado directamente en los transistores: circuitos de función fija que no entienden de instrucciones ni ejecutan código genérico, pero que resuelven problemas geométricos masivos a velocidades inalcanzables para cualquier software.
+
+Imaginad por un instante qué ocurriría si tuviéramos que programar en código general la comprobación de qué píxeles cubre un triángulo, o recortar los bordes de una malla que se sale de la pantalla, o evaluar la mezcla de transparencia entre dos superficies. Esas operaciones se realizan cientos de miles de millones de veces por segundo. Si las hiciéramos en las unidades de cálculo programables, la tarjeta gráfica colapsaría de inmediato. Por eso existen el recolector de vértices, el ensamblador de primitivas, el rasterizador por hardware y las unidades de salida de render.
+
+[00:03:15]
+[En pantalla: Animación fluida de la "Línea de Montaje de Silicio". Se sigue el viaje de un triángulo tridimensional: desde los búferes de memoria en uve ram, pasando por el Vertex Shader, el recorte de planos de cámara, la división por W, la rasterización en fragmentos discretos, el descarte por Early-Z y el coloreado final en el Fragment Shader]
+
+Como explica magistralmente Tomas Akenine-Möller en Real-Time Rendering, el pipeline gráfico funciona exactamente como una línea de montaje industrial de automóviles. En este preciso instante, mientras las unidades programables calculan la iluminación de los píxeles del triángulo número uno, el rasterizador de función fija ya está calculando la cobertura del triángulo número dos, y el recolector de vértices está extrayendo de la memoria la geometría del triángulo número tres. Ningún componente se detiene jamás.
+
+El viaje de cada triángulo comienza en la memoria uve ram. El recolector de vértices extrae sus atributos: posiciones en el espacio tridimensional, normales y coordenadas de textura. El vertex shader transforma esos puntos multiplicándolos por matrices matemáticas de vista y perspectiva. A continuación, el silicio de función fija descarta los triángulos que dan la espalda a la cámara mediante backface culling, y el rasterizador evalúa la cobertura de la pantalla generando los fragmentos que recibirán color en el fragment shader.
+
+[00:04:38]
+[En pantalla: Comparativa de código en pantalla dividida. A la izquierda: el caos de la máquina de estados global de WebGL y OpenGL (glEnable, glBlendFunc, glUseProgram). A la derecha: el objeto inmutable de WebGPU: device.createRenderPipeline()]
+
+Pero para que esta línea de montaje de silicio funcione sin atascarse, la industria del software tuvo que aprender una durísima lección. Durante más de dos décadas, estándares como OpenGL y WebGL gobernaron los gráficos mediante una máquina de estados global y mutable. El programador activaba la transparencia con un comando, cambiaba el shader con otro y modificaba los buffers sobre la marcha. 
+
+El resultado era desastroso para el rendimiento: el controlador gráfico de la tarjeta no tenía forma de optimizar el código hasta el microsegundo exacto en que se ordenaba dibujar. En ese instante crítico, la ce pe u tenía que detenerse a validar si todos los estados eran compatibles, introduciendo caídas repentinas de fotogramas y desperdiciando hasta un cuarenta por ciento del tiempo de procesador únicamente en validaciones defensivas.
+
+[00:05:42]
+[En pantalla: Zoom sobre la estructura de createRenderPipeline en WebGPU. Se resaltan sus cuatro pilares: etapa de vértices, topología y culling de primitivas, configuración de profundidad y stencil, y funciones de mezcla alfa en el target de fragmentos]
+
+WebGPU, heredando la arquitectura de vanguardia de Vulkan, Metal y Direct equis doce, erradica este problema por completo introduciendo los pipelines inmutables y precompilados.
+
+Cuando invocamos en JavaScript create render pipeline, le entregamos al controlador el contrato de silicio completo y definitivo: qué shaders se van a utilizar, cuál es la estructura exacta de la memoria de entrada, qué algoritmo de culling se aplicará, qué formato tiene el búfer de profundidad y qué ecuaciones matemáticas de mezcla alfa utilizará el hardware. 
+
+Como señala Graham Sellers en su guía oficial de Vulkan, esta llamada de creación es costosa porque el controlador compila el código a ensamblador nativo de la tarjeta y programa los registros físicos del silicio. Pero una vez creado el pipeline, ejecutarlo en el bucle a sesenta o ciento veinte fotogramas por segundo cuesta prácticamente cero ciclos de procesador. Una simple instrucción set pipeline basta para apuntar al hardware ya configurado, sin validaciones y sin pérdidas de tiempo.
+
+[00:06:55]
+[En pantalla: Tabla comparativa resumen entre Compute Pipeline y Render Pipeline. Se resalta la gran revelación: la interoperabilidad Compute-to-Render, mostrando cómo un Compute Shader y un Render Pipeline pueden compartir el mismo búfer sin salir de la uve ram]
+
+En la tabla que podéis ver en pantalla resumimos esta dualidad: mientras que un compute pipeline está diseñado para lanzar miles de hilos independientes de propósito general, un render pipeline está perfectamente afinado para orquestar la línea de montaje geométrica del silicio.
+
+Y lo más extraordinario de WebGPU es que ambos mundos no están aislados. En los próximos apartados no solo dominaremos el vertex shader y la física de la rasterización, sino que aprenderemos a conectar una simulación física calculada en un compute shader directamente con este pipeline de renderizado, logrando la ansiada meta de cero copias y latencia absoluta en el navegador.
+
+Acompañadme al apartado dos, donde nos sumergiremos en la primera etapa programable de esta línea de producción: el Vertex Shader y las matemáticas de la proyección tridimensional.

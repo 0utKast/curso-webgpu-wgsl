@@ -1,0 +1,66 @@
+================================================================================
+GUION NARRATIVO Y TÉCNICO CON INDICACIONES VISUALES PARA GRABACIÓN EN PANTALLA
+Capítulo 4: Texturas, Samplers y Computación Gráfica Avanzada en WGSL
+Apartado 7: Taller Práctico / Laboratorio Interactivo (Workshop 07)
+Archivo de la aplicación: workshop_07_textures_and_image_processing.html
+================================================================================
+
+[00:00:00]
+[En pantalla: Navegador web a pantalla completa abriendo el archivo 'workshop_07_textures_and_image_processing.html'. Primer plano del encabezado con el título "Procesamiento de Imágenes, Visión Artificial y Texturas en Silicio" y las insignias superiores. El cursor del ratón resalta el badge verde "WebGPU: Hardware Acelerado" en la esquina superior derecha.]
+Con la orquestación del código anfitrión en JavaScript dominada y el pipeline cerrado de extremo a extremo, hemos llegado al punto culminante del cuarto capítulo: nuestro taller práctico e interactivo, materializado en el archivo workshop cero siete punto h-t-m-l. Esta aplicación web autónoma de alto rendimiento no es un prototipo estático, sino una estación de ingeniería gráfica diseñada para que experimentéis en tiempo real con la física de la memoria de texturas, la aceleración de visión artificial en silicio y la arquitectura de la memoria compartida.
+
+[00:00:36]
+[En pantalla: El cursor se desplaza por las tres pestañas superiores de navegación: "1. Laboratorio de Visión (Webcam & GPU)", "2. Explorador de la Curva de Morton (Z-Order)" y "3. Inspector de Baldosa con Halo (SRAM 18x18)", deteniéndose en la primera pestaña activa.]
+Al cargar la herramienta en vuestro navegador, comprobaréis que la cabecera confirma de forma instantánea la activación de vuestro chip gráfico mediante el indicador verde de WebGPU. Justo debajo disponéis de tres grandes pestañas que estructuran el laboratorio: en la primera construiremos un procesador de visión artificial acelerado por GPU; en la segunda exploraremos la física del silicio a través de la Curva de Morton; y en la tercera inspeccionaremos la arquitectura de baldosa con halo en la memoria compartida on-chip.
+
+[00:01:10]
+[En pantalla: Primer plano del panel izquierdo "Controles de Silicio". El cursor se sitúa sobre el menú desplegable "Fuente de Imagen de Entrada". En los lienzos de la derecha se aprecia el patrón sintético procedural con círculos, líneas diagonales y rectángulos de contraste.]
+Comencemos en la primera pestaña, el Laboratorio de Visión Artificial. A la izquierda encontramos el panel de Controles de Silicio. El primer selector nos permite determinar la fuente de imagen que alimentará a nuestro pipeline. Por defecto, la aplicación genera un patrón sintético procedural con círculos concéntricos, aristas diagonales y barras de alto contraste, diseñado a propósito para examinar matemáticamente cómo reaccionan los filtros espaciales ante transiciones abruptas de luminancia.
+
+[00:01:48]
+[En pantalla: El cursor pulsa el botón azul "Encender Cámara Web". Aparece el diálogo de permisos del navegador, se acepta y de inmediato el lienzo de la izquierda "ENTRADA" muestra la imagen de la cámara web en vivo y fluido movimiento. El lienzo de la derecha "SALIDA WEBGPU" muestra la imagen procesada con el filtro de Sobel en tiempo real.]
+Pero la verdadera magia del silicio se aprecia con vídeo real en vivo. Al pulsar el botón azul Encender Cámara Web, el entorno solicita acceso a vuestra cámara web mediante getUserMedia. Observad lo que ocurre entre bambalinas: cada fotograma capturado a alta definición de mil doscientos ochenta por setecientos veinte píxeles se transfiere a la textura de entrada mediante la función de silicio copyExternalImageToTexture, realizando una ingesta directa sin copias intermedias en la CPU a sesenta fotogramas por segundo.
+
+[00:02:26]
+[En pantalla: El cursor abre el selector "Filtro de Convolución (Shader WGSL)" y selecciona sucesivamente cada opción. En pantalla se aprecia el cambio instantáneo en el lienzo de salida: primero 'Sobel' con contornos luminosos sobre fondo negro, luego 'Desenfoque Gaussiano 3x3' suavizando la imagen, luego 'Realce Laplaciano (Sharpening)' resaltando detalles finos, luego 'Relieve Asimétrico (Emboss 3D)' con aspecto metálico tridimensional, luego 'Luminancia Perceptual (Grayscale)' en escala de grises limpia, y finalmente 'Paso Directo'.]
+Despleguemos ahora el menú de Filtros de Convolución en uve doble ge ese ele. Aquí podéis conmutar en caliente entre seis programas de cómputo en paralelo. El filtro de Sobel detecta de forma implacable los contornos de la escena evaluando los gradientes horizontales y verticales en equis y ye, revelando la silueta con un contraste asombroso. El desenfoque Gaussiano tres por tres aplica una campana normalizada que filtra el ruido de alta frecuencia. El filtro de Realce Laplaciano acentúa las aristas y texturas finas; el filtro de Relieve tridimensional simula un grabado cincelado con sesgo direccional; y la conversión a escala de grises aplica la ecuación de luminancia perceptual según la norma de la industria.
+
+[00:03:15]
+[En pantalla: El cursor se desplaza al selector "Modo de Aceleración en Hardware". Cambia a "Modo A: Directo Global VRAM" y luego regresa a "Modo B: Optimizado Halo SRAM". El cursor señala el cuadro de Telemetría inferior: FPS (60), Tiempo de Kernel (0.35 - 0.45 ms), Hilos Despachados (921.6K) y el valor verde resaltado "Tráfico VRAM Ahorrado: -85.9%".]
+Llegamos ahora al núcleo de la física computacional del capítulo: el selector de Modo de Aceleración en Hardware. Por defecto estamos ejecutando el Modo B Optimizado con Halo en memoria compartida S-RAM. Fijaos en las métricas de telemetría en vivo: novecientos veintiún mil seiscientos hilos procesan cada fotograma en apenas cuatro décimas de milisegundo a sesenta fotogramas por segundo estables. Pero mirad la cifra más reveladora: Tráfico de V-RAM Ahorrado, menos ochenta y cinco coma nueve por ciento.
+
+[00:03:52]
+[En pantalla: Zoom sobre la comparativa de telemetría mientras se conmuta entre Modo A y Modo B.]
+Si cambiáis al Modo A Directo, cada hilo se ve obligado a emitir nueve lecturas independientes a la lejana memoria global de vídeo para evaluar su máscara tres por tres, disparando el tráfico a más de ocho millones de accesos por fotograma. En cambio, en el Modo B, los hilos de cada grupo cooperan cargando una baldosa ampliada de dieciocho por dieciocho elementos en la rapidísima memoria S-RAM on-chip; las nueve lecturas de la convolución se resuelven en un único ciclo de reloj sin volver a tocar la memoria externa.
+
+[00:04:30]
+[En pantalla: Clic en la pestaña superior "2. Explorador de la Curva de Morton (Z-Order)". La interfaz cambia para mostrar el lienzo con la cuadrícula de 8x8 texels recorrida por la línea verde continua de la curva de Morton en patrón de Z recursiva. El cursor pasa por encima de varias celdas: (0,0), (1,0), (0,1), (1,1), luego (4,2), (5,3).]
+Para comprender cómo el silicio organiza estas texturas físicamente, pulsemos en la segunda pestaña: el Explorador de la Curva de Morton. Ante nosotros se despliega una baldosa interactiva de ocho por ocho texels, equivalente a sesenta y cuatro elementos de memoria. La línea verde continua que conecta cada celda dibuja el trazado jerárquico de la Curva de Morton o Z-Order.
+
+[00:05:04]
+[En pantalla: El cursor se posa exactamente sobre la celda (x=5, ye=3). A la derecha, el panel "Descomposición de Coordenadas" se actualiza dinámicamente: 'x = 5 (binario: 101)', 'ye = 3 (binario: 011)', 'Entrelazado de Bits: y2 x2 y1 x1 y0 x0 = 011011', 'Dirección Morton: 27 (0x1B)', y 'Dirección Lineal: 29 (y * 8 + x)'.]
+Pasad el ratón sobre cualquier celda; por ejemplo, la coordenada equis igual a cinco y ye igual a tres. En el panel lateral podéis observar la descomposición binaria simultánea: el cinco horizontal se expresa como uno, cero, uno; el tres vertical se expresa como cero, uno, uno. A continuación, el silicio entrelaza alternativamente los bits de ambas coordenadas: ye dos, equis dos, ye uno, equis uno, ye cero, equis cero. El resultado binario cero, uno, uno, cero, uno, uno corresponde a la dirección física veintisiete en la memoria externa.
+
+[00:05:46]
+[En pantalla: Primer plano de la tarjeta informativa inferior "Preservación de Línea de Caché L1 (64 Bytes)". Se resalta la comparativa entre la tira horizontal 16x1 y el cuadrante compacto 4x4.]
+Fijaos en la trascendencia de esta geometría: en formato de cuatro bytes por texel, una línea de caché estándar de sesenta y cuatro bytes almacena dieciséis texels contiguos. En la memoria lineal tradicional, esos dieciséis texels se alinean en una franja horizontal estrecha de dieciséis por un píxeles, de modo que saltar verticalmente a ye más uno requiere brincar miles de bytes en memoria física y destruye la caché. En cambio, en la Curva de Morton, esos mismos dieciséis texels configuran un bloque compacto y cuadrado de cuatro por cuatro píxeles. ¡Todos los vecinos bidimensionales en equis y ye residen en la misma línea física de caché, logrando una tasa de aciertos superior al noventa por ciento!
+
+[00:06:35]
+[En pantalla: Clic en la tercera pestaña "3. Inspector de Baldosa con Halo (SRAM 18x18)". Se despliega la rejilla completa de 18x18 celdas. La cuadrícula muestra un gran cuadrado central de 256 celdas azules (16x16) rodeado por un marco perimetral de 68 celdas rojas (apron/halo). El cursor señala la leyenda inferior.]
+Pasemos a la tercera pestaña: el Inspector de Baldosa con Halo. Aquí podéis diseccionar la anatomía espacial de nuestra estructura en memoria compartida, declarada como una matriz de dieciocho por dieciocho números en coma flotante. La cuadrícula ilustra de forma transparente la estrategia de división del trabajo en el grupo de trabajo.
+
+[00:07:05]
+[En pantalla: El cursor rodea el bloque central azul y luego recorre el marco perimetral rojo.]
+Las doscientas cincuenta y seis celdas interiores teñidas de azul representan los dieciséis por dieciséis píxeles que serán calculados y escritos en la textura de salida. Pero como cada hilo necesita consultar a sus ocho vecinos colindantes para aplicar el filtro tres por tres, el grupo requiere un perímetro exterior de seguridad: el delantal o halo de sesenta y ocho celdas teñidas de rojo.
+
+[00:07:35]
+[En pantalla: Animación o recorrido del cursor por las cuatro bandas del perímetro rojo (superior 18 celdas, inferior 18 celdas, laterales 16 celdas cada una). Se muestra mentalmente el código de carga cooperativa.]
+En lugar de que cada hilo lea de forma redundante la memoria externa, los doscientos cincuenta y seis hilos colaboran al inicio del shader: cada hilo carga su píxel central, y los primeros sesenta y ocho hilos cargan en paralelo una celda del perímetro de halo. Tras invocar la barrera de sincronización workgroupBarrier, los datos quedan consolidados en los bancos de S-RAM y el filtrado se ejecuta sin colisiones y a la máxima frecuencia del silicio.
+
+[00:08:10]
+[En pantalla: El navegador vuelve a la pestaña 1 "Laboratorio de Visión (Webcam & GPU)". La cámara web sigue activa y el filtro de Sobel o Sharpening procesa el movimiento con fluidez absoluta. El cursor resalta los 60 FPS estables.]
+Al regresar a nuestro laboratorio de visión en la primera pestaña, podéis apreciar el resultado conjunto de todas estas capas de ingeniería: vídeo de alta definición capturado en vivo, transferido directamente al silicio sin sobrecarga en la CPU, organizado con localidad espacial bidimensional en las cachés de textura y procesado mediante baldosas en memoria compartida a sesenta fotogramas por segundo ininterrumpidos.
+
+[00:08:44]
+[En pantalla: Transición final con los logotipos de WebGPU y WGSL. Aparece en pantalla un anticipo gráfico del Capítulo 5: geometrías tridimensionales, mallas de triángulos, vertex shaders, fragment shaders y el canvas 3D.]
+Con este taller práctico concluimos con éxito el Capítulo Cuatro. Hemos transformado la teoría de la memoria de texturas, las curvas de Morton y el hardware de función fija en un motor tangible de visión artificial. En el Capítulo Cinco daremos el salto definitivo hacia la tercera dimensión: descubriremos el pipeline gráfico clásico de renderizado, dominaremos los vertex shaders y fragment shaders, y aprenderemos a proyectar geometría tridimensional iluminada en tiempo real sobre la web moderna.

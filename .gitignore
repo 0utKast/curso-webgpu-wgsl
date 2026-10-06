@@ -1,0 +1,10 @@
+# Archivos de sistema y entorno local
+.DS_Store
+*.swp
+*~
+
+# Fotogramas de vídeo temporales (se conservan exclusivamente los requeridos por la maquetación Typst del libro)
+tutorial_webgpu_wgsl/fotogramas 2/*
+!tutorial_webgpu_wgsl/fotogramas 2/fotograma_00001.png
+!tutorial_webgpu_wgsl/fotogramas 2/fotograma_00030.png
+!tutorial_webgpu_wgsl/fotogramas 2/fotograma_00055.png

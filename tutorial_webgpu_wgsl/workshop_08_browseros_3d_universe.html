@@ -1,0 +1,2288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taller Práctico 08: El Universo 3D en Vivo de BrowserOS — WebGPU & WGSL</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #131b2e;
+      --card-border: #23304d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --purple: #c084fc;
+      --code-bg: #090d16;
+      --tab-active: #1e293b;
+      --tab-inactive: #0f172a;
+      
+      /* VS Code Dark+ Syntax Colors */
+      --syn-keyword: #c586c0;
+      --syn-storage: #569cd6;
+      --syn-type: #4ec9b0;
+      --syn-var: #9cdcfe;
+      --syn-func: #dcdcaa;
+      --syn-num: #b5cea8;
+      --syn-str: #ce9178;
+      --syn-comment: #6a9955;
+      --syn-decorator: #ffd700;
+      --syn-builtin: #4fc1ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge-bar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-primary {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .badge-gpu {
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+    }
+
+    .badge-warning {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--warning);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 1000px;
+    }
+
+    /* Pestañas de Navegación */
+    .tabs-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: var(--tab-inactive);
+      color: var(--text-muted);
+      border: 1px solid var(--card-border);
+      padding: 0.65rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn:hover {
+      background: #1e293b;
+      color: #ffffff;
+    }
+
+    .tab-btn.active {
+      background: var(--tab-active);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    /* Diseño Principal Pestaña 1: Grid Laboratorio */
+    .lab-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .lab-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Paneles y Tarjetas */
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .panel-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 0.5rem;
+    }
+
+    .control-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .control-val {
+      color: var(--accent);
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    select, input[type="range"] {
+      width: 100%;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      color: #ffffff;
+      padding: 0.6rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    input[type="range"] {
+      padding: 0;
+      height: 6px;
+      appearance: none;
+      background: #1e293b;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .btn {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: #ffffff;
+      padding: 0.65rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .btn:hover {
+      background: #2b3a55;
+      border-color: var(--accent);
+    }
+
+    .btn-primary {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: rgba(56, 189, 248, 0.35);
+    }
+
+    /* Métricas de Silicio */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .metric-card {
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .metric-title {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-val {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text-main);
+      font-family: monospace;
+      margin-top: 0.2rem;
+    }
+
+    .metric-accent {
+      color: var(--accent);
+    }
+
+    .metric-success {
+      color: var(--success);
+    }
+
+    /* Área del Canvas 3D */
+    .viewport-container {
+      position: relative;
+      background: #050811;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      height: 600px;
+      background: radial-gradient(circle at center, #0f172a 0%, #050811 100%);
+      cursor: grab;
+    }
+
+    .canvas-wrapper:active {
+      cursor: grabbing;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .viewport-overlay {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--card-border);
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+
+    .overlay-title {
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .overlay-desc {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .canvas-hint {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      background: rgba(11, 15, 25, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    /* Explicación de Silicio debajo del Canvas */
+    .silicon-explainer {
+      padding: 1.25rem;
+      background: #090d16;
+      border-top: 1px solid var(--card-border);
+    }
+
+    .silicon-explainer h4 {
+      font-size: 0.95rem;
+      color: var(--accent);
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .silicon-explainer p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Pestaña 2: Anatomía de la Línea de Montaje */
+    .pipeline-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .stage-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: grid;
+      grid-template-columns: 220px 1fr auto;
+      gap: 1.5rem;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .stage-card:hover {
+      border-color: var(--accent);
+      transform: translateX(6px);
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.15);
+    }
+
+    .stage-card.fixed-func {
+      border-left: 4px solid var(--warning);
+    }
+
+    .stage-card.programmable {
+      border-left: 4px solid var(--success);
+    }
+
+    .stage-header h3 {
+      font-size: 1.05rem;
+      color: #ffffff;
+      margin-bottom: 0.25rem;
+    }
+
+    .stage-badge {
+      font-size: 0.68rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+
+    .badge-fixed {
+      background: rgba(251, 191, 36, 0.2);
+      color: var(--warning);
+    }
+
+    .badge-prog {
+      background: rgba(52, 211, 153, 0.2);
+      color: var(--success);
+    }
+
+    .stage-body p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .stage-tech {
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: var(--purple);
+      margin-top: 0.3rem;
+    }
+
+    /* Pestaña 3: Inspector de Código VS Code Dark+ */
+    .code-editor-card {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .editor-topbar {
+      background: #111827;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 1rem;
+    }
+
+    .editor-tabs {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .editor-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-family: monospace;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .editor-tab-btn.active {
+      background: #1f2937;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .editor-lang-tag {
+      font-size: 0.72rem;
+      color: var(--purple);
+      font-family: monospace;
+      font-weight: 600;
+    }
+
+    .code-container {
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-family: 'Fira Code', Consolas, Monaco, monospace;
+      font-size: 0.85rem;
+      line-height: 1.65;
+    }
+
+    pre code {
+      color: #d1d5db;
+    }
+
+    .kw { color: var(--syn-keyword); font-weight: bold; }
+    .st { color: var(--syn-storage); }
+    .ty { color: var(--syn-type); }
+    .va { color: var(--syn-var); }
+    .fn { color: var(--syn-func); }
+    .nu { color: var(--syn-num); }
+    .s-str { color: var(--syn-str); }
+    .co { color: var(--syn-comment); font-style: italic; }
+    .de { color: var(--syn-decorator); font-weight: bold; }
+    .bu { color: var(--syn-builtin); }
+
+    /* Modal / Fallback Warning */
+    .fallback-banner {
+      display: none;
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      color: var(--warning);
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Cabecera -->
+  <header>
+    <div class="badge-bar">
+      <span class="badge badge-primary">BrowserOS Engineering Series</span>
+      <span class="badge badge-gpu" id="backendBadge">WebGPU: Detectando Hardware...</span>
+      <span class="badge badge-primary">Capítulo 5 · Apartado 8</span>
+    </div>
+    <h1>El Universo 3D en Vivo de BrowserOS</h1>
+    <p class="subtitle">
+      Estación interactiva de ingeniería gráfica: síntesis directa Compute-to-Render sin intervención de la CPU, inspección de silicio de función fija (Rasterizador e interpolación baricéntrica), diagnósticos de normales y Z-Buffer en tiempo real.
+    </p>
+  </header>
+
+  <!-- Banner de Fallback si no hay WebGPU nativo -->
+  <div class="fallback-banner" id="fallbackBanner">
+    <strong>Aviso de Hardware:</strong> Tu navegador actual no tiene WebGPU activo o está en un entorno emulado. El taller se ha iniciado con el motor de aceleración WebGL 2.0 / Canvas 3D de alta fidelidad para preservar la interactividad completa de los controles, la geometría 3D y la telemetría.
+  </div>
+
+  <!-- Pestañas de Navegación -->
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('lab', this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+      1. Laboratorio 3D & Síntesis Compute-to-Render
+    </button>
+    <button class="tab-btn" onclick="switchTab('pipeline', this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+      2. Anatomía de la Línea de Montaje de Silicio
+    </button>
+    <button class="tab-btn" onclick="switchTab('code', this)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+      3. Inspector de Código WGSL & Contrato de Silicio
+    </button>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- PESTAÑA 1: LABORATORIO 3D & SÍNTESIS COMPUTE-TO-RENDER                    -->
+  <!-- ========================================================================= -->
+  <div class="tab-pane active" id="pane-lab">
+    <div class="lab-grid">
+      <!-- Panel de Controles -->
+      <div class="panel">
+        <div class="panel-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          Controles de Silicio
+        </div>
+
+        <!-- 1. Modo de Sombreado -->
+        <div class="control-group">
+          <label class="control-label">Modo de Diagnóstico / Shader</label>
+          <select id="selShaderMode" onchange="onShaderModeChanged()">
+            <option value="0">1. Iluminación PBR / Blinn-Phong Completa</option>
+            <option value="1">2. Inspección de Normales de Superficie (RGB)</option>
+            <option value="2">3. Coordenadas Baricéntricas & Malla (Wireframe)</option>
+            <option value="3">4. Mapa de Profundidad Z-Buffer (Linealizado)</option>
+            <option value="4">5. Espacio de Textura & Coordenadas UV</option>
+          </select>
+        </div>
+
+        <!-- 2. Geometría / Simulación -->
+        <div class="control-group">
+          <label class="control-label">Geometría & Simulación</label>
+          <select id="selGeometry" onchange="onGeometryChanged()">
+            <option value="torus">Toroide 3D de Alta Densidad (PBR / Silicio)</option>
+            <option value="particles">Enjambre Vórtice Compute-to-Render (32.768 partículas)</option>
+            <option value="sphere">Esfera Geodésica de Silicio</option>
+          </select>
+        </div>
+
+        <!-- 3. Parámetros Interactivos -->
+        <div class="control-group">
+          <div class="control-label">
+            <span>Rugosidad Material / Dispersión</span>
+            <span class="control-val" id="valRoughness">0.30</span>
+          </div>
+          <input type="range" id="rngRoughness" min="0.0" max="1.0" step="0.02" value="0.30" oninput="updateParams()">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>Velocidad de Rotación</span>
+            <span class="control-val" id="valSpeed">1.0x</span>
+          </div>
+          <input type="range" id="rngSpeed" min="0.0" max="3.0" step="0.1" value="1.0" oninput="updateParams()">
+        </div>
+
+        <div class="control-group" id="groupParticleSim">
+          <div class="control-label">
+            <span>Fuerza Vórtice / Gravedad (Compute Pass)</span>
+            <span class="control-val" id="valGravity">1.50</span>
+          </div>
+          <input type="range" id="rngGravity" min="0.2" max="4.0" step="0.1" value="1.5" oninput="updateParams()">
+        </div>
+
+        <!-- Zoom y Distancia de Cámara -->
+        <div class="control-group">
+          <div class="control-label">
+            <span>Zoom / Distancia de Cámara</span>
+            <span class="control-val" id="valZoom">4.2</span>
+          </div>
+          <input type="range" id="rngZoom" min="0.6" max="16.0" step="0.1" value="4.2" oninput="onZoomSliderChanged()">
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="togglePauseSimulation()" id="btnPause">Pausar Física</button>
+          <button class="btn" onclick="resetCamera()">Reset Cámara</button>
+        </div>
+
+        <div class="btn-group" style="margin-top: 0.5rem;">
+          <button class="btn" onclick="zoomBy(-0.75)">Zoom + (Acercar)</button>
+          <button class="btn" onclick="zoomBy(0.75)">Zoom − (Alejar)</button>
+        </div>
+
+        <!-- Telemetría en Vivo -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-title">Cadencia Host</div>
+            <div class="metric-val metric-accent" id="metricFPS">60.0 FPS</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Tiempo Frame CPU</div>
+            <div class="metric-val" id="metricFrameTime">1.2 ms</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Primitivas VRAM</div>
+            <div class="metric-val" id="metricPrimitives">12.8K</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Ahorro Bus PCIe</div>
+            <div class="metric-val metric-success" id="metricPCIe">-100% (0 KB)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Viewport 3D -->
+      <div class="viewport-container">
+        <div class="canvas-wrapper" id="canvasWrapper">
+          <canvas id="gpuCanvas"></canvas>
+          <div class="viewport-overlay">
+            <div class="overlay-title" id="overlayTitle">Modo: Iluminación PBR / Blinn-Phong</div>
+            <div class="overlay-desc" id="overlayDesc">Sombreado físico completo evaluado en el Fragment Shader (@fragment)</div>
+          </div>
+          <div class="canvas-hint">Arrastra con el ratón para rotar en 3D · Rueda para zoom</div>
+        </div>
+
+        <!-- Explicación Didáctica Dinámica -->
+        <div class="silicon-explainer">
+          <h4 id="explainerTitle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+            <span id="explainerHeader">Diagnóstico de Silicio Activo</span>
+          </h4>
+          <p id="explainerText">
+            El silicio ejecuta el pipeline de renderizado completo: los vértices se proyectan mediante la matriz MVP en el Vertex Shader, el Rasterizador calcula la cobertura de píxeles e interpola normales en coordenadas homogéneas, y el Fragment Shader calcula el vector medio de Blinn-Phong y la componente especular conservando 60 FPS estables.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- PESTAÑA 2: ANATOMÍA DE LA LÍNEA DE MONTAJE DE SILICIO                      -->
+  <!-- ========================================================================= -->
+  <div class="tab-pane" id="pane-pipeline">
+    <div class="pipeline-flow">
+      <!-- 1. Vertex Fetch -->
+      <div class="stage-card fixed-func">
+        <div class="stage-header">
+          <h3>1. Vertex Fetch & Indexing</h3>
+          <span class="stage-badge badge-fixed">Función Fija (Silicio)</span>
+        </div>
+        <div class="stage-body">
+          <p>
+            Circuitería cableada que lee las posiciones, normales y atributos directamente desde la memoria VRAM sin consumir ciclos de CPU ni instrucciones de sombreado. Se programa de forma inmutable mediante la propiedad <code>buffers: [{ arrayStride, attributes }]</code> en <code>createRenderPipeline</code>.
+          </p>
+          <div class="stage-tech">Entrada: GPUBufferUsage.VERTEX | arrayStride = 44 bytes</div>
+        </div>
+      </div>
+
+      <!-- 2. Vertex Shader -->
+      <div class="stage-card programmable">
+        <div class="stage-header">
+          <h3>2. Vertex Shader</h3>
+          <span class="stage-badge badge-prog">Programable (@vertex)</span>
+        </div>
+        <div class="stage-body">
+          <p>
+            Las ALUs del chip ejecutan nuestro código WGSL en paralelo para cada vértice. Transforma las coordenadas de espacio local a Espacio de Recorte (Clip Space) multiplicando por la matriz Model-View-Projection (MVP). Emite obligatoriamente <code>@builtin(position) vec4&lt;f32&gt;</code>.
+          </p>
+          <div class="stage-tech">WGSL: out.clipPos = uniforms.mvp * vec4(in.pos, 1.0);</div>
+        </div>
+      </div>
+
+      <!-- 3. Primitive Assembly & Clipping -->
+      <div class="stage-card fixed-func">
+        <div class="stage-header">
+          <h3>3. Primitive Assembly & Culling</h3>
+          <span class="stage-badge badge-fixed">Función Fija (Silicio)</span>
+        </div>
+        <div class="stage-body">
+          <p>
+            Agrupa los vértices procesados en triángulos (<code>triangle-list</code>). Aplica el descarte de caras traseras (<em>Backface Culling</em>) comprobando la orientación de los vértices (sentido antihorario <code>ccw</code>) y recorta físicamente los triángulos que sobresalen del volumen de visión antes de gastar ancho de banda de rasterización.
+          </p>
+          <div class="stage-tech">Configuración: cullMode: 'back', frontFace: 'ccw'</div>
+        </div>
+      </div>
+
+      <!-- 4. Rasterizer & Barycentrics -->
+      <div class="stage-card fixed-func">
+        <div class="stage-header">
+          <h3>4. Rasterizador & Baricéntricas</h3>
+          <span class="stage-badge badge-fixed">Función Fija (Silicio)</span>
+        </div>
+        <div class="stage-body">
+          <p>
+            El corazón analógico del renderizado: proyecta los triángulos a píxeles de pantalla evaluando funciones de arista en silicio a velocidades deslumbrantes. Para cada fragmento cubierto, interpola los atributos de vértice mediante derivadas baricéntricas corregidas por perspectiva dividiendo entre la coordenada homogénea <em>w</em>.
+          </p>
+          <div class="stage-tech">Física: Coordenadas Baricéntricas λ₀, λ₁, λ₂ con corrección hiperbólica 1/w</div>
+        </div>
+      </div>
+
+      <!-- 5. Early-Z Culling -->
+      <div class="stage-card fixed-func">
+        <div class="stage-header">
+          <h3>5. Early-Z Oclusion Culling</h3>
+          <span class="stage-badge badge-fixed">Función Fija (Silicio)</span>
+        </div>
+        <div class="stage-body">
+          <p>
+            Optimización crítica de silicio: antes de ejecutar el costoso Fragment Shader, el hardware compara la profundidad <em>Z</em> del fragmento contra el búfer de profundidad (Depth Buffer). Si el píxel ya está tapado por una superficie más cercana, se aborta inmediatamente, ahorrando el 100% de los ciclos de sombreado.
+          </p>
+          <div class="stage-tech">Hardware: Hierarchical-Z (Hi-Z) y comparación depthCompare: 'less'</div>
+        </div>
+      </div>
+
+      <!-- 6. Fragment Shader -->
+      <div class="stage-card programmable">
+        <div class="stage-header">
+          <h3>6. Fragment Shader</h3>
+          <span class="stage-badge badge-prog">Programable (@fragment)</span>
+        </div>
+        <div class="stage-body">
+          <p>
+            Calcula el color final de cada píxel que superó las pruebas de visibilidad. En nuestro taller evalúa la iluminación física PBR, calcula la reflectancia Blinn-Phong, muestrea texturas mediante TFUs o emite diagnósticos de normales y profundidad linealizada.
+          </p>
+          <div class="stage-tech">WGSL: fn fs_main(in: VertexOutput) -> @location(0) vec4&lt;f32&gt;</div>
+        </div>
+      </div>
+
+      <!-- 7. ROPs & Blending -->
+      <div class="stage-card fixed-func">
+        <div class="stage-header">
+          <h3>7. Unidades ROP & Alpha Blending</h3>
+          <span class="stage-badge badge-fixed">Función Fija (Silicio)</span>
+        </div>
+        <div class="stage-body">
+          <p>
+            Las Render Output Units escriben los valores finales en la memoria VRAM del framebuffer. Realizan la prueba de profundidad final (Late-Z) si el shader modificó la posición, escriben en el Depth Buffer si <code>depthWriteEnabled: true</code> y ejecutan las ecuaciones de mezcla alfa cableadas.
+          </p>
+          <div class="stage-tech">Salida: Formato nativo Swapchain (BGRA8Unorm / RGBA8Unorm)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- PESTAÑA 3: INSPECTOR DE CÓDIGO WGSL & CONTRATO DE SILICIO                 -->
+  <!-- ========================================================================= -->
+  <div class="tab-pane" id="pane-code">
+    <div class="code-editor-card">
+      <div class="editor-topbar">
+        <div class="editor-tabs">
+          <button class="editor-tab-btn active" onclick="switchCodeTab('cs', this)">compute_particles.wgsl</button>
+          <button class="editor-tab-btn" onclick="switchCodeTab('vs', this)">pipeline_vertex.wgsl</button>
+          <button class="editor-tab-btn" onclick="switchCodeTab('fs', this)">pipeline_fragment.wgsl</button>
+          <button class="editor-tab-btn" onclick="switchCodeTab('host', this)">host_orchestration.js</button>
+        </div>
+        <div class="editor-lang-tag" id="codeLangTag">WGSL (Compute Shader)</div>
+      </div>
+
+      <div class="code-container">
+        <!-- Archivo 1: Compute Shader -->
+        <pre id="code-cs"><code><span class="co">// ============================================================================</span>
+<span class="co">// COMPUTE SHADER: Simulación Dinámica de Partículas (Compute-to-Render)</span>
+<span class="co">// ============================================================================</span>
+<span class="kw">struct</span> <span class="ty">Particle</span> {
+  <span class="va">pos</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="va">pad0</span>: <span class="ty">f32</span>,
+  <span class="va">vel</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="va">pad1</span>: <span class="ty">f32</span>,
+  <span class="va">color</span>: <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;,
+};
+
+<span class="de">@group</span>(<span class="nu">0</span>) <span class="de">@binding</span>(<span class="nu">0</span>) <span class="kw">var</span>&lt;<span class="st">storage</span>, <span class="st">read_write</span>&gt; <span class="va">particles</span>: <span class="ty">array</span>&lt;<span class="ty">Particle</span>&gt;;
+
+<span class="kw">struct</span> <span class="ty">SimUniforms</span> {
+  <span class="va">dt</span>: <span class="ty">f32</span>,
+  <span class="va">gravity</span>: <span class="ty">f32</span>,
+  <span class="va">damping</span>: <span class="ty">f32</span>,
+  <span class="va">time</span>: <span class="ty">f32</span>,
+};
+<span class="de">@group</span>(<span class="nu">0</span>) <span class="de">@binding</span>(<span class="nu">1</span>) <span class="kw">var</span>&lt;<span class="st">uniform</span>&gt; <span class="va">sim</span>: <span class="ty">SimUniforms</span>;
+
+<span class="de">@compute</span> <span class="de">@workgroup_size</span>(<span class="nu">64</span>)
+<span class="kw">fn</span> <span class="fn">cs_main</span>(<span class="de">@builtin</span>(<span class="bu">global_invocation_id</span>) <span class="va">id</span>: <span class="ty">vec3</span>&lt;<span class="ty">u32</span>&gt;) {
+  <span class="kw">let</span> <span class="va">idx</span> = <span class="va">id</span>.<span class="va">x</span>;
+  <span class="kw">if</span> (<span class="va">idx</span> &gt;= <span class="fn">arrayLength</span>(&amp;<span class="va">particles</span>)) { <span class="kw">return</span>; }
+
+  <span class="kw">var</span> <span class="va">p</span> = <span class="va">particles</span>[<span class="va">idx</span>];
+  <span class="kw">let</span> <span class="va">dt</span> = <span class="va">sim</span>.<span class="va">dt</span>;
+  
+  <span class="co">// Potencial de Plummer suavizado: a = -GM * x / (r^2 + eps^2)^1.5</span>
+  <span class="kw">let</span> <span class="va">r2</span> = <span class="fn">dot</span>(<span class="va">p</span>.<span class="va">pos</span>.<span class="va">xz</span>, <span class="va">p</span>.<span class="va">pos</span>.<span class="va">xz</span>);
+  <span class="kw">let</span> <span class="va">eps2</span> = <span class="nu">0.35</span>;
+  <span class="kw">let</span> <span class="va">denom</span> = <span class="fn">pow</span>(<span class="va">r2</span> + <span class="va">eps2</span>, <span class="nu">1.5</span>);
+  <span class="kw">let</span> <span class="va">gm</span> = <span class="va">sim</span>.<span class="va">gravity</span> * <span class="nu">2.2</span>;
+  
+  <span class="co">// Atracción centrípeta en el plano galáctico X-Z y resorte restaurador en Y</span>
+  <span class="kw">let</span> <span class="va">accelXZ</span> = -<span class="va">gm</span> * <span class="va">p</span>.<span class="va">pos</span>.<span class="va">xz</span> / <span class="va">denom</span>;
+  <span class="kw">let</span> <span class="va">accelY</span> = -<span class="va">p</span>.<span class="va">pos</span>.<span class="va">y</span> * <span class="nu">6.0</span> - <span class="va">p</span>.<span class="va">vel</span>.<span class="va">y</span> * <span class="nu">2.0</span>;
+  
+  <span class="va">p</span>.<span class="va">vel</span> = <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">p</span>.<span class="va">vel</span>.<span class="va">x</span> + <span class="va">accelXZ</span>.<span class="va">x</span> * <span class="va">dt</span>, <span class="va">p</span>.<span class="va">vel</span>.<span class="va">y</span> + <span class="va">accelY</span> * <span class="va">dt</span>, <span class="va">p</span>.<span class="va">vel</span>.<span class="va">z</span> + <span class="va">accelXZ</span>.<span class="va">y</span> * <span class="va">dt</span>);
+  <span class="va">p</span>.<span class="va">pos</span> = <span class="va">p</span>.<span class="va">pos</span> + <span class="va">p</span>.<span class="va">vel</span> * <span class="va">dt</span>;
+  
+  <span class="co">// Escribir directamente en el mismo búfer en VRAM (Compute-to-Render sin ida y vuelta al CPU)</span>
+  <span class="va">particles</span>[<span class="va">idx</span>] = <span class="va">p</span>;
+}</code></pre>
+
+        <!-- Archivo 2: Vertex Shader -->
+        <pre id="code-vs" style="display:none;"><code><span class="co">// ============================================================================</span>
+<span class="co">// VERTEX SHADER: Transformaciones Homogéneas MVP y Coordenadas Baricéntricas</span>
+<span class="co">// ============================================================================</span>
+<span class="kw">struct</span> <span class="ty">Uniforms</span> {
+  <span class="va">mvp</span>: <span class="ty">mat4x4</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="va">model</span>: <span class="ty">mat4x4</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="va">normalMat</span>: <span class="ty">mat4x4</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="va">camPos</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="va">shadingMode</span>: <span class="ty">u32</span>, <span class="co">// 0: PBR, 1: Normales, 2: Baricéntricas, 3: Z-Buffer, 4: UV</span>
+  <span class="va">lightPos</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="va">roughness</span>: <span class="ty">f32</span>,
+  <span class="va">nearZ</span>: <span class="ty">f32</span>,
+  <span class="va">farZ</span>: <span class="ty">f32</span>,
+  <span class="va">time</span>: <span class="ty">f32</span>,
+  <span class="va">pad</span>: <span class="ty">f32</span>,
+};
+<span class="de">@group</span>(<span class="nu">0</span>) <span class="de">@binding</span>(<span class="nu">0</span>) <span class="kw">var</span>&lt;<span class="st">uniform</span>&gt; <span class="va">uniforms</span>: <span class="ty">Uniforms</span>;
+
+<span class="kw">struct</span> <span class="ty">VertexInput</span> {
+  <span class="de">@location</span>(<span class="nu">0</span>) <span class="va">position</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="de">@location</span>(<span class="nu">1</span>) <span class="va">normal</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="de">@location</span>(<span class="nu">2</span>) <span class="va">uv</span>: <span class="ty">vec2</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="de">@location</span>(<span class="nu">3</span>) <span class="va">barycentric</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+};
+
+<span class="kw">struct</span> <span class="ty">VertexOutput</span> {
+  <span class="de">@builtin</span>(<span class="bu">position</span>) <span class="va">clipPos</span>: <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="de">@location</span>(<span class="nu">0</span>) <span class="va">worldPos</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="de">@location</span>(<span class="nu">1</span>) <span class="va">worldNormal</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="de">@location</span>(<span class="nu">2</span>) <span class="va">uv</span>: <span class="ty">vec2</span>&lt;<span class="ty">f32</span>&gt;,
+  <span class="de">@location</span>(<span class="nu">3</span>) <span class="va">barycentric</span>: <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;,
+};
+
+<span class="de">@vertex</span>
+<span class="kw">fn</span> <span class="fn">vs_main</span>(<span class="va">in</span>: <span class="ty">VertexInput</span>) -&gt; <span class="ty">VertexOutput</span> {
+  <span class="kw">var</span> <span class="va">out</span>: <span class="ty">VertexOutput</span>;
+  <span class="va">out</span>.<span class="va">clipPos</span> = <span class="va">uniforms</span>.<span class="va">mvp</span> * <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">in</span>.<span class="va">position</span>, <span class="nu">1.0</span>);
+  <span class="va">out</span>.<span class="va">worldPos</span> = (<span class="va">uniforms</span>.<span class="va">model</span> * <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">in</span>.<span class="va">position</span>, <span class="nu">1.0</span>)).<span class="va">xyz</span>;
+  <span class="va">out</span>.<span class="va">worldNormal</span> = <span class="fn">normalize</span>((<span class="va">uniforms</span>.<span class="va">normalMat</span> * <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">in</span>.<span class="va">normal</span>, <span class="nu">0.0</span>)).<span class="va">xyz</span>);
+  <span class="va">out</span>.<span class="va">uv</span> = <span class="va">in</span>.<span class="va">uv</span>;
+  <span class="va">out</span>.<span class="va">barycentric</span> = <span class="va">in</span>.<span class="va">barycentric</span>;
+  <span class="kw">return</span> <span class="va">out</span>;
+}</code></pre>
+
+        <!-- Archivo 3: Fragment Shader -->
+        <pre id="code-fs" style="display:none;"><code><span class="co">// ============================================================================</span>
+<span class="co">// FRAGMENT SHADER: Diagnósticos de Silicio y Sombreado Físico</span>
+<span class="co">// ============================================================================</span>
+<span class="de">@fragment</span>
+<span class="kw">fn</span> <span class="fn">fs_main</span>(<span class="va">in</span>: <span class="ty">VertexOutput</span>) -&gt; <span class="de">@location</span>(<span class="nu">0</span>) <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt; {
+  <span class="co">// 1. MODO NORMALES DE SUPERFICIE: Mapeo de [-1, 1] a [0, 1]</span>
+  <span class="kw">if</span> (<span class="va">uniforms</span>.<span class="va">shadingMode</span> == <span class="nu">1u</span>) {
+    <span class="kw">let</span> <span class="va">normColor</span> = <span class="va">in</span>.<span class="va">worldNormal</span> * <span class="nu">0.5</span> + <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;(<span class="nu">0.5</span>);
+    <span class="kw">return</span> <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">normColor</span>, <span class="nu">1.0</span>);
+  }
+
+  <span class="co">// 2. MODO COORDENADAS BARICÉNTRICAS: Malla Wireframe procedimental</span>
+  <span class="kw">if</span> (<span class="va">uniforms</span>.<span class="va">shadingMode</span> == <span class="nu">2u</span>) {
+    <span class="kw">let</span> <span class="va">b</span> = <span class="va">in</span>.<span class="va">barycentric</span>;
+    <span class="kw">let</span> <span class="va">minB</span> = <span class="fn">min</span>(<span class="fn">min</span>(<span class="va">b</span>.<span class="va">x</span>, <span class="va">b</span>.<span class="va">y</span>), <span class="va">b</span>.<span class="va">z</span>);
+    <span class="kw">let</span> <span class="va">edge</span> = <span class="nu">1.0</span> - <span class="fn">smoothstep</span>(<span class="nu">0.0</span>, <span class="nu">0.04</span>, <span class="va">minB</span>);
+    <span class="kw">let</span> <span class="va">baseCol</span> = <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">b</span>.<span class="va">x</span>, <span class="va">b</span>.<span class="va">y</span>, <span class="va">b</span>.<span class="va">z</span>) * <span class="nu">0.6</span>;
+    <span class="kw">let</span> <span class="va">finalCol</span> = <span class="fn">mix</span>(<span class="va">baseCol</span>, <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;(<span class="nu">0.2</span>, <span class="nu">0.9</span>, <span class="nu">1.0</span>), <span class="va">edge</span>);
+    <span class="kw">return</span> <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">finalCol</span>, <span class="nu">1.0</span>);
+  }
+
+  <span class="co">// 3. MODO Z-BUFFER: Linealización de la profundidad no lineal de WebGPU [0, 1]</span>
+  <span class="kw">if</span> (<span class="va">uniforms</span>.<span class="va">shadingMode</span> == <span class="nu">3u</span>) {
+    <span class="kw">let</span> <span class="va">z_ndc</span> = <span class="va">in</span>.<span class="va">clipPos</span>.<span class="va">z</span>; <span class="co">// Coordenada de profundidad de pantalla</span>
+    <span class="kw">let</span> <span class="va">linearZ</span> = (<span class="va">uniforms</span>.<span class="va">nearZ</span> * <span class="va">uniforms</span>.<span class="va">farZ</span>) / 
+                  (<span class="va">uniforms</span>.<span class="va">farZ</span> - <span class="va">z_ndc</span> * (<span class="va">uniforms</span>.<span class="va">farZ</span> - <span class="va">uniforms</span>.<span class="va">nearZ</span>));
+    <span class="kw">let</span> <span class="va">depthNorm</span> = <span class="fn">clamp</span>((<span class="va">linearZ</span> - <span class="va">uniforms</span>.<span class="va">nearZ</span>) / 
+                          (<span class="va">uniforms</span>.<span class="va">farZ</span> - <span class="va">uniforms</span>.<span class="va">nearZ</span>), <span class="nu">0.0</span>, <span class="nu">1.0</span>);
+    <span class="kw">return</span> <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;(<span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">depthNorm</span>), <span class="nu">1.0</span>);
+  }
+
+  <span class="co">// 4. MODO COORDENADAS UV</span>
+  <span class="kw">if</span> (<span class="va">uniforms</span>.<span class="va">shadingMode</span> == <span class="nu">4u</span>) {
+    <span class="kw">return</span> <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">in</span>.<span class="va">uv</span>.<span class="va">x</span>, <span class="va">in</span>.<span class="va">uv</span>.<span class="va">y</span>, <span class="nu">0.5</span>, <span class="nu">1.0</span>);
+  }
+
+  <span class="co">// 0. MODO ILUMINACIÓN PBR / BLINN-PHONG MODULADA POR RUGOSIDAD</span>
+  <span class="kw">let</span> <span class="va">N</span> = <span class="fn">normalize</span>(<span class="va">in</span>.<span class="va">worldNormal</span>);
+  <span class="kw">let</span> <span class="va">L</span> = <span class="fn">normalize</span>(<span class="va">uniforms</span>.<span class="va">lightPos</span> - <span class="va">in</span>.<span class="va">worldPos</span>);
+  <span class="kw">let</span> <span class="va">V</span> = <span class="fn">normalize</span>(<span class="va">uniforms</span>.<span class="va">camPos</span> - <span class="va">in</span>.<span class="va">worldPos</span>);
+  <span class="kw">let</span> <span class="va">H</span> = <span class="fn">normalize</span>(<span class="va">L</span> + <span class="va">V</span>);
+
+  <span class="kw">let</span> <span class="va">NdotL</span> = <span class="fn">max</span>(<span class="fn">dot</span>(<span class="va">N</span>, <span class="va">L</span>), <span class="nu">0.0</span>);
+  <span class="kw">let</span> <span class="va">NdotH</span> = <span class="fn">max</span>(<span class="fn">dot</span>(<span class="va">N</span>, <span class="va">H</span>), <span class="nu">0.0</span>);
+  <span class="kw">let</span> <span class="va">VdotH</span> = <span class="fn">max</span>(<span class="fn">dot</span>(<span class="va">V</span>, <span class="va">H</span>), <span class="nu">0.0</span>);
+
+  <span class="kw">let</span> <span class="va">r</span> = <span class="fn">clamp</span>(<span class="va">uniforms</span>.<span class="va">roughness</span>, <span class="nu">0.0</span>, <span class="nu">1.0</span>);
+  <span class="kw">let</span> <span class="va">smoothness</span> = <span class="nu">1.0</span> - <span class="va">r</span>;
+  <span class="kw">let</span> <span class="va">shiny</span> = <span class="fn">mix</span>(<span class="nu">4.0</span>, <span class="nu">128.0</span>, <span class="va">smoothness</span> * <span class="va">smoothness</span>);
+  <span class="kw">let</span> <span class="va">specPower</span> = <span class="fn">pow</span>(<span class="va">NdotH</span>, <span class="va">shiny</span>);
+  <span class="kw">let</span> <span class="va">specLobe</span> = <span class="va">specPower</span> * <span class="fn">mix</span>(<span class="nu">0.35</span>, <span class="nu">1.8</span>, <span class="va">smoothness</span>);
+
+  <span class="kw">let</span> <span class="va">F0</span> = <span class="fn">mix</span>(<span class="nu">0.04</span>, <span class="nu">0.60</span>, <span class="va">smoothness</span>);
+  <span class="kw">let</span> <span class="va">fresnel</span> = <span class="va">F0</span> + (<span class="nu">1.0</span> - <span class="va">F0</span>) * <span class="fn">pow</span>(<span class="nu">1.0</span> - <span class="va">VdotH</span>, <span class="nu">5.0</span>);
+
+  <span class="kw">let</span> <span class="va">albedo</span> = <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;(<span class="nu">0.22</span>, <span class="nu">0.65</span>, <span class="nu">0.98</span>);
+  <span class="kw">let</span> <span class="va">diffuseTerm</span> = <span class="va">albedo</span> * <span class="va">NdotL</span> * <span class="fn">mix</span>(<span class="nu">0.65</span>, <span class="nu">1.15</span>, <span class="va">r</span>);
+  <span class="kw">let</span> <span class="va">specularTerm</span> = <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;(<span class="nu">1.0</span>, <span class="nu">1.0</span>, <span class="nu">1.0</span>) * <span class="va">specLobe</span> * <span class="fn">mix</span>(<span class="nu">1.0</span>, <span class="va">fresnel</span>, <span class="va">smoothness</span>);
+  <span class="kw">let</span> <span class="va">ambientTerm</span> = <span class="fn">mix</span>(<span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;(<span class="nu">0.03</span>, <span class="nu">0.05</span>, <span class="nu">0.08</span>), <span class="ty">vec3</span>&lt;<span class="ty">f32</span>&gt;(<span class="nu">0.12</span>, <span class="nu">0.16</span>, <span class="nu">0.22</span>), <span class="va">r</span>);
+
+  <span class="kw">let</span> <span class="va">color</span> = <span class="va">ambientTerm</span> + <span class="va">diffuseTerm</span> + <span class="va">specularTerm</span>;
+  <span class="kw">return</span> <span class="ty">vec4</span>&lt;<span class="ty">f32</span>&gt;(<span class="va">color</span>, <span class="nu">1.0</span>);
+}</code></pre>
+
+        <!-- Archivo 4: Orquestación Host JS -->
+        <pre id="code-host" style="display:none;"><code><span class="co">// ============================================================================</span>
+<span class="co">// ORQUESTACIÓN EN HOST: Sumisión Atómica Compute-to-Render</span>
+<span class="co">// ============================================================================</span>
+
+<span class="co">// 1. El búfer de partículas se crea con uso combinado STORAGE | VERTEX</span>
+<span class="kw">const</span> <span class="va">particleBuffer</span> = <span class="va">device</span>.<span class="fn">createBuffer</span>({
+  <span class="va">size</span>: <span class="va">PARTICLE_COUNT</span> * <span class="nu">48</span>, <span class="co">// 48 bytes por partícula (pos, vel, color)</span>
+  <span class="va">usage</span>: <span class="bu">GPUBufferUsage</span>.<span class="va">STORAGE</span> | <span class="bu">GPUBufferUsage</span>.<span class="va">VERTEX</span> | <span class="bu">GPUBufferUsage</span>.<span class="va">COPY_DST</span>,
+});
+
+<span class="co">// 2. En el bucle de renderizado: codificación de ambos pases en un solo encoder</span>
+<span class="kw">function</span> <span class="fn">renderFrame</span>(<span class="va">timestamp</span>) {
+  <span class="kw">const</span> <span class="va">commandEncoder</span> = <span class="va">device</span>.<span class="fn">createCommandEncoder</span>();
+
+  <span class="co">// PASE A: Simulación Física en Compute Shader</span>
+  <span class="kw">if</span> (!<span class="va">isPaused</span>) {
+    <span class="kw">const</span> <span class="va">computePass</span> = <span class="va">commandEncoder</span>.<span class="fn">beginComputePass</span>();
+    <span class="va">computePass</span>.<span class="fn">setPipeline</span>(<span class="va">computePipeline</span>);
+    <span class="va">computePass</span>.<span class="fn">setBindGroup</span>(<span class="nu">0</span>, <span class="va">computeBindGroup</span>);
+    <span class="va">computePass</span>.<span class="fn">dispatchWorkgroups</span>(<span class="fn">Math.ceil</span>(<span class="va">PARTICLE_COUNT</span> / <span class="nu">64</span>));
+    <span class="va">computePass</span>.<span class="fn">end</span>();
+  }
+
+  <span class="co">// PASE B: Pipeline Gráfico de Renderizado (Render Pass)</span>
+  <span class="kw">const</span> <span class="va">renderPass</span> = <span class="va">commandEncoder</span>.<span class="fn">beginRenderPass</span>({
+    <span class="va">colorAttachments</span>: [{
+      <span class="va">view</span>: <span class="va">context</span>.<span class="fn">getCurrentTexture</span>().<span class="fn">createView</span>(),
+      <span class="va">clearValue</span>: { <span class="va">r</span>: <span class="nu">0.04</span>, <span class="va">g</span>: <span class="nu">0.06</span>, <span class="va">b</span>: <span class="nu">0.09</span>, <span class="va">a</span>: <span class="nu">1.0</span> },
+      <span class="va">loadOp</span>: <span class="s-str">'clear'</span>,
+      <span class="va">storeOp</span>: <span class="s-str">'store'</span>,
+    }],
+    <span class="va">depthStencilAttachment</span>: {
+      <span class="va">view</span>: <span class="va">depthTextureView</span>,
+      <span class="va">depthClearValue</span>: <span class="nu">1.0</span>,
+      <span class="va">depthLoadOp</span>: <span class="s-str">'clear'</span>,
+      <span class="va">depthStoreOp</span>: <span class="s-str">'store'</span>,
+    },
+  });
+
+  <span class="va">renderPass</span>.<span class="fn">setPipeline</span>(<span class="va">renderPipeline</span>);
+  <span class="va">renderPass</span>.<span class="fn">setBindGroup</span>(<span class="nu">0</span>, <span class="va">renderBindGroup</span>);
+  <span class="va">renderPass</span>.<span class="fn">setVertexBuffer</span>(<span class="nu">0</span>, <span class="va">particleBuffer</span>); <span class="co">// ¡Lectura directa sin copia!</span>
+  <span class="va">renderPass</span>.<span class="fn">draw</span>(<span class="va">PARTICLE_COUNT</span>);
+  <span class="va">renderPass</span>.<span class="fn">end</span>();
+
+  <span class="co">// SUMISIÓN ATÓMICA: La GPU sincroniza ambos pases en hardware nativo</span>
+  <span class="va">device</span>.<span class="va">queue</span>.<span class="fn">submit</span>([<span class="va">commandEncoder</span>.<span class="fn">finish</span>()]);
+
+  <span class="fn">requestAnimationFrame</span>(<span class="va">renderFrame</span>);
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// MATEMÁTICAS 3D NATIVAS (Mat4, Vec3) SIN DEPENDENCIAS EXTERNAS
+// ============================================================================
+const Mat4 = {
+  create() {
+    const out = new Float32Array(16);
+    out[0] = 1; out[5] = 1; out[10] = 1; out[15] = 1;
+    return out;
+  },
+  identity(out) {
+    for (let i = 0; i < 16; i++) out[i] = (i % 5 === 0) ? 1 : 0;
+    return out;
+  },
+  perspective(out, fovyRad, aspect, near, far) {
+    const f = 1.0 / Math.tan(fovyRad / 2);
+    out.fill(0);
+    out[0] = f / aspect;
+    out[5] = f;
+    // En WebGPU el rango de profundidad NDC es [0, 1]
+    out[10] = far / (near - far);
+    out[11] = -1;
+    out[14] = (near * far) / (near - far);
+    return out;
+  },
+  lookAt(out, eye, center, up) {
+    let z0 = eye[0] - center[0], z1 = eye[1] - center[1], z2 = eye[2] - center[2];
+    let len = 1 / Math.hypot(z0, z1, z2);
+    z0 *= len; z1 *= len; z2 *= len;
+
+    let x0 = up[1] * z2 - up[2] * z1, x1 = up[2] * z0 - up[0] * z2, x2 = up[0] * z1 - up[1] * z0;
+    len = Math.hypot(x0, x1, x2);
+    if (!len) { x0 = 0; x1 = 0; x2 = 0; } else { len = 1 / len; x0 *= len; x1 *= len; x2 *= len; }
+
+    let y0 = z1 * x2 - z2 * x1, y1 = z2 * x0 - z0 * x2, y2 = z0 * x1 - z1 * x0;
+
+    out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+    out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+    out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+    out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);
+    out[13] = -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]);
+    out[14] = -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]);
+    out[15] = 1;
+    return out;
+  },
+  multiply(out, a, b) {
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+    let b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3];
+    out[0] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    out[1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    out[2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    out[3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    b0 = b[4]; b1 = b[5]; b2 = b[6]; b3 = b[7];
+    out[4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    out[5] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    out[6] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    out[7] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11];
+    out[8] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    out[9] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    out[10] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    out[11] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    b0 = b[12]; b1 = b[13]; b2 = b[14]; b3 = b[15];
+    out[12] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    out[13] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    out[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    out[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+    return out;
+  },
+  rotateX(out, a, rad) {
+    const s = Math.sin(rad), c = Math.cos(rad);
+    const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    if (a !== out) {
+      out[0] = a[0]; out[1] = a[1]; out[2] = a[2]; out[3] = a[3];
+      out[12] = a[12]; out[13] = a[13]; out[14] = a[14]; out[15] = a[15];
+    }
+    out[4] = a10 * c + a20 * s;
+    out[5] = a11 * c + a21 * s;
+    out[6] = a12 * c + a22 * s;
+    out[7] = a13 * c + a23 * s;
+    out[8] = a20 * c - a10 * s;
+    out[9] = a21 * c - a11 * s;
+    out[10] = a22 * c - a12 * s;
+    out[11] = a23 * c - a13 * s;
+    return out;
+  },
+  rotateY(out, a, rad) {
+    const s = Math.sin(rad), c = Math.cos(rad);
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    if (a !== out) {
+      out[4] = a[4]; out[5] = a[5]; out[6] = a[6]; out[7] = a[7];
+      out[12] = a[12]; out[13] = a[13]; out[14] = a[14]; out[15] = a[15];
+    }
+    out[0] = a00 * c - a20 * s;
+    out[1] = a01 * c - a21 * s;
+    out[2] = a02 * c - a22 * s;
+    out[3] = a03 * c - a23 * s;
+    out[8] = a00 * s + a20 * c;
+    out[9] = a01 * s + a21 * c;
+    out[10] = a02 * s + a22 * c;
+    out[11] = a03 * s + a23 * c;
+    return out;
+  }
+};
+
+// ============================================================================
+// GENERADORES DE GEOMETRÍA PARAMÉTRICA (Posición, Normal, UV, Baricéntricas)
+// ============================================================================
+function generateTorus(majorRadius, minorRadius, majorSegments, minorSegments) {
+  const vertices = []; // pos(3), norm(3), uv(2), bary(3) => 11 floats por vértice
+  for (let i = 0; i < majorSegments; i++) {
+    const u0 = (i / majorSegments) * Math.PI * 2;
+    const u1 = ((i + 1) / majorSegments) * Math.PI * 2;
+    for (let j = 0; j < minorSegments; j++) {
+      const v0 = (j / minorSegments) * Math.PI * 2;
+      const v1 = ((j + 1) / minorSegments) * Math.PI * 2;
+
+      const evalPoint = (u, v) => {
+        const x = (majorRadius + minorRadius * Math.cos(v)) * Math.cos(u);
+        const y = minorRadius * Math.sin(v);
+        const z = (majorRadius + minorRadius * Math.cos(v)) * Math.sin(u);
+        const nx = Math.cos(v) * Math.cos(u);
+        const ny = Math.sin(v);
+        const nz = Math.cos(v) * Math.sin(u);
+        const uvX = u / (Math.PI * 2);
+        const uvY = v / (Math.PI * 2);
+        return { pos: [x, y, z], norm: [nx, ny, nz], uv: [uvX, uvY] };
+      };
+
+      const p00 = evalPoint(u0, v0);
+      const p10 = evalPoint(u1, v0);
+      const p11 = evalPoint(u1, v1);
+      const p01 = evalPoint(u0, v1);
+
+      // Triángulo 1 (p00, p10, p11) con baricéntricas (1,0,0), (0,1,0), (0,0,1)
+      const pushVert = (p, b) => {
+        vertices.push(p.pos[0], p.pos[1], p.pos[2], p.norm[0], p.norm[1], p.norm[2], p.uv[0], p.uv[1], b[0], b[1], b[2]);
+      };
+
+      pushVert(p00, [1, 0, 0]);
+      pushVert(p10, [0, 1, 0]);
+      pushVert(p11, [0, 0, 1]);
+
+      // Triángulo 2 (p00, p11, p01)
+      pushVert(p00, [1, 0, 0]);
+      pushVert(p11, [0, 1, 0]);
+      pushVert(p01, [0, 0, 1]);
+    }
+  }
+  return new Float32Array(vertices);
+}
+
+function generateGeodesicSphere(radius, rings, sectors) {
+  const vertices = [];
+  const R = 1.0 / rings;
+  const S = 1.0 / sectors;
+  for (let r = 0; r < rings; r++) {
+    for (let s = 0; s < sectors; s++) {
+      const evalPoint = (ring, sec) => {
+        const y = Math.sin(-Math.PI / 2 + Math.PI * ring * R);
+        const x = Math.cos(2 * Math.PI * sec * S) * Math.sin(Math.PI * ring * R);
+        const z = Math.sin(2 * Math.PI * sec * S) * Math.sin(Math.PI * ring * R);
+        return { pos: [x * radius, y * radius, z * radius], norm: [x, y, z], uv: [sec * S, ring * R] };
+      };
+
+      const p00 = evalPoint(r, s);
+      const p10 = evalPoint(r + 1, s);
+      const p11 = evalPoint(r + 1, s + 1);
+      const p01 = evalPoint(r, s + 1);
+
+      const pushVert = (p, b) => {
+        vertices.push(p.pos[0], p.pos[1], p.pos[2], p.norm[0], p.norm[1], p.norm[2], p.uv[0], p.uv[1], b[0], b[1], b[2]);
+      };
+
+      pushVert(p00, [1, 0, 0]);
+      pushVert(p10, [0, 1, 0]);
+      pushVert(p11, [0, 0, 1]);
+
+      pushVert(p00, [1, 0, 0]);
+      pushVert(p11, [0, 1, 0]);
+      pushVert(p01, [0, 0, 1]);
+    }
+  }
+  return new Float32Array(vertices);
+}
+
+// ============================================================================
+// VARIABLES DE ESTADO Y TELEMETRÍA
+// ============================================================================
+let currentShaderMode = 0;
+let currentGeometry = 'torus';
+let roughness = 0.30;
+let rotSpeed = 1.0;
+let gravityStrength = 1.5;
+let isPaused = false;
+
+// Cámara orbital
+let camDistance = 4.2;
+let rotX = 0.35;
+let rotY = 0.55;
+let isDragging = false;
+let lastMouseX = 0, lastMouseY = 0;
+
+// WebGPU Core
+let gpuDevice = null;
+let gpuContext = null;
+let canvasFormat = null;
+let depthTexture = null;
+let depthTextureView = null;
+let meshRenderPipeline = null;
+let meshUniformBuffer = null;
+let meshBindGroup = null;
+
+// Buffers de Geometría
+let torusBuffer = null;
+let torusVertexCount = 0;
+let sphereBuffer = null;
+let sphereVertexCount = 0;
+
+// Compute-to-Render Partículas
+const PARTICLE_COUNT = 32768;
+let particleBuffer = null; // STORAGE | VERTEX
+let particleComputePipeline = null;
+let particleRenderPipeline = null;
+let particleSimUniformBuffer = null;
+let particleComputeBindGroup = null;
+let particleRenderBindGroup = null;
+
+let lastTime = performance.now();
+let frameCount = 0;
+let fpsTimer = performance.now();
+
+// ============================================================================
+// INICIALIZACIÓN DE WEBGPU
+// ============================================================================
+async function initWebGPU() {
+  const canvas = document.getElementById('gpuCanvas');
+  const badge = document.getElementById('backendBadge');
+  const fallback = document.getElementById('fallbackBanner');
+
+  if (!navigator.gpu) {
+    console.warn("WebGPU no detectado en el navegador. Activando modo demostración interactiva.");
+    badge.textContent = "Modo: Fallback Canvas 3D";
+    badge.className = "badge badge-warning";
+    fallback.style.display = "block";
+    initCanvasFallback(canvas);
+    return;
+  }
+
+  try {
+    const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    if (!adapter) throw new Error("No adapter");
+    gpuDevice = await adapter.requestDevice();
+    gpuContext = canvas.getContext('webgpu');
+    canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+
+    gpuContext.configure({
+      device: gpuDevice,
+      format: canvasFormat,
+      alphaMode: 'opaque',
+    });
+
+    badge.textContent = "WebGPU: Silicio Nativo Activo";
+    badge.className = "badge badge-gpu";
+
+    setupPipelines();
+    setupBuffers();
+    setupEventListeners(canvas);
+    requestAnimationFrame(renderLoop);
+  } catch (err) {
+    console.error("Error al iniciar WebGPU:", err);
+    badge.textContent = "Modo: Fallback Canvas 3D";
+    badge.className = "badge badge-warning";
+    fallback.style.display = "block";
+    initCanvasFallback(canvas);
+  }
+}
+
+// Configuración de Pipelines de WebGPU
+function setupPipelines() {
+  // 1. Shaders de Malla 3D (Vertex + Fragment con Modos de Diagnóstico)
+  const meshShaderCode = `
+    struct Uniforms {
+      mvp: mat4x4<f32>,
+      model: mat4x4<f32>,
+      normalMat: mat4x4<f32>,
+      camRight: vec3<f32>,
+      padR: f32,
+      camUp: vec3<f32>,
+      camDist: f32,
+      camPos: vec3<f32>,
+      shadingMode: u32,
+      lightPos: vec3<f32>,
+      roughness: f32,
+      nearZ: f32,
+      farZ: f32,
+      time: f32,
+      aspect: f32,
+    };
+    @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+    struct VertexInput {
+      @location(0) position: vec3<f32>,
+      @location(1) normal: vec3<f32>,
+      @location(2) uv: vec2<f32>,
+      @location(3) barycentric: vec3<f32>,
+    };
+
+    struct VertexOutput {
+      @builtin(position) clipPos: vec4<f32>,
+      @location(0) worldPos: vec3<f32>,
+      @location(1) worldNormal: vec3<f32>,
+      @location(2) uv: vec2<f32>,
+      @location(3) barycentric: vec3<f32>,
+    };
+
+    @vertex
+    fn vs_main(in: VertexInput) -> VertexOutput {
+      var out: VertexOutput;
+      out.clipPos = uniforms.mvp * vec4<f32>(in.position, 1.0);
+      out.worldPos = (uniforms.model * vec4<f32>(in.position, 1.0)).xyz;
+      out.worldNormal = normalize((uniforms.normalMat * vec4<f32>(in.normal, 0.0)).xyz);
+      out.uv = in.uv;
+      out.barycentric = in.barycentric;
+      return out;
+    }
+
+    @fragment
+    fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+      // 1. Modo Normales de Superficie (RGB)
+      if (uniforms.shadingMode == 1u) {
+        let nc = in.worldNormal * 0.5 + vec3<f32>(0.5);
+        return vec4<f32>(nc, 1.0);
+      }
+      // 2. Modo Coordenadas Baricéntricas & Wireframe
+      if (uniforms.shadingMode == 2u) {
+        let b = in.barycentric;
+        let minB = min(min(b.x, b.y), b.z);
+        let edge = 1.0 - smoothstep(0.0, 0.035, minB);
+        let baseCol = vec3<f32>(b.x, b.y, b.z) * 0.65;
+        let finalCol = mix(baseCol, vec3<f32>(0.2, 0.9, 1.0), edge);
+        return vec4<f32>(finalCol, 1.0);
+      }
+      // 3. Modo Z-Buffer Linealizado
+      if (uniforms.shadingMode == 3u) {
+        let z_ndc = in.clipPos.z;
+        let linearZ = (uniforms.nearZ * uniforms.farZ) / 
+                      (uniforms.farZ - z_ndc * (uniforms.farZ - uniforms.nearZ));
+        let normZ = clamp((linearZ - uniforms.nearZ) / 
+                          (uniforms.farZ - uniforms.nearZ), 0.0, 1.0);
+        return vec4<f32>(vec3<f32>(normZ), 1.0);
+      }
+      // 4. Modo Coordenadas UV
+      if (uniforms.shadingMode == 4u) {
+        return vec4<f32>(in.uv.x, in.uv.y, 0.5, 1.0);
+      }
+      // 0. Modo Iluminación PBR / Blinn-Phong Completa (Modulada en Tiempo Real por Rugosidad)
+      let N = normalize(in.worldNormal);
+      let L = normalize(uniforms.lightPos - in.worldPos);
+      let V = normalize(uniforms.camPos - in.worldPos);
+      let H = normalize(L + V);
+
+      let NdotL = max(dot(N, L), 0.0);
+      let NdotH = max(dot(N, H), 0.0);
+      let VdotH = max(dot(V, H), 0.0);
+
+      let r = clamp(uniforms.roughness, 0.0, 1.0);
+      let smoothness = 1.0 - r;
+      // Exponente especular modulado entre 4.0 (mate disperso) y 128.0 (plástico pulido)
+      let shiny = mix(4.0, 128.0, smoothness * smoothness);
+      
+      // Amplitud del lóbulo especular: con baja rugosidad se concentra intensamente; con alta se dispersa
+      let specPower = pow(NdotH, shiny);
+      let specLobe = specPower * mix(0.35, 1.8, smoothness);
+
+      // Efecto Fresnel de Schlick (F0 = 0.04 para plásticos dieléctricos)
+      let F0 = mix(0.04, 0.60, smoothness);
+      let fresnel = F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
+
+      // Modulación difusa y ambiente: conservación de energía y acabado mate vs reflectante
+      let albedo = vec3<f32>(0.22, 0.65, 0.98);
+      let diffuseTerm = albedo * NdotL * mix(0.65, 1.15, r);
+      let specularTerm = vec3<f32>(1.0, 1.0, 1.0) * specLobe * mix(1.0, fresnel, smoothness);
+      let ambientTerm = mix(vec3<f32>(0.03, 0.05, 0.08), vec3<f32>(0.12, 0.16, 0.22), r);
+
+      let color = ambientTerm + diffuseTerm + specularTerm;
+      return vec4<f32>(color, 1.0);
+    }
+  `;
+
+  const meshModule = gpuDevice.createShaderModule({ code: meshShaderCode });
+
+  meshRenderPipeline = gpuDevice.createRenderPipeline({
+    layout: 'auto',
+    vertex: {
+      module: meshModule,
+      entryPoint: 'vs_main',
+      buffers: [{
+        arrayStride: 44, // 11 floats * 4 bytes
+        stepMode: 'vertex',
+        attributes: [
+          { shaderLocation: 0, offset: 0,  format: 'float32x3' }, // pos
+          { shaderLocation: 1, offset: 12, format: 'float32x3' }, // normal
+          { shaderLocation: 2, offset: 24, format: 'float32x2' }, // uv
+          { shaderLocation: 3, offset: 32, format: 'float32x3' }, // barycentric
+        ],
+      }],
+    },
+    primitive: {
+      topology: 'triangle-list',
+      cullMode: 'back',
+      frontFace: 'ccw',
+    },
+    depthStencil: {
+      format: 'depth24plus',
+      depthWriteEnabled: true,
+      depthCompare: 'less',
+    },
+    fragment: {
+      module: meshModule,
+      entryPoint: 'fs_main',
+      targets: [{ format: canvasFormat }],
+    },
+  });
+
+  // 2. Shaders Compute-to-Render para Partículas (Órbita Estable de Plummer + Billboarding)
+  const particleComputeCode = `
+    struct Particle {
+      pos: vec3<f32>,
+      pad0: f32,
+      vel: vec3<f32>,
+      pad1: f32,
+      color: vec4<f32>,
+    };
+    @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
+
+    struct SimParams {
+      dt: f32,
+      gravity: f32,
+      damping: f32,
+      time: f32,
+    };
+    @group(0) @binding(1) var<uniform> sim: SimParams;
+
+    @compute @workgroup_size(64)
+    fn cs_main(@builtin(global_invocation_id) id: vec3<u32>) {
+      let idx = id.x;
+      if (idx >= arrayLength(&particles)) { return; }
+
+      var p = particles[idx];
+      let dt = sim.dt;
+
+      // Potencial gravitatorio suavizado de Plummer (evita singularidades y escape)
+      let r2 = dot(p.pos.xz, p.pos.xz);
+      let eps2 = 0.35;
+      let denom = pow(r2 + eps2, 1.5);
+      let gm = sim.gravity * 2.2;
+
+      // Atracción orbital centrípeta en el plano galáctico X-Z
+      let accelXZ = -gm * p.pos.xz / denom;
+      // Muelle restaurador en Y para mantener el disco cósmico plano y denso
+      let accelY = -p.pos.y * 6.0 - p.vel.y * 2.0;
+
+      p.vel = vec3<f32>(p.vel.x + accelXZ.x * dt, p.vel.y + accelY * dt, p.vel.z + accelXZ.y * dt);
+      p.pos = p.pos + p.vel * dt;
+
+      // Reubicación suave si una partícula escapa de la órbita (r > 4.5)
+      if (r2 > 20.0 || dot(p.pos, p.pos) < 0.01) {
+        let angle = f32(idx) * 0.381966 * 6.28318;
+        let r = 0.6 + fract(sin(f32(idx) * 12.9898) * 43758.5453) * 2.0;
+        p.pos = vec3<f32>(cos(angle) * r, (fract(f32(idx) * 0.13) - 0.5) * 0.1, sin(angle) * r);
+        let speed = sqrt(gm * r / pow(r * r + eps2, 0.75));
+        p.vel = vec3<f32>(-sin(angle) * speed, 0.0, cos(angle) * speed);
+      }
+
+      particles[idx] = p;
+    }
+  `;
+
+  const particleRenderCode = `
+    struct Uniforms {
+      mvp: mat4x4<f32>,
+      model: mat4x4<f32>,
+      normalMat: mat4x4<f32>,
+      camRight: vec3<f32>,
+      padR: f32,
+      camUp: vec3<f32>,
+      camDist: f32,
+      camPos: vec3<f32>,
+      shadingMode: u32,
+      lightPos: vec3<f32>,
+      roughness: f32,
+      nearZ: f32,
+      farZ: f32,
+      time: f32,
+      aspect: f32,
+    };
+    @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+    struct VertexOutput {
+      @builtin(position) clipPos: vec4<f32>,
+      @location(0) color: vec4<f32>,
+      @location(1) uv: vec2<f32>,
+    };
+
+    @vertex
+    fn vs_main(
+      @builtin(vertex_index) vIdx: u32,
+      @location(0) partPos: vec3<f32>,
+      @location(1) partColor: vec4<f32>
+    ) -> VertexOutput {
+      // 6 vértices por cuadrilátero orientado hacia la cámara (billboard)
+      var corners = array<vec2<f32>, 6>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>( 1.0, -1.0),
+        vec2<f32>( 1.0,  1.0),
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>( 1.0,  1.0),
+        vec2<f32>(-1.0,  1.0)
+      );
+      let corner = corners[vIdx];
+      let radius = 0.026; // Radio físico 3D en espacio del mundo
+
+      // El cuadrilátero siempre mira perpendicularmente a la cámara
+      let worldPos = partPos + uniforms.camRight * (corner.x * radius) + uniforms.camUp * (corner.y * radius);
+
+      var out: VertexOutput;
+      out.clipPos = uniforms.mvp * vec4<f32>(worldPos, 1.0);
+      out.color = partColor;
+      out.uv = corner;
+      return out;
+    }
+
+    @fragment
+    fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+      let r2 = dot(in.uv, in.uv);
+      if (r2 > 1.0) { discard; }
+      let glow = pow(1.0 - sqrt(r2), 1.6);
+      let rgb = in.color.rgb * (1.1 + glow * 2.2);
+      return vec4<f32>(rgb, in.color.a * glow);
+    }
+  `;
+
+  const compModule = gpuDevice.createShaderModule({ code: particleComputeCode });
+  const pRenderModule = gpuDevice.createShaderModule({ code: particleRenderCode });
+
+  particleComputePipeline = gpuDevice.createComputePipeline({
+    layout: 'auto',
+    compute: { module: compModule, entryPoint: 'cs_main' },
+  });
+
+  particleRenderPipeline = gpuDevice.createRenderPipeline({
+    layout: 'auto',
+    vertex: {
+      module: pRenderModule,
+      entryPoint: 'vs_main',
+      buffers: [{
+        arrayStride: 48,
+        stepMode: 'instance', // Renderizado instanciado: 1 partícula = 1 instancia
+        attributes: [
+          { shaderLocation: 0, offset: 0,  format: 'float32x3' }, // position
+          { shaderLocation: 1, offset: 32, format: 'float32x4' }, // color
+        ],
+      }],
+    },
+    primitive: {
+      topology: 'triangle-list',
+    },
+    depthStencil: {
+      format: 'depth24plus',
+      depthWriteEnabled: false,
+      depthCompare: 'less-equal',
+    },
+    fragment: {
+      module: pRenderModule,
+      entryPoint: 'fs_main',
+      targets: [{
+        format: canvasFormat,
+        blend: {
+          color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
+          alpha: { srcFactor: 'zero', dstFactor: 'one', operation: 'add' }
+        }
+      }],
+    },
+  });
+}
+
+// Creación de Búferes en VRAM
+function setupBuffers() {
+  // 1. Toroide 3D
+  const torusData = generateTorus(1.4, 0.55, 48, 24);
+  torusVertexCount = torusData.length / 11;
+  torusBuffer = gpuDevice.createBuffer({
+    size: torusData.byteLength,
+    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+  });
+  gpuDevice.queue.writeBuffer(torusBuffer, 0, torusData);
+
+  // 2. Esfera Geodésica
+  const sphereData = generateGeodesicSphere(1.4, 32, 32);
+  sphereVertexCount = sphereData.length / 11;
+  sphereBuffer = gpuDevice.createBuffer({
+    size: sphereData.byteLength,
+    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+  });
+  gpuDevice.queue.writeBuffer(sphereBuffer, 0, sphereData);
+
+  // 3. Uniform Buffer para Malla y Partículas (384 bytes)
+  meshUniformBuffer = gpuDevice.createBuffer({
+    size: 384,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  meshBindGroup = gpuDevice.createBindGroup({
+    layout: meshRenderPipeline.getBindGroupLayout(0),
+    entries: [{ binding: 0, resource: { buffer: meshUniformBuffer } }],
+  });
+
+  // 4. Búfer de Partículas Dual: STORAGE | VERTEX (Órbita de Plummer Estable)
+  const pData = new Float32Array(PARTICLE_COUNT * 12); // 12 floats = 48 bytes
+  const gm = 1.5 * 2.2;
+  const eps2 = 0.35;
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const idx = i * 12;
+    // Distribución espiral logarítmica con proporción áurea
+    const angle = i * 0.381966 * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
+    const r = 0.6 + Math.pow(Math.random(), 0.8) * 2.2;
+    pData[idx] = Math.cos(angle) * r;
+    pData[idx + 1] = (Math.random() - 0.5) * 0.12;
+    pData[idx + 2] = Math.sin(angle) * r;
+    pData[idx + 3] = 0; // pad
+
+    // Velocidad orbital circular Kepleriana
+    const speed = Math.sqrt(gm * r / Math.pow(r * r + eps2, 0.75));
+    pData[idx + 4] = -Math.sin(angle) * speed;
+    pData[idx + 5] = (Math.random() - 0.5) * 0.04;
+    pData[idx + 6] = Math.cos(angle) * speed;
+    pData[idx + 7] = 0; // pad
+
+    // Color degradado celeste a violeta y núcleo luminoso
+    const coreFactor = Math.max(0, 1.0 - r / 2.8);
+    pData[idx + 8] = 0.35 + 0.65 * coreFactor; // R
+    pData[idx + 9] = 0.65 + 0.35 * (1.0 - coreFactor); // G
+    pData[idx + 10] = 1.0; // B
+    pData[idx + 11] = 0.75 + 0.25 * coreFactor; // A
+  }
+
+  particleBuffer = gpuDevice.createBuffer({
+    size: pData.byteLength,
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+  });
+  gpuDevice.queue.writeBuffer(particleBuffer, 0, pData);
+
+  particleSimUniformBuffer = gpuDevice.createBuffer({
+    size: 32,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  particleComputeBindGroup = gpuDevice.createBindGroup({
+    layout: particleComputePipeline.getBindGroupLayout(0),
+    entries: [
+      { binding: 0, resource: { buffer: particleBuffer } },
+      { binding: 1, resource: { buffer: particleSimUniformBuffer } },
+    ],
+  });
+
+  particleRenderBindGroup = gpuDevice.createBindGroup({
+    layout: particleRenderPipeline.getBindGroupLayout(0),
+    entries: [{ binding: 0, resource: { buffer: meshUniformBuffer } }],
+  });
+}
+
+// Bucle de Renderizado Principal
+function renderLoop(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+
+  // Telemetría FPS
+  frameCount++;
+  if (now - fpsTimer >= 500) {
+    const fps = ((frameCount * 1000) / (now - fpsTimer)).toFixed(1);
+    document.getElementById('metricFPS').textContent = `${fps} FPS`;
+    document.getElementById('metricFrameTime').textContent = `${(dt * 1000).toFixed(1)} ms`;
+    frameCount = 0;
+    fpsTimer = now;
+  }
+
+  // Rotación continua
+  if (!isPaused) {
+    rotY += dt * 0.75 * rotSpeed;
+  }
+
+  // Comprobar redimensionamiento dinámico del Canvas y Depth Texture
+  const canvas = document.getElementById('gpuCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  const targetWidth = Math.floor(canvas.clientWidth * dpr);
+  const targetHeight = Math.floor(canvas.clientHeight * dpr);
+
+  if (canvas.width !== targetWidth || canvas.height !== targetHeight || !depthTexture) {
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    if (depthTexture) depthTexture.destroy();
+    depthTexture = gpuDevice.createTexture({
+      size: [targetWidth, targetHeight],
+      format: 'depth24plus',
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    depthTextureView = depthTexture.createView();
+  }
+
+  // Calcular Matrices (Model, View, Projection, MVP)
+  const aspect = canvas.width / canvas.height;
+  const proj = Mat4.perspective(Mat4.create(), (45 * Math.PI) / 180, aspect, 0.5, 30.0);
+  
+  const eye = [
+    camDistance * Math.sin(rotY) * Math.cos(rotX),
+    camDistance * Math.sin(rotX),
+    camDistance * Math.cos(rotY) * Math.cos(rotX)
+  ];
+  const view = Mat4.lookAt(Mat4.create(), eye, [0, 0, 0], [0, 1, 0]);
+  const vp = Mat4.multiply(Mat4.create(), proj, view);
+
+  const model = Mat4.create();
+  const mvp = Mat4.multiply(Mat4.create(), vp, model);
+
+  // Vectores cámara Right y Up en espacio del mundo (para billboarding de partículas)
+  const camRight = [view[0], view[4], view[8]];
+  const camUp = [view[1], view[5], view[9]];
+
+  // Escribir Uniforms de Renderizado (384 bytes)
+  const uniformData = new ArrayBuffer(384);
+  const f32View = new Float32Array(uniformData);
+  const u32View = new Uint32Array(uniformData);
+
+  f32View.set(mvp, 0);          // 0..15: MVP
+  f32View.set(model, 16);        // 16..31: Model
+  f32View.set(model, 32);        // 32..47: NormalMat
+  f32View.set(camRight, 48);     // 48..50: CamRight
+  f32View[51] = 0.0;             // 51: padR
+  f32View.set(camUp, 52);        // 52..54: CamUp
+  f32View[55] = camDistance;     // 55: CamDist
+  f32View.set(eye, 56);          // 56..58: CamPos
+  u32View[59] = currentShaderMode; // 59: ShadingMode
+  f32View.set([3.0, 4.0, 3.0], 60); // 60..62: LightPos
+  f32View[63] = roughness;       // 63: Roughness
+  f32View[64] = 0.5;             // 64: NearZ
+  f32View[65] = 30.0;            // 65: FarZ
+  f32View[66] = now / 1000;      // 66: Time
+  f32View[67] = aspect;          // 67: Aspect
+
+  gpuDevice.queue.writeBuffer(meshUniformBuffer, 0, uniformData);
+
+  // Escribir Uniforms de Compute Shader (Partículas)
+  const simData = new Float32Array([dt, gravityStrength, 0.985, now / 1000]);
+  gpuDevice.queue.writeBuffer(particleSimUniformBuffer, 0, simData);
+
+  // =========================================================================
+  // SUMISIÓN ATÓMICA MONOLÍTICA (Compute Pass + Render Pass)
+  // =========================================================================
+  const commandEncoder = gpuDevice.createCommandEncoder();
+
+  // 1. Pase de Cómputo (si estamos en modo partículas y no está pausado)
+  if (currentGeometry === 'particles' && !isPaused) {
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(particleComputePipeline);
+    computePass.setBindGroup(0, particleComputeBindGroup);
+    computePass.dispatchWorkgroups(Math.ceil(PARTICLE_COUNT / 64));
+    computePass.end();
+  }
+
+  // 2. Pase de Renderizado
+  const renderPass = commandEncoder.beginRenderPass({
+    colorAttachments: [{
+      view: gpuContext.getCurrentTexture().createView(),
+      clearValue: { r: 0.04, g: 0.06, b: 0.09, a: 1.0 },
+      loadOp: 'clear',
+      storeOp: 'store',
+    }],
+    depthStencilAttachment: {
+      view: depthTextureView,
+      depthClearValue: 1.0,
+      depthLoadOp: 'clear',
+      depthStoreOp: 'store',
+    },
+  });
+
+  if (currentGeometry === 'particles') {
+    renderPass.setPipeline(particleRenderPipeline);
+    renderPass.setBindGroup(0, particleRenderBindGroup);
+    renderPass.setVertexBuffer(0, particleBuffer); // Consumo directo sin copia CPU
+    renderPass.draw(6, PARTICLE_COUNT, 0, 0); // 6 vértices por cuadrilátero instanciado
+    document.getElementById('metricPrimitives').textContent = `${(PARTICLE_COUNT / 1000).toFixed(1)}K pts`;
+    document.getElementById('metricPCIe').textContent = `-100% (${(PARTICLE_COUNT * 48 / 1024).toFixed(0)} KB/f)`;
+  } else {
+    renderPass.setPipeline(meshRenderPipeline);
+    renderPass.setBindGroup(0, meshBindGroup);
+    if (currentGeometry === 'torus') {
+      renderPass.setVertexBuffer(0, torusBuffer);
+      renderPass.draw(torusVertexCount);
+      document.getElementById('metricPrimitives').textContent = `${(torusVertexCount / 3000).toFixed(1)}K tris`;
+      document.getElementById('metricPCIe').textContent = `-100% (0 KB)`;
+    } else {
+      renderPass.setVertexBuffer(0, sphereBuffer);
+      renderPass.draw(sphereVertexCount);
+      document.getElementById('metricPrimitives').textContent = `${(sphereVertexCount / 3000).toFixed(1)}K tris`;
+      document.getElementById('metricPCIe').textContent = `-100% (0 KB)`;
+    }
+  }
+
+  renderPass.end();
+
+  // Enviar todos los comandos en una sola sumisión
+  gpuDevice.queue.submit([commandEncoder.finish()]);
+
+  requestAnimationFrame(renderLoop);
+}
+
+// ============================================================================
+// EVENTOS Y CONTROLES INTERACTIVOS
+// ============================================================================
+function setupEventListeners(canvas) {
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  });
+
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - lastMouseX;
+    const dy = e.clientY - lastMouseY;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+
+    rotY += dx * 0.008;
+    rotX += dy * 0.008;
+    rotX = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, rotX));
+  });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    // Zoom multiplicativo suave proporcional que previene bloqueos
+    const factor = Math.exp(e.deltaY * 0.0015);
+    camDistance = Math.max(0.6, Math.min(16.0, camDistance * factor));
+    updateZoomUI();
+  }, { passive: false });
+}
+
+function updateZoomUI() {
+  const rng = document.getElementById('rngZoom');
+  const val = document.getElementById('valZoom');
+  if (rng) rng.value = camDistance.toFixed(1);
+  if (val) val.textContent = camDistance.toFixed(1);
+}
+
+function onZoomSliderChanged() {
+  camDistance = parseFloat(document.getElementById('rngZoom').value);
+  document.getElementById('valZoom').textContent = camDistance.toFixed(1);
+}
+
+function zoomBy(delta) {
+  camDistance = Math.max(0.6, Math.min(16.0, camDistance + delta));
+  updateZoomUI();
+}
+
+function onShaderModeChanged() {
+  currentShaderMode = parseInt(document.getElementById('selShaderMode').value);
+  updateExplainer();
+}
+
+function onGeometryChanged() {
+  currentGeometry = document.getElementById('selGeometry').value;
+  const partGroup = document.getElementById('groupParticleSim');
+  if (currentGeometry === 'particles') {
+    partGroup.style.display = 'block';
+  } else {
+    partGroup.style.display = 'none';
+  }
+  updateExplainer();
+}
+
+function updateParams() {
+  roughness = parseFloat(document.getElementById('rngRoughness').value);
+  document.getElementById('valRoughness').textContent = roughness.toFixed(2);
+
+  rotSpeed = parseFloat(document.getElementById('rngSpeed').value);
+  document.getElementById('valSpeed').textContent = `${rotSpeed.toFixed(1)}x`;
+
+  gravityStrength = parseFloat(document.getElementById('rngGravity').value);
+  document.getElementById('valGravity').textContent = gravityStrength.toFixed(2);
+}
+
+function togglePauseSimulation() {
+  isPaused = !isPaused;
+  const btn = document.getElementById('btnPause');
+  btn.textContent = isPaused ? 'Reanudar Física' : 'Pausar Física';
+  btn.className = isPaused ? 'btn' : 'btn btn-primary';
+}
+
+function resetCamera() {
+  camDistance = 4.2;
+  rotX = 0.35;
+  rotY = 0.55;
+  updateZoomUI();
+}
+
+function updateExplainer() {
+  const title = document.getElementById('overlayTitle');
+  const desc = document.getElementById('overlayDesc');
+  const expHead = document.getElementById('explainerHeader');
+  const expText = document.getElementById('explainerText');
+
+  if (currentGeometry === 'particles') {
+    title.textContent = "Modo: Síntesis Híbrida Compute-to-Render";
+    desc.textContent = "32.768 partículas simuladas en Compute Shader y proyectadas en Render Pass";
+    expHead.textContent = "Interoperabilidad Silicio: STORAGE | VERTEX Directo";
+    expText.textContent = "El Compute Shader (@compute) actualiza las trayectorias gravitatorias y vórtices escribiendo en el búfer de almacenamiento en VRAM. Acto seguido, en el mismo GPUCommandEncoder, el Vertex Shader (@vertex) lee ese mismo búfer mediante el enlace @location(0) sin que un solo byte viaje por el bus PCIe ni intervenga la CPU.";
+    return;
+  }
+
+  switch (currentShaderMode) {
+    case 0:
+      title.textContent = "Modo: Iluminación PBR / Blinn-Phong";
+      desc.textContent = "Sombreado físico completo evaluado en el Fragment Shader (@fragment)";
+      expHead.textContent = "Pipeline Gráfico y Microarquitectura de Sombreado";
+      expText.textContent = "El silicio ejecuta el pipeline de renderizado completo: los vértices se proyectan mediante la matriz MVP en el Vertex Shader, el Rasterizador calcula la cobertura de píxeles e interpola normales en coordenadas homogéneas, y el Fragment Shader calcula el vector medio de Blinn-Phong y la componente especular conservando 60 FPS estables.";
+      break;
+    case 1:
+      title.textContent = "Modo: Diagnóstico de Normales de Superficie";
+      desc.textContent = "Vector normal (Nx, Ny, Nz) mapeado linealmente a canales de color (R, G, B)";
+      expHead.textContent = "Inspección de Orientación Espacial e Interpolación Baricéntrica";
+      expText.textContent = "Las componentes cartesianas de la normal unitaria [-1, 1] se transforman mediante la fórmula (N * 0.5 + 0.5) al espacio de color [0, 1]. El rojo representa la orientación hacia +X, el verde hacia +Y (cenit) y el azul hacia +Z. Comprueba cómo el rasterizador interpola suavemente el gradiente de normales a través de las primitivas.";
+      break;
+    case 2:
+      title.textContent = "Modo: Coordenadas Baricéntricas & Wireframe";
+      desc.textContent = "Visualización de (λ₀, λ₁, λ₂) y detección procedimental de aristas en Fragment Shader";
+      expHead.textContent = "La Física del Hardware Rasterizador y Funciones de Arista";
+      expText.textContent = "Cada triángulo recibe las coordenadas (1,0,0), (0,1,0) y (0,0,1). El rasterizador de función fija evalúa la distancia a cada arista por hardware. El Fragment Shader ejecuta smoothstep sobre el mínimo de las baricéntricas para dibujar la rejilla de alambre (wireframe) con nitidez subpíxel sin duplicar geometría ni requerir líneas adicionales.";
+      break;
+    case 3:
+      title.textContent = "Modo: Mapa de Profundidad Z-Buffer Linealizado";
+      desc.textContent = "Linealización de la distribución no lineal hiperbólica 1/z en WebGPU [0, 1]";
+      expHead.textContent = "La Distribución Hiperbólica del Depth Buffer y Early-Z";
+      expText.textContent = "En WebGPU, la coordenada de profundidad en pantalla no es lineal debido a la división por 'w'. La mayor precisión se concentra cerca del plano cercano (near plane). Este modo linealiza matemáticamente el valor 'z' en el Fragment Shader para que aprecies en escala de grises la distancia real a la cámara (negro = cercano, blanco = lejano).";
+      break;
+    case 4:
+      title.textContent = "Modo: Espacio de Textura & Coordenadas UV";
+      desc.textContent = "Atributos continuos de textura (U, V) interpolados con corrección de perspectiva";
+      expHead.textContent = "Mapeo Paramétrico y Unidades de Filtrado TFU";
+      expText.textContent = "Los atributos UV definidos en cada vértice viajan al fragment shader corregidos por perspectiva. El canal rojo refleja el eje U horizontal y el verde el eje V vertical, listos para alimentar a las unidades de filtrado de textura (TFUs) mediante textureSample.";
+      break;
+  }
+}
+
+// ============================================================================
+// NAVEGACIÓN POR PESTAÑAS
+// ============================================================================
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(`pane-${tabId}`).classList.add('active');
+  btn.classList.add('active');
+}
+
+function switchCodeTab(fileId, btn) {
+  document.querySelectorAll('#pane-code pre').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.editor-tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(`code-${fileId}`).style.display = 'block';
+  btn.classList.add('active');
+
+  const tag = document.getElementById('codeLangTag');
+  if (fileId === 'cs') tag.textContent = 'WGSL (Compute Shader @compute)';
+  else if (fileId === 'vs') tag.textContent = 'WGSL (Vertex Shader @vertex)';
+  else if (fileId === 'fs') tag.textContent = 'WGSL (Fragment Shader @fragment)';
+  else if (fileId === 'host') tag.textContent = 'JavaScript (WebGPU Host Runtime)';
+}
+
+// ============================================================================
+// MOTOR DE FALLBACK EN CANVAS 3D INTERACTIVO
+// ============================================================================
+function initCanvasFallback(canvas) {
+  const ctx = canvas.getContext('2d');
+  setupEventListeners(canvas);
+
+  const torusData = generateTorus(1.4, 0.55, 36, 18);
+  const torusTris = torusData.length / 33;
+
+  const sphereData = generateGeodesicSphere(1.4, 24, 24);
+  const sphereTris = sphereData.length / 33;
+
+  // Partículas para fallback (2.500 partículas)
+  const FALLBACK_PCOUNT = 2500;
+  const fbParticles = [];
+  const gmFallback = 3.3;
+  const eps2Fallback = 0.35;
+  for (let i = 0; i < FALLBACK_PCOUNT; i++) {
+    const angle = i * 0.381966 * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
+    const r = 0.6 + Math.pow(Math.random(), 0.8) * 2.2;
+    const spd = Math.sqrt(gmFallback * r / Math.pow(r * r + eps2Fallback, 0.75));
+    fbParticles.push({
+      x: Math.cos(angle) * r,
+      y: (Math.random() - 0.5) * 0.12,
+      z: Math.sin(angle) * r,
+      vx: -Math.sin(angle) * spd,
+      vy: (Math.random() - 0.5) * 0.04,
+      vz: Math.cos(angle) * spd,
+      r: r
+    });
+  }
+
+  function fallbackLoop(now) {
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    frameCount++;
+    if (now - fpsTimer >= 500) {
+      document.getElementById('metricFPS').textContent = `${((frameCount * 1000) / (now - fpsTimer)).toFixed(1)} FPS`;
+      document.getElementById('metricFrameTime').textContent = `${(dt * 1000).toFixed(1)} ms`;
+      frameCount = 0;
+      fpsTimer = now;
+    }
+
+    if (!isPaused) rotY += dt * 0.75 * rotSpeed;
+
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+
+    ctx.fillStyle = '#050811';
+    ctx.fillRect(0, 0, w, h);
+
+    const fov = 450;
+    const cx = w / 2;
+    const cy = h / 2;
+
+    const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+
+    // MODO A: Partículas enjambre Compute-to-Render
+    if (currentGeometry === 'particles') {
+      const gm = gravityStrength * 2.2;
+      ctx.globalCompositeOperation = 'lighter';
+
+      for (let i = 0; i < FALLBACK_PCOUNT; i++) {
+        const p = fbParticles[i];
+        if (!isPaused) {
+          const r2 = p.x * p.x + p.z * p.z;
+          const denom = Math.pow(r2 + eps2Fallback, 1.5);
+          p.vx += (-gm * p.x / denom) * dt;
+          p.vz += (-gm * p.z / denom) * dt;
+          p.vy += (-p.y * 6.0 - p.vy * 2.0) * dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.z += p.vz * dt;
+
+          if (r2 > 20.0 || (p.x * p.x + p.y * p.y + p.z * p.z) < 0.01) {
+            const a = i * 0.381966 * Math.PI * 2;
+            const nr = 0.6 + (i % 100) * 0.022;
+            p.x = Math.cos(a) * nr;
+            p.z = Math.sin(a) * nr;
+            p.y = 0;
+            const spd = Math.sqrt(gm * nr / Math.pow(nr * nr + eps2Fallback, 0.75));
+            p.vx = -Math.sin(a) * spd;
+            p.vz = Math.cos(a) * spd;
+            p.vy = 0;
+          }
+        }
+
+        // Rotación orbital
+        let x1 = p.x * cosY + p.z * sinY;
+        let z1 = -p.x * sinY + p.z * cosY;
+        let y2 = p.y * cosX - z1 * sinX;
+        let z2 = p.y * sinX + z1 * cosX + camDistance;
+
+        if (z2 > 0.2) {
+          const px = cx + (x1 / z2) * fov;
+          const py = cy - (y2 / z2) * fov;
+          const radius = Math.max(1.2, (2.2 / z2) * 2.8);
+
+          const coreF = Math.max(0, 1.0 - p.r / 2.8);
+          const rCol = Math.floor(90 + 165 * coreF);
+          const gCol = Math.floor(160 + 95 * (1.0 - coreF));
+          ctx.fillStyle = `rgba(${rCol}, ${gCol}, 255, 0.85)`;
+
+          ctx.beginPath();
+          ctx.arc(px, py, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+      document.getElementById('metricPrimitives').textContent = `2.5K pts`;
+      document.getElementById('metricPCIe').textContent = `-100% (120 KB/f)`;
+      requestAnimationFrame(fallbackLoop);
+      return;
+    }
+
+    // MODO B: Malla 3D (Toroide o Esfera)
+    const activeData = (currentGeometry === 'sphere') ? sphereData : torusData;
+    const numTris = (currentGeometry === 'sphere') ? sphereTris : torusTris;
+
+    const triangles = [];
+    for (let i = 0; i < numTris; i++) {
+      const idx = i * 33;
+      const getV = (offset) => {
+        let x = activeData[idx + offset];
+        let y = activeData[idx + offset + 1];
+        let z = activeData[idx + offset + 2];
+        let nx = activeData[idx + offset + 3];
+        let ny = activeData[idx + offset + 4];
+        let nz = activeData[idx + offset + 5];
+
+        let x1 = x * cosY + z * sinY;
+        let z1 = -x * sinY + z * cosY;
+        let nx1 = nx * cosY + nz * sinY;
+        let nz1 = -nx * sinY + nz * cosY;
+
+        let y2 = y * cosX - z1 * sinX;
+        let z2 = y * sinX + z1 * cosX;
+        let ny2 = ny * cosX - nz1 * sinX;
+        let nz2 = ny * sinX + nz1 * cosX;
+
+        z2 += camDistance;
+
+        const projX = cx + (x1 / z2) * fov;
+        const projY = cy - (y2 / z2) * fov;
+        return { px: projX, py: projY, z: z2, nx: nx1, ny: ny2, nz: nz2 };
+      };
+
+      const v0 = getV(0);
+      const v1 = getV(11);
+      const v2 = getV(22);
+
+      const area = (v1.px - v0.px) * (v2.py - v0.py) - (v1.py - v0.py) * (v2.px - v0.px);
+      if (area > 0) {
+        const avgZ = (v0.z + v1.z + v2.z) / 3;
+        triangles.push({ v0, v1, v2, avgZ });
+      }
+    }
+
+    triangles.sort((a, b) => b.avgZ - a.avgZ);
+
+    for (const tri of triangles) {
+      const { v0, v1, v2 } = tri;
+      const avgNx = (v0.nx + v1.nx + v2.nx) / 3;
+      const avgNy = (v0.ny + v1.ny + v2.ny) / 3;
+      const avgNz = (v0.nz + v1.nz + v2.nz) / 3;
+
+      let fillStyle = '#38bdf8';
+      if (currentShaderMode === 1) {
+        const r = Math.floor((avgNx * 0.5 + 0.5) * 255);
+        const g = Math.floor((avgNy * 0.5 + 0.5) * 255);
+        const b = Math.floor((avgNz * 0.5 + 0.5) * 255);
+        fillStyle = `rgb(${r},${g},${b})`;
+      } else if (currentShaderMode === 2) {
+        fillStyle = '#0f172a';
+      } else if (currentShaderMode === 3) {
+        const depth = Math.max(0, Math.min(255, Math.floor((tri.avgZ - 2.0) / 4.0 * 255)));
+        fillStyle = `rgb(${depth},${depth},${depth})`;
+      } else {
+        // Modo 0: Iluminación PBR / Blinn-Phong Completa Modulada en Silicio / Canvas
+        const lx = 0.45, ly = 0.65, lz = 0.61; // Vector luz normalizado
+        const hx = lx, hy = ly, hz = lz + 1.0;
+        const hLen = Math.hypot(hx, hy, hz);
+        const nhx = hx / hLen, nhy = hy / hLen, nhz = hz / hLen;
+
+        const NdotL = Math.max(0, avgNx * lx + avgNy * ly + avgNz * lz);
+        const NdotH = Math.max(0, avgNx * nhx + avgNy * nhy + avgNz * nhz);
+
+        const smoothness = 1.0 - roughness;
+        const shiny = 4.0 + (128.0 - 4.0) * (smoothness * smoothness);
+        const specPower = Math.pow(NdotH, shiny);
+        const specLobe = specPower * (0.35 + 1.55 * smoothness);
+
+        const diff = NdotL * (0.65 + 0.50 * roughness);
+        const amb = 0.05 + 0.16 * roughness;
+
+        const rVal = Math.min(255, Math.floor((amb * 0.15 + diff * 0.22 + specLobe * 0.95) * 255));
+        const gVal = Math.min(255, Math.floor((amb * 0.40 + diff * 0.65 + specLobe * 0.95) * 255));
+        const bVal = Math.min(255, Math.floor((amb * 0.70 + diff * 0.98 + specLobe * 1.00) * 255));
+        fillStyle = `rgb(${rVal}, ${gVal}, ${bVal})`;
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(v0.px, v0.py);
+      ctx.lineTo(v1.px, v1.py);
+      ctx.lineTo(v2.px, v2.py);
+      ctx.closePath();
+      ctx.fillStyle = fillStyle;
+      ctx.fill();
+
+      if (currentShaderMode === 2) {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    document.getElementById('metricPrimitives').textContent = `${(triangles.length / 1000).toFixed(1)}K tris`;
+    document.getElementById('metricPCIe').textContent = `-100% (0 KB)`;
+    requestAnimationFrame(fallbackLoop);
+  }
+
+  requestAnimationFrame(fallbackLoop);
+}
+
+// Iniciar aplicación al cargar
+window.addEventListener('DOMContentLoaded', () => {
+  initWebGPU();
+  updateExplainer();
+});
+</script>
+
+</body>
+</html>

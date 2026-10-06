@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taller Práctico: El Contrato del Shader — Decoradores WGSL y Mapeo Host-Device</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #131b2e;
+      --card-border: #23304d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --code-bg: #090d16;
+      --tab-active: #1e293b;
+      --tab-inactive: #0f172a;
+      
+      /* VS Code Dark+ Syntax Colors */
+      --syn-keyword: #c586c0;
+      --syn-storage: #569cd6;
+      --syn-type: #4ec9b0;
+      --syn-var: #9cdcfe;
+      --syn-func: #dcdcaa;
+      --syn-num: #b5cea8;
+      --syn-str: #ce9178;
+      --syn-comment: #6a9955;
+      --syn-decorator: #ffd700;
+      --syn-builtin: #4fc1ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 2rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.75rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 900px;
+    }
+
+    /* Toolbar de Foco / Spotlight */
+    .interactive-toolbar {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .toolbar-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: #475569;
+    }
+
+    .btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    /* Banner explicativo sincronizado */
+    .explanation-banner {
+      background: rgba(30, 41, 59, 0.7);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 0.9rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .explanation-banner .icon {
+      font-size: 1.2rem;
+      line-height: 1;
+      margin-top: 0.1rem;
+    }
+
+    /* Grid principal de 2 columnas */
+    .grid-main {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 1024px) {
+      .grid-main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Tarjetas */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      background: #0f172a;
+      border-bottom: 1px solid var(--card-border);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #eab308; }
+    .dot-green { background: #22c55e; }
+
+    .tabs {
+      display: flex;
+      gap: 2px;
+      margin-left: 1rem;
+    }
+
+    .tab-btn {
+      background: var(--tab-inactive);
+      color: var(--text-muted);
+      border: none;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .tab-btn.active {
+      background: var(--code-bg);
+      color: var(--text-main);
+      border-top: 2px solid var(--accent);
+    }
+
+    /* Editor de Código */
+    .code-container {
+      background: var(--code-bg);
+      padding: 1rem 0;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", "Fira Code", Consolas, Menlo, monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      flex-grow: 1;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 1rem;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .code-line.spotlight {
+      background: rgba(56, 189, 248, 0.14);
+      border-left: 3px solid var(--accent);
+      padding-left: calc(1rem - 3px);
+    }
+
+    .code-line.dimmed {
+      opacity: 0.28;
+      filter: grayscale(40%);
+    }
+
+    .line-num {
+      width: 2.2rem;
+      color: #475569;
+      text-align: right;
+      margin-right: 1.25rem;
+      user-select: none;
+      font-size: 0.8rem;
+    }
+
+    .line-content {
+      white-space: pre;
+      color: #d4d4d4;
+    }
+
+    /* Tokens */
+    .t-dec { color: var(--syn-decorator); font-weight: 700; }
+    .t-builtin { color: var(--syn-builtin); font-weight: 600; }
+    .t-kw { color: var(--syn-keyword); }
+    .t-st { color: var(--syn-storage); }
+    .t-tp { color: var(--syn-type); }
+    .t-vr { color: var(--syn-var); }
+    .t-fn { color: var(--syn-func); }
+    .t-nm { color: var(--syn-num); }
+    .t-cm { color: var(--syn-comment); font-style: italic; }
+    .t-op { color: #d4d4d4; }
+    .t-str { color: var(--syn-str); }
+
+    /* Panel Interactivo de la Derecha */
+    .panel-content {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      flex-grow: 1;
+    }
+
+    .control-box {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .control-box-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .slider-row span.val {
+      color: var(--accent);
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Visualizador de Rejilla SIMD */
+    .grid-visualizer-container {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .canvas-legend {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .legend-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    #gridCanvas {
+      background: #060911;
+      border-radius: 6px;
+      border: 1px solid #1e293b;
+      cursor: crosshair;
+    }
+
+    /* Caja de Inspector de Coordenadas */
+    .coord-inspector {
+      background: #060911;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.8rem;
+    }
+
+    .coord-title {
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .coord-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.25rem;
+    }
+
+    .coord-label { color: #64748b; }
+    .coord-value { color: #f8fafc; font-weight: 600; }
+
+    /* Diagrama de Binding */
+    .binding-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .bridge-node {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .bridge-left {
+      color: #93c5fd;
+      font-family: monospace;
+    }
+
+    .bridge-arrow {
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .bridge-right {
+      color: var(--syn-decorator);
+      font-family: monospace;
+      text-align: right;
+    }
+
+    .freq-tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      margin-top: 0.25rem;
+    }
+
+    /* Métricas del Hardware */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .metric-card {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.6rem;
+      text-align: center;
+    }
+
+    .metric-num {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #ffffff;
+      font-family: monospace;
+    }
+
+    .metric-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="badge">Taller Práctico • Fundamentos WGSL</div>
+    <h1>El Contrato del Shader: Decoradores y Mapeo Host-Device</h1>
+    <p class="subtitle">
+      Explora interactivamente cómo <code>@compute</code>, <code>@workgroup_size</code>, <code>@group</code>, <code>@binding</code> y <code>@builtin</code> enlazan el código JavaScript de la CPU con los transistores y registros de la GPU sin sobrecarga en tiempo de ejecución.
+    </p>
+  </header>
+
+  <!-- Toolbar de Foco / Spotlight -->
+  <div class="interactive-toolbar">
+    <div class="toolbar-title">
+      <span>🎯</span> Foco Pedagógico
+    </div>
+    <div class="btn-group">
+      <button class="btn active" onclick="setSpotlight('all', this)">
+        <span>📜</span> Contrato Completo
+      </button>
+      <button class="btn" onclick="setSpotlight('entry', this)">
+        <span>⚡</span> @compute & @workgroup_size
+      </button>
+      <button class="btn" onclick="setSpotlight('bindings', this)">
+        <span>🔌</span> @group & @binding (Slots)
+      </button>
+      <button class="btn" onclick="setSpotlight('builtins', this)">
+        <span>📐</span> @builtin (Coordenadas Físicas)
+      </button>
+      <button class="btn" onclick="setSpotlight('guard', this)">
+        <span>🛡️</span> Salvaguarda de Límites
+      </button>
+    </div>
+  </div>
+
+  <!-- Banner Explicativo Dinámico -->
+  <div class="explanation-banner" id="explanationBanner">
+    <div class="icon">💡</div>
+    <div id="explanationText">
+      <strong>El Contrato Formal:</strong> En WGSL no hay reflexión dinámica ni runtime interpretado. Cada decorador <code>@</code> es una instrucción inmutable para el compilador de WebGPU que fija slots físicos de memoria, registros de hardware y la geometría concurrente del silicio.
+    </div>
+  </div>
+
+  <!-- Grid Principal -->
+  <div class="grid-main">
+    
+    <!-- Columna Izquierda: Código con Tabs -->
+    <div class="card">
+      <div class="card-header">
+        <div class="window-dots">
+          <div class="dot dot-red"></div>
+          <div class="dot dot-yellow"></div>
+          <div class="dot dot-green"></div>
+        </div>
+        <div class="tabs">
+          <button class="tab-btn active" id="tabWgslBtn" onclick="switchTab('wgsl')">kernel.wgsl (GPU)</button>
+          <button class="tab-btn" id="tabJsBtn" onclick="switchTab('js')">host_pipeline.js (CPU)</button>
+        </div>
+      </div>
+
+      <!-- Vista Código WGSL -->
+      <div class="code-container" id="codeWgsl">
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">1</span>
+          <span class="line-content"><span class="t-cm">// 1. Parámetros globales del fotograma (Frecuencia: Por Frame)</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">2</span>
+          <span class="line-content"><span class="t-dec">@group</span><span class="t-op">(</span><span class="t-nm">0</span><span class="t-op">)</span> <span class="t-dec">@binding</span><span class="t-op">(</span><span class="t-nm">0</span><span class="t-op">)</span> <span class="t-st">var</span><span class="t-op">&lt;</span><span class="t-tp">uniform</span><span class="t-op">&gt;</span> <span class="t-vr">config</span><span class="t-op">:</span> <span class="t-tp">ParametrosGlobales</span><span class="t-op">;</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">3</span>
+          <span class="line-content"><span class="t-dec">@group</span><span class="t-op">(</span><span class="t-nm">0</span><span class="t-op">)</span> <span class="t-dec">@binding</span><span class="t-op">(</span><span class="t-nm">1</span><span class="t-op">)</span> <span class="t-st">var</span><span class="t-op">&lt;</span><span class="t-tp">storage</span><span class="t-op">,</span> <span class="t-tp">read</span><span class="t-op">&gt;</span> <span class="t-vr">origen</span><span class="t-op">:</span> <span class="t-tp">array</span><span class="t-op">&lt;</span><span class="t-tp">vec4</span><span class="t-op">&lt;</span><span class="t-tp">f32</span><span class="t-op">&gt;&gt;;</span></span>
+        </div>
+        <div class="code-line">
+          <span class="line-num">4</span>
+          <span class="line-content"></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">5</span>
+          <span class="line-content"><span class="t-cm">// 2. Búfer de salida mutable (Frecuencia: Por Pase de Cómputo)</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">6</span>
+          <span class="line-content"><span class="t-dec">@group</span><span class="t-op">(</span><span class="t-nm">1</span><span class="t-op">)</span> <span class="t-dec">@binding</span><span class="t-op">(</span><span class="t-nm">0</span><span class="t-op">)</span> <span class="t-st">var</span><span class="t-op">&lt;</span><span class="t-tp">storage</span><span class="t-op">,</span> <span class="t-tp">read_write</span><span class="t-op">&gt;</span> <span class="t-vr">destino</span><span class="t-op">:</span> <span class="t-tp">array</span><span class="t-op">&lt;</span><span class="t-tp">vec4</span><span class="t-op">&lt;</span><span class="t-tp">f32</span><span class="t-op">&gt;&gt;;</span></span>
+        </div>
+        <div class="code-line">
+          <span class="line-num">7</span>
+          <span class="line-content"></span>
+        </div>
+        <div class="code-line" data-section="entry">
+          <span class="line-num">8</span>
+          <span class="line-content"><span class="t-cm">// 3. Punto de entrada de cómputo y geometría física del bloque</span></span>
+        </div>
+        <div class="code-line" data-section="entry">
+          <span class="line-num">9</span>
+          <span class="line-content"><span class="t-dec">@compute</span> <span class="t-dec">@workgroup_size</span><span class="t-op">(</span><span class="t-nm">16</span><span class="t-op">,</span> <span class="t-nm">16</span><span class="t-op">,</span> <span class="t-nm">1</span><span class="t-op">)</span></span>
+        </div>
+        <div class="code-line" data-section="builtins">
+          <span class="line-num">10</span>
+          <span class="line-content"><span class="t-kw">fn</span> <span class="t-fn">procesar_matriz</span><span class="t-op">(</span></span>
+        </div>
+        <div class="code-line" data-section="builtins">
+          <span class="line-num">11</span>
+          <span class="line-content">    <span class="t-dec">@builtin</span><span class="t-op">(</span><span class="t-builtin">global_invocation_id</span><span class="t-op">)</span>   <span class="t-vr">global_id</span><span class="t-op">:</span>   <span class="t-tp">vec3</span><span class="t-op">&lt;</span><span class="t-tp">u32</span><span class="t-op">&gt;,</span> <span class="t-cm">// Universal (X, Y, Z)</span></span>
+        </div>
+        <div class="code-line" data-section="builtins">
+          <span class="line-num">12</span>
+          <span class="line-content">    <span class="t-dec">@builtin</span><span class="t-op">(</span><span class="t-builtin">workgroup_id</span><span class="t-op">)</span>           <span class="t-vr">group_id</span><span class="t-op">:</span>    <span class="t-tp">vec3</span><span class="t-op">&lt;</span><span class="t-tp">u32</span><span class="t-op">&gt;,</span> <span class="t-cm">// Bloque en la rejilla</span></span>
+        </div>
+        <div class="code-line" data-section="builtins">
+          <span class="line-num">13</span>
+          <span class="line-content">    <span class="t-dec">@builtin</span><span class="t-op">(</span><span class="t-builtin">local_invocation_id</span><span class="t-op">)</span>    <span class="t-vr">local_id</span><span class="t-op">:</span>    <span class="t-tp">vec3</span><span class="t-op">&lt;</span><span class="t-tp">u32</span><span class="t-op">&gt;,</span> <span class="t-cm">// Posición en el bloque</span></span>
+        </div>
+        <div class="code-line" data-section="builtins">
+          <span class="line-num">14</span>
+          <span class="line-content">    <span class="t-dec">@builtin</span><span class="t-op">(</span><span class="t-builtin">local_invocation_index</span><span class="t-op">)</span> <span class="t-vr">local_idx</span><span class="t-op">:</span>   <span class="t-tp">u32</span>        <span class="t-cm">// Índice lineal (0..255)</span></span>
+        </div>
+        <div class="code-line">
+          <span class="line-num">15</span>
+          <span class="line-content"><span class="t-op">)</span> <span class="t-op">{</span></span>
+        </div>
+        <div class="code-line" data-section="guard">
+          <span class="line-num">16</span>
+          <span class="line-content">    <span class="t-cm">// ⚠️ SALVAGUARDA DE LÍMITES: Apaga los hilos sobrantes en el silicio</span></span>
+        </div>
+        <div class="code-line" data-section="guard">
+          <span class="line-num">17</span>
+          <span class="line-content">    <span class="t-kw">if</span> <span class="t-op">(</span><span class="t-vr">global_id</span><span class="t-op">.</span><span class="t-vr">x</span> <span class="t-op">&gt;=</span> <span class="t-vr">config</span><span class="t-op">.</span><span class="t-vr">ancho</span> <span class="t-op">||</span> <span class="t-vr">global_id</span><span class="t-op">.</span><span class="t-vr">y</span> <span class="t-op">&gt;=</span> <span class="t-vr">config</span><span class="t-op">.</span><span class="t-vr">alto</span><span class="t-op">)</span> <span class="t-op">{</span></span>
+        </div>
+        <div class="code-line" data-section="guard">
+          <span class="line-num">18</span>
+          <span class="line-content">        <span class="t-kw">return</span><span class="t-op">;</span></span>
+        </div>
+        <div class="code-line" data-section="guard">
+          <span class="line-num">19</span>
+          <span class="line-content">    <span class="t-op">}</span></span>
+        </div>
+        <div class="code-line">
+          <span class="line-num">20</span>
+          <span class="line-content"></span>
+        </div>
+        <div class="code-line">
+          <span class="line-num">21</span>
+          <span class="line-content">    <span class="t-st">let</span> <span class="t-vr">indice_lineal</span> <span class="t-op">=</span> <span class="t-vr">global_id</span><span class="t-op">.</span><span class="t-vr">y</span> <span class="t-op">*</span> <span class="t-vr">config</span><span class="t-op">.</span><span class="t-vr">ancho</span> <span class="t-op">+</span> <span class="t-vr">global_id</span><span class="t-op">.</span><span class="t-vr">x</span><span class="t-op">;</span></span>
+        </div>
+        <div class="code-line">
+          <span class="line-num">22</span>
+          <span class="line-content">    <span class="t-vr">destino</span><span class="t-op">[</span><span class="t-vr">indice_lineal</span><span class="t-op">]</span> <span class="t-op">=</span> <span class="t-vr">origen</span><span class="t-op">[</span><span class="t-vr">indice_lineal</span><span class="t-op">]</span> <span class="t-op">*</span> <span class="t-vr">config</span><span class="t-op">.</span><span class="t-vr">factor_escala</span><span class="t-op">;</span></span>
+        </div>
+        <div class="code-line">
+          <span class="line-num">23</span>
+          <span class="line-content"><span class="t-op">}</span></span>
+        </div>
+      </div>
+
+      <!-- Vista Código JavaScript Host -->
+      <div class="code-container" id="codeJs" style="display: none;">
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">1</span>
+          <span class="line-content"><span class="t-cm">// 1. Creación del GPUBindGroup 0 en JavaScript (CPU)</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">2</span>
+          <span class="line-content"><span class="t-st">const</span> <span class="t-vr">bindGroup0</span> <span class="t-op">=</span> <span class="t-vr">device</span><span class="t-op">.</span><span class="t-fn">createBindGroup</span><span class="t-op">({</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">3</span>
+          <span class="line-content">  <span class="t-vr">layout</span><span class="t-op">:</span> <span class="t-vr">pipeline</span><span class="t-op">.</span><span class="t-fn">getBindGroupLayout</span><span class="t-op">(</span><span class="t-nm">0</span><span class="t-op">),</span> <span class="t-cm">// Enlaza con @group(0)</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">4</span>
+          <span class="line-content">  <span class="t-vr">entries</span><span class="t-op">:</span> <span class="t-op">[</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">5</span>
+          <span class="line-content">    <span class="t-op">{</span> <span class="t-vr">binding</span><span class="t-op">:</span> <span class="t-nm">0</span><span class="t-op">,</span> <span class="t-vr">resource</span><span class="t-op">:</span> <span class="t-op">{</span> <span class="t-vr">buffer</span><span class="t-op">:</span> <span class="t-vr">gpuBufConfig</span> <span class="t-op">}</span> <span class="t-op">},</span>  <span class="t-cm">// -> @binding(0)</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">6</span>
+          <span class="line-content">    <span class="t-op">{</span> <span class="t-vr">binding</span><span class="t-op">:</span> <span class="t-nm">1</span><span class="t-op">,</span> <span class="t-vr">resource</span><span class="t-op">:</span> <span class="t-op">{</span> <span class="t-vr">buffer</span><span class="t-op">:</span> <span class="t-vr">gpuBufOrigen</span> <span class="t-op">}</span> <span class="t-op">}</span>   <span class="t-cm">// -> @binding(1)</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">7</span>
+          <span class="line-content">  <span class="t-op">]</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">8</span>
+          <span class="line-content"><span class="t-op">});</span></span>
+        </div>
+        <div class="code-line">
+          <span class="line-num">9</span>
+          <span class="line-content"></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">10</span>
+          <span class="line-content"><span class="t-cm">// 2. Creación del GPUBindGroup 1 (Búfer de salida mutable)</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">11</span>
+          <span class="line-content"><span class="t-st">const</span> <span class="t-vr">bindGroup1</span> <span class="t-op">=</span> <span class="t-vr">device</span><span class="t-op">.</span><span class="t-fn">createBindGroup</span><span class="t-op">({</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">12</span>
+          <span class="line-content">  <span class="t-vr">layout</span><span class="t-op">:</span> <span class="t-vr">pipeline</span><span class="t-op">.</span><span class="t-fn">getBindGroupLayout</span><span class="t-op">(</span><span class="t-nm">1</span><span class="t-op">),</span> <span class="t-cm">// Enlaza con @group(1)</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">13</span>
+          <span class="line-content">  <span class="t-vr">entries</span><span class="t-op">:</span> <span class="t-op">[</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">14</span>
+          <span class="line-content">    <span class="t-op">{</span> <span class="t-vr">binding</span><span class="t-op">:</span> <span class="t-nm">0</span><span class="t-op">,</span> <span class="t-vr">resource</span><span class="t-op">:</span> <span class="t-op">{</span> <span class="t-vr">buffer</span><span class="t-op">:</span> <span class="t-vr">gpuBufDestino</span> <span class="t-op">}</span> <span class="t-op">}</span> <span class="t-cm">// -> @binding(0)</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">15</span>
+          <span class="line-content">  <span class="t-op">]</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">16</span>
+          <span class="line-content"><span class="t-op">});</span></span>
+        </div>
+        <div class="code-line">
+          <span class="line-num">17</span>
+          <span class="line-content"></span>
+        </div>
+        <div class="code-line" data-section="entry">
+          <span class="line-num">18</span>
+          <span class="line-content"><span class="t-cm">// 3. Despacho masivo a la GPU</span></span>
+        </div>
+        <div class="code-line" data-section="entry">
+          <span class="line-num">19</span>
+          <span class="line-content"><span class="t-st">const</span> <span class="t-vr">pass</span> <span class="t-op">=</span> <span class="t-vr">commandEncoder</span><span class="t-op">.</span><span class="t-fn">beginComputePass</span><span class="t-op">();</span></span>
+        </div>
+        <div class="code-line" data-section="entry">
+          <span class="line-num">20</span>
+          <span class="line-content"><span class="t-vr">pass</span><span class="t-op">.</span><span class="t-fn">setPipeline</span><span class="t-op">(</span><span class="t-vr">pipeline</span><span class="t-op">);</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">21</span>
+          <span class="line-content"><span class="t-vr">pass</span><span class="t-op">.</span><span class="t-fn">setBindGroup</span><span class="t-op">(</span><span class="t-nm">0</span><span class="t-op">,</span> <span class="t-vr">bindGroup0</span><span class="t-op">);</span> <span class="t-cm">// Asigna Group 0</span></span>
+        </div>
+        <div class="code-line" data-section="bindings">
+          <span class="line-num">22</span>
+          <span class="line-content"><span class="t-vr">pass</span><span class="t-op">.</span><span class="t-fn">setBindGroup</span><span class="t-op">(</span><span class="t-nm">1</span><span class="t-op">,</span> <span class="t-vr">bindGroup1</span><span class="t-op">);</span> <span class="t-cm">// Asigna Group 1</span></span>
+        </div>
+        <div class="code-line" data-section="entry">
+          <span class="line-num">23</span>
+          <span class="line-content"><span class="t-st">const</span> <span class="t-vr">gruposX</span> <span class="t-op">=</span> <span class="t-tp">Math</span><span class="t-op">.</span><span class="t-fn">ceil</span><span class="t-op">(</span><span class="t-vr">ancho</span> <span class="t-op">/</span> <span class="t-nm">16</span><span class="t-op">);</span> <span class="t-cm">// División entera redondeada al alza</span></span>
+        </div>
+        <div class="code-line" data-section="entry">
+          <span class="line-num">24</span>
+          <span class="line-content"><span class="t-st">const</span> <span class="t-vr">gruposY</span> <span class="t-op">=</span> <span class="t-tp">Math</span><span class="t-op">.</span><span class="t-fn">ceil</span><span class="t-op">(</span><span class="t-vr">alto</span> <span class="t-op">/</span> <span class="t-nm">16</span><span class="t-op">);</span></span>
+        </div>
+        <div class="code-line" data-section="entry">
+          <span class="line-num">25</span>
+          <span class="line-content"><span class="t-vr">pass</span><span class="t-op">.</span><span class="t-fn">dispatchWorkgroups</span><span class="t-op">(</span><span class="t-vr">gruposX</span><span class="t-op">,</span> <span class="t-vr">gruposY</span><span class="t-op">,</span> <span class="t-nm">1</span><span class="t-op">);</span></span>
+        </div>
+        <div class="code-line" data-section="entry">
+          <span class="line-num">26</span>
+          <span class="line-content"><span class="t-vr">pass</span><span class="t-op">.</span><span class="t-fn">end</span><span class="t-op">();</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Columna Derecha: Panel Interactivo Dinámico -->
+    <div class="card">
+      <div class="card-header">
+        <span style="font-weight: 700; font-size: 0.9rem; color: #cbd5e1;">SIMULADOR DEL SILICIO Y ESTADO DEL HARDWARE</span>
+      </div>
+
+      <div class="panel-content">
+        
+        <!-- Vista 1: Controles de Geometría y Grids -->
+        <div class="control-box">
+          <div class="control-box-title">
+            <span>⚙️ Parámetros del Problema</span>
+            <span style="color: var(--accent); font-size: 0.8rem;" id="presetLabel">Baldosas 16x16</span>
+          </div>
+
+          <div class="slider-row">
+            <span>Tamaño @workgroup_size (X × Y):</span>
+            <span class="val" id="valWgSize">16 × 16 (256 hilos)</span>
+          </div>
+          <input type="range" id="sliderWg" min="0" max="3" step="1" value="2" oninput="updateSim()">
+
+          <div style="margin-top: 0.75rem;">
+            <div class="slider-row">
+              <span>Dimensión del Problema (Ancho):</span>
+              <span class="val" id="valAncho">36 px</span>
+            </div>
+            <input type="range" id="sliderAncho" min="16" max="64" step="1" value="36" oninput="updateSim()">
+          </div>
+
+          <div style="margin-top: 0.5rem;">
+            <div class="slider-row">
+              <span>Dimensión del Problema (Alto):</span>
+              <span class="val" id="valAlto">24 px</span>
+            </div>
+            <input type="range" id="sliderAlto" min="8" max="48" step="1" value="24" oninput="updateSim()">
+          </div>
+        </div>
+
+        <!-- Canvas de la Rejilla SIMT -->
+        <div class="grid-visualizer-container">
+          <div class="canvas-legend">
+            <div class="legend-item">
+              <div class="legend-box" style="background: #0284c7;"></div>
+              <span>Hilos Activos (Válidos)</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box" style="background: #ef4444;"></div>
+              <span>Hilos Fuera de Límites</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box" style="border: 1px dashed #38bdf8;"></div>
+              <span>Borde de Workgroup</span>
+            </div>
+          </div>
+          <canvas id="gridCanvas" width="340" height="240"></canvas>
+          <div style="font-size: 0.75rem; color: #64748b;">Pasa el ratón sobre cualquier casilla para inspeccionar sus variables @builtin</div>
+        </div>
+
+        <!-- Inspector de Coordenadas Físicas en Silicio -->
+        <div class="coord-inspector" id="coordInspector">
+          <div class="coord-title">📡 Inspector de Variables @builtin del Hilo</div>
+          <div class="coord-row">
+            <span class="coord-label">@builtin(global_invocation_id):</span>
+            <span class="coord-value" id="dispGlobalId">vec3&lt;u32&gt;(12, 8, 0)</span>
+          </div>
+          <div class="coord-row">
+            <span class="coord-label">@builtin(workgroup_id):</span>
+            <span class="coord-value" id="dispGroupId">vec3&lt;u32&gt;(0, 0, 0)</span>
+          </div>
+          <div class="coord-row">
+            <span class="coord-label">@builtin(local_invocation_id):</span>
+            <span class="coord-value" id="dispLocalId">vec3&lt;u32&gt;(12, 8, 0)</span>
+          </div>
+          <div class="coord-row">
+            <span class="coord-label">@builtin(local_invocation_index):</span>
+            <span class="coord-value" id="dispLocalIdx">140</span>
+          </div>
+          <div class="coord-row" style="margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed #1e293b;">
+            <span class="coord-label">Estado Físico en Silicio:</span>
+            <span class="coord-value" id="dispStatus" style="color: var(--success);">✅ Activo (Dentro de Límites)</span>
+          </div>
+        </div>
+
+        <!-- Métricas del Silicio -->
+        <div class="metrics-row">
+          <div class="metric-card">
+            <div class="metric-num" id="metricWorkgroups">6</div>
+            <div class="metric-label">Workgroups Despachados</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-num" id="metricThreads">1536</div>
+            <div class="metric-label">Total Hilos en GPU</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-num" id="metricEfficiency">56%</div>
+            <div class="metric-label">Eficiencia Útil</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sección Inferior: El Mapeo Host-Device Visual -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+      <span style="font-weight: 700; font-size: 0.9rem; color: #cbd5e1;">ARQUITECTURA DE ENLACE: JAVASCRIPT BINDGROUPS VS WGSL BINDINGS</span>
+    </div>
+    <div style="padding: 1.25rem;">
+      <div class="binding-diagram">
+        <div class="bridge-node">
+          <div class="bridge-left">
+            <strong>CPU (JavaScript WebGPU)</strong><br/>
+            <code>gpuBufConfig (Uniform, 64B)</code><br/>
+            <span class="freq-tag">Frecuencia: Por Frame (Global)</span>
+          </div>
+          <div class="bridge-arrow">═══ Descriptor Slot (0, 0) ═══▶</div>
+          <div class="bridge-right">
+            <strong>GPU (Shader WGSL)</strong><br/>
+            <code>@group(0) @binding(0)</code><br/>
+            <span style="color: #64748b;">var&lt;uniform&gt; config</span>
+          </div>
+        </div>
+
+        <div class="bridge-node">
+          <div class="bridge-left">
+            <strong>CPU (JavaScript WebGPU)</strong><br/>
+            <code>gpuBufOrigen (Storage Buffer)</code><br/>
+            <span class="freq-tag">Frecuencia: Por Frame</span>
+          </div>
+          <div class="bridge-arrow">═══ Descriptor Slot (0, 1) ═══▶</div>
+          <div class="bridge-right">
+            <strong>GPU (Shader WGSL)</strong><br/>
+            <code>@group(0) @binding(1)</code><br/>
+            <span style="color: #64748b;">var&lt;storage, read&gt; origen</span>
+          </div>
+        </div>
+
+        <div class="bridge-node">
+          <div class="bridge-left">
+            <strong>CPU (JavaScript WebGPU)</strong><br/>
+            <code>gpuBufDestino (Read/Write Storage)</code><br/>
+            <span class="freq-tag" style="background: rgba(52, 211, 153, 0.15); color: #34d399;">Frecuencia: Por Pase de Cómputo</span>
+          </div>
+          <div class="bridge-arrow">═══ Descriptor Slot (1, 0) ═══▶</div>
+          <div class="bridge-right">
+            <strong>GPU (Shader WGSL)</strong><br/>
+            <code>@group(1) @binding(0)</code><br/>
+            <span style="color: #64748b;">var&lt;storage, read_write&gt; destino</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const wgPresets = [
+    { x: 8,  y: 8, label: "8 × 8 (64 hilos - 2 Warps)" },
+    { x: 16, y: 8, label: "16 × 8 (128 hilos - 4 Warps)" },
+    { x: 16, y: 16, label: "16 × 16 (256 hilos - 8 Warps)" },
+    { x: 32, y: 1, label: "32 × 1 (32 hilos - 1 Warp 1D)" }
+  ];
+
+  const explanations = {
+    'all': '<strong>El Contrato Formal:</strong> En WGSL no hay reflexión dinámica ni runtime interpretado. Cada decorador <code>@</code> es una instrucción inmutable para el compilador de WebGPU que fija slots físicos de memoria, registros de hardware y la geometría concurrente del silicio.',
+    'entry': '<strong>@compute y @workgroup_size(X, Y, Z):</strong> Declara el punto de entrada ejecutable y agrupa a los hilos concurrentes en baldosas físicas. Las GPUs despachan los hilos en unidades SIMD de 32 (Warps en NVIDIA) o 32/64 (Wavefronts en AMD). Un tamaño que no sea múltiplo de 32 desperdicia potencia de cálculo.',
+    'bindings': '<strong>@group(G) y @binding(B):</strong> Mapean tablas de descriptores compiladas en JavaScript (<code>GPUBindGroup</code>) con punteros estáticos en el silicio. Se organizan por frecuencia de cambio (Grupo 0 para datos globales del fotograma, Grupo 1 para pases específicos) para mantener caliente la caché de la GPU.',
+    'builtins': '<strong>@builtin(...):</strong> Inyecta variables físicas calculadas por el hardware en cada hilo. La coordenada universal <code>global_invocation_id</code> se calcula en hardware aplicando la fórmula matemática: <code>(workgroup_id × workgroup_size) + local_invocation_id</code>.',
+    'guard': '<strong>Salvaguarda de Límites (Out-of-Bounds Guard):</strong> Como los workgroups se despachan en bloques fijos múltiplos de 16 o 32, cuando las dimensiones del problema no encajan exactamente, se generan hilos sobrantes al borde (en rojo). La instrucción <code>if (global_id.x >= ancho) return;</code> desactiva esos hilos en el silicio para no corromper la memoria.'
+  };
+
+  let hoveredCoord = { x: 10, y: 8 };
+
+  function switchTab(tab) {
+    document.getElementById('codeWgsl').style.display = (tab === 'wgsl') ? 'block' : 'none';
+    document.getElementById('codeJs').style.display = (tab === 'js') ? 'block' : 'none';
+    document.getElementById('tabWgslBtn').className = 'tab-btn ' + (tab === 'wgsl' ? 'active' : '');
+    document.getElementById('tabJsBtn').className = 'tab-btn ' + (tab === 'js' ? 'active' : '');
+  }
+
+  function setSpotlight(section, btn) {
+    document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.getElementById('explanationText').innerHTML = explanations[section] || explanations['all'];
+
+    const lines = document.querySelectorAll('.code-line');
+    lines.forEach(line => {
+      if (section === 'all') {
+        line.classList.remove('spotlight', 'dimmed');
+      } else if (line.getAttribute('data-section') === section) {
+        line.classList.add('spotlight');
+        line.classList.remove('dimmed');
+      } else {
+        line.classList.remove('spotlight');
+        line.classList.add('dimmed');
+      }
+    });
+
+    updateSim();
+  }
+
+  function updateSim() {
+    const presetIdx = parseInt(document.getElementById('sliderWg').value);
+    const preset = wgPresets[presetIdx];
+    const ancho = parseInt(document.getElementById('sliderAncho').value);
+    const alto = parseInt(document.getElementById('sliderAlto').value);
+
+    document.getElementById('valWgSize').textContent = `${preset.x} × ${preset.y} (${preset.x * preset.y} hilos)`;
+    document.getElementById('presetLabel').textContent = preset.label;
+    document.getElementById('valAncho').textContent = `${ancho} px`;
+    document.getElementById('valAlto').textContent = `${alto} px`;
+
+    // Cálculos de despachos
+    const gx = Math.ceil(ancho / preset.x);
+    const gy = Math.ceil(alto / preset.y);
+    const totalWg = gx * gy;
+    const totalThreads = totalWg * (preset.x * preset.y);
+    const usefulThreads = ancho * alto;
+    const efficiency = Math.round((usefulThreads / totalThreads) * 100);
+
+    document.getElementById('metricWorkgroups').textContent = totalWg;
+    document.getElementById('metricThreads').textContent = totalThreads;
+    document.getElementById('metricEfficiency').textContent = `${efficiency}%`;
+
+    drawGrid(preset.x, preset.y, gx, gy, ancho, alto);
+    updateInspector(preset.x, preset.y, ancho, alto);
+  }
+
+  function drawGrid(wgX, wgY, gx, gy, dataW, dataH) {
+    const canvas = document.getElementById('gridCanvas');
+    const ctx = canvas.getContext('2d');
+    const cw = canvas.width;
+    const ch = canvas.height;
+
+    ctx.clearRect(0, 0, cw, ch);
+
+    const totalGridCols = gx * wgX;
+    const totalGridRows = gy * wgY;
+
+    const cellW = Math.min(cw / totalGridCols, 12);
+    const cellH = Math.min(ch / totalGridRows, 12);
+
+    const startX = (cw - totalGridCols * cellW) / 2;
+    const startY = (ch - totalGridRows * cellH) / 2;
+
+    // Dibujar celdas (hilos)
+    for (let r = 0; r < totalGridRows; r++) {
+      for (let c = 0; c < totalGridCols; c++) {
+        const x = startX + c * cellW;
+        const y = startY + r * cellH;
+
+        const isInsideData = (c < dataW && r < dataH);
+        const isHovered = (c === hoveredCoord.x && r === hoveredCoord.y);
+
+        if (isHovered) {
+          ctx.fillStyle = '#ffd700';
+        } else if (isInsideData) {
+          ctx.fillStyle = '#0284c7';
+        } else {
+          ctx.fillStyle = '#ef4444';
+        }
+
+        ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+      }
+    }
+
+    // Dibujar bordes de los Workgroups
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+
+    for (let bx = 0; bx <= gx; bx++) {
+      const lineX = startX + bx * wgX * cellW;
+      ctx.beginPath();
+      ctx.moveTo(lineX, startY);
+      ctx.lineTo(lineX, startY + totalGridRows * cellH);
+      ctx.stroke();
+    }
+
+    for (let by = 0; by <= gy; by++) {
+      const lineY = startY + by * wgY * cellH;
+      ctx.beginPath();
+      ctx.moveTo(startX, lineY);
+      ctx.lineTo(startX + totalGridCols * cellW, lineY);
+      ctx.stroke();
+    }
+
+    ctx.setLineDash([]);
+  }
+
+  function updateInspector(wgX, wgY, dataW, dataH) {
+    const x = hoveredCoord.x;
+    const y = hoveredCoord.y;
+
+    const groupIdX = Math.floor(x / wgX);
+    const groupIdY = Math.floor(y / wgY);
+    const localIdX = x % wgX;
+    const localIdY = y % wgY;
+    const localIdx = localIdY * wgX + localIdX;
+
+    document.getElementById('dispGlobalId').textContent = `vec3<u32>(${x}, ${y}, 0)`;
+    document.getElementById('dispGroupId').textContent = `vec3<u32>(${groupIdX}, ${groupIdY}, 0)`;
+    document.getElementById('dispLocalId').textContent = `vec3<u32>(${localIdX}, ${localIdY}, 0)`;
+    document.getElementById('dispLocalIdx').textContent = localIdx;
+
+    const isInside = (x < dataW && y < dataH);
+    const statusEl = document.getElementById('dispStatus');
+
+    if (isInside) {
+      statusEl.textContent = '✅ Activo (Dentro de Límites - Procesa Datos)';
+      statusEl.style.color = 'var(--success)';
+    } else {
+      statusEl.textContent = '🛑 Fuera de Límites (Desconectado por if return)';
+      statusEl.style.color = 'var(--danger)';
+    }
+  }
+
+  // Interacción con ratón en el Canvas
+  const canvas = document.getElementById('gridCanvas');
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    const presetIdx = parseInt(document.getElementById('sliderWg').value);
+    const preset = wgPresets[presetIdx];
+    const ancho = parseInt(document.getElementById('sliderAncho').value);
+    const alto = parseInt(document.getElementById('sliderAlto').value);
+    const gx = Math.ceil(ancho / preset.x);
+    const gy = Math.ceil(alto / preset.y);
+
+    const totalGridCols = gx * preset.x;
+    const totalGridRows = gy * preset.y;
+    const cellW = Math.min(canvas.width / totalGridCols, 12);
+    const cellH = Math.min(canvas.height / totalGridRows, 12);
+    const startX = (canvas.width - totalGridCols * cellW) / 2;
+    const startY = (canvas.height - totalGridRows * cellH) / 2;
+
+    const c = Math.floor((mx - startX) / cellW);
+    const r = Math.floor((my - startY) / cellH);
+
+    if (c >= 0 && c < totalGridCols && r >= 0 && r < totalGridRows) {
+      hoveredCoord = { x: c, y: r };
+      drawGrid(preset.x, preset.y, gx, gy, ancho, alto);
+      updateInspector(preset.x, preset.y, ancho, alto);
+    }
+  });
+
+  // Inicialización
+  window.addEventListener('DOMContentLoaded', () => {
+    updateSim();
+  });
+</script>
+
+</body>
+</html>

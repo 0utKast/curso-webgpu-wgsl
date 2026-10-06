@@ -1,0 +1,64 @@
+GUION NARRATIVO: APARTADO 3 DEL CAPÍTULO 5
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 5: El Pipeline Gráfico Completo, Rasterización y la Síntesis Compute-to-Render en WebGPU
+Apartado 3: El Silicio de Rasterización de Función Fija y la Interpolación Baricéntrica
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Título del apartado: "Apartado 3: El Silicio de Rasterización de Función Fija y la Interpolación Baricéntrica". De fondo, animación 3D de alta precisión: un triángulo abstracto de líneas vectoriales brillantes desciende sobre una cuadrícula de píxeles; los circuitos de silicio evalúan cada celda y la encienden instantáneamente]
+
+En el apartado anterior dejamos a nuestros vértices recién transformados por las matrices matemáticas y empaquetados en coordenadas de recorte. Pero cuando el vertex shader termina su trabajo, no hay ningún fragment shader esperándolo al otro lado.
+
+Entre ambas etapas programables se extiende el territorio más fascinante, misterioso y rápido de toda la tarjeta gráfica: la circuitería de función fija de rasterización. Un conjunto de circuitos integrados cableados directamente en los transistores que resuelven un dilema físico extraordinario: ¿cómo convertir una figura geométrica continua e infinitamente delgada en una colección de píxeles discretos en un monitor, sin que las texturas se deformen ni aparezcan grietas en la imagen?
+
+[00:00:58]
+[En pantalla: Animación 3D que muestra una malla poligonal girando frente a la cámara. Se iluminan los planos del Frustum de visión. Los triángulos exteriores se cortan físicamente (Clipping). A continuación, los triángulos de la parte trasera de la figura desaparecen al instante marcando: "Backface Culling: 50% de ahorro de silicio"]
+
+Antes de dibujar un solo píxel, la GPU aplica dos filtros de choque implacables.
+
+El primero es el Recorte de Pirámide, o Frustum Clipping. Si un triángulo se sale de la pantalla o cruza el plano de la lente de la cámara, un circuito especializado basado en el algoritmo de Sutherland-Hodgman lo corta físicamente como una cuchilla, generando nuevos vértices en el plano de corte para evitar divisiones matemáticas destructivas.
+
+El segundo filtro es el descarte de caras traseras, el célebre Backface Culling. En cualquier modelo tridimensional cerrado, la mitad de los triángulos dan la espalda a la cámara: son la nuca de un personaje o el reverso de una pared. El silicio calcula a la velocidad de la luz el producto vectorial de sus aristas en pantalla. Si el sentido de giro es horario, el triángulo está de espaldas y el hardware lo destruye en el acto. Con esta simple comprobación matemática, la tarjeta gráfica elimina de un plumazo el cincuenta por ciento de todo el trabajo de renderizado.
+
+[00:02:18]
+[En pantalla: Esquema visual de la rejilla de píxeles con coordenadas discretas (x+0.5, y+0.5). Se dibuja un triángulo sobre la cuadrícula y se muestran las tres flechas vectoriales de sus aristas. Aparece la fórmula de Juan Pineda: "E(x, y) = (x - x0)(y1 - y0) - (y - y0)(x1 - x0)"]
+
+Los triángulos supervivientes llegan entonces al corazón del silicio: el Rasterizador por Hardware.
+
+Un triángulo matemático es continuo; pero la pantalla del ordenador es una rejilla de celdas cuadradas con centros exactos en equis más cero punto cinco y ye más cero punto cinco. ¿Cómo sabe la GPU qué píxeles debe encender?
+
+Para lograrlo a frecuencias de gigahercios, el silicio implementa las Funciones de Arista ideadas por Juan Pineda en mil novecientos ochenta y ocho. Cada arista del triángulo se convierte en una ecuación lineal implícita que divide el universo en dos semiespacios. Si evaluamos el centro de un píxel en las tres aristas y el resultado es positivo o cero en todas ellas, el píxel está dentro y genera un fragmento. Al ser ecuaciones lineales, el silicio solo tiene que hacer sumas acumulativas en registros de alta velocidad, evaluando millones de píxeles por segundo a coste energético mínimo.
+
+[00:03:38]
+[En pantalla: Zoom extremo a la frontera entre dos triángulos contiguos. Se destaca un punto de píxel que cae exactamente sobre la arista divisoria. Se ilustra la "Regla Top-Left" iluminando en verde la arista superior y la arista izquierda]
+
+Pero aquí surge un problema geométrico crítico: ¿qué ocurre si el centro de un píxel cae con precisión milimétrica sobre la arista compartida entre dos triángulos vecinos? Si ambos triángulos lo dibujan, se procesa dos veces y la transparencia alfa se corrompe. Si ninguno lo dibuja, aparece una grieta transparente en la malla que deja ver el fondo.
+
+Para evitarlo, WebGPU y los procesadores gráficos aplican la estricta Regla de Relleno Superior-Izquierda, o regla Top-Left. El píxel solo se dibuja si la arista compartida es horizontal superior o si es una arista inclinada que desciende hacia la izquierda. Gracias a esta ley cableada en el hardware, cada píxel de una escena tridimensional se dibuja exactamente una y solo una vez, sin grietas y sin solapamientos.
+
+[00:04:45]
+[En pantalla: Animación histórica comparativa. A la izquierda: videojuego clásico de PlayStation 1 mostrando paredes texturizadas ondulándose y bailando al avanzar la cámara. A la derecha: WebGPU mostrando la misma pared con perspectiva milimétricamente perfecta y estable]
+
+Una vez que el píxel está dentro del triángulo, el silicio calcula sus Coordenadas Baricéntricas: tres pesos normalizados que indican la distancia relativa a cada uno de los tres vértices.
+
+Y aquí es donde la historia de los gráficos 3D vivió una de sus mayores lecciones. En mil novecientos noventa y cuatro, la consola original PlayStation uno abarató sus circuitos eliminando la división por perspectiva en su rasterizador. El resultado fue el error del baile de texturas: al proyectar en ángulo oblicuo, las paredes se deformaban de manera caótica porque la interpolación lineal simple en pantalla no respeta la curvatura de la perspectiva tridimensional.
+
+[00:05:46]
+[En pantalla: Fórmulas matemáticas de la Corrección de Perspectiva. Se resalta la interpolación de los cocientes "Atributo dividido por W" y "Uno dividido por W", seguida por la división final por fragmento en silicio]
+
+Las GPUs modernas resuelven este problema mediante una proeza matemática: la Interpolación con Corrección de Perspectiva. 
+
+Aunque un atributo de textura no varía linealmente sobre la pantalla, el cociente entre el atributo y la cuarta coordenada homogénea uve doble, así como el inverso uno dividido por uve doble, sí varían de forma rigurosamente lineal en el plano de la pantalla. El hardware interpola linealmente ambos cocientes y, antes de entregar los datos al fragment shader, ejecuta una división instantánea en silicio. Esta operación matemática devuelve el valor tridimensional exacto, garantizando que vuestras texturas y normales permanezcan estables y nítidas hasta el infinito.
+
+[00:06:50]
+[En pantalla: Gráfico de un "Quad de Fragmentos" (2x2 píxeles). Se ilustran los cuatro hilos ejecutándose en paralelo. Se resalta el cálculo de derivadas parciales dpdx y dpdy restando registros vecinos para el filtrado MIP de texturas. Se muestra un hilo fantasma desactivado]
+
+Y el rasterizador concluye su obra con una última imposición arquitectónica: los fragmentos jamás se despachan en solitario. La GPU los envía siempre en bloques de dos por dos píxeles llamados Quads de Fragmentos.
+
+¿Por qué siempre cuatro hilos a la vez? Porque el Fragment Shader necesita conocer la velocidad a la que cambian las coordenadas de textura entre píxeles vecinos para calcular las derivadas de pantalla de pe de equis y de pe de ye, y seleccionar el nivel de detalle adecuado de la textura. Si un triángulo solo cubre uno de los cuatro píxeles, la tarjeta ejecuta los otros tres como hilos fantasma para poder calcular las derivadas, descartando su color al final.
+
+Como concluye el maestro Tomas Akenine-Möller en Real-Time Rendering, la rasterización de función fija y la interpolación baricéntrica son el puente definitivo que transforma la abstracción geométrica en la realidad visual.
+
+El terreno está preparado. Los fragmentos están listos y organizados en quads. En el apartado cuatro entraremos en la etapa final: el Fragment Shader, la iluminación física y el muestreo de texturas en tiempo real.

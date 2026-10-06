@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compute Shader WGSL: Convolución Optimizada con Halo y Memoria Compartida — Code Spotlight Visualizer</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f293d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.3);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --purple: #c084fc;
+      --code-bg: #1e1e1e;
+
+      /* Tokens VS Code Dark+ */
+      --syn-keyword: #c586c0;
+      --syn-storage: #569cd6;
+      --syn-type: #4ec9b0;
+      --syn-var: #9cdcfe;
+      --syn-func: #dcdcaa;
+      --syn-num: #b5cea8;
+      --syn-comment: #6a9955;
+      --syn-decorator: #ffd700;
+      --syn-builtin: #4fc1ff;
+      --syn-op: #d4d4d4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 1.5rem 1.25rem;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+    }
+
+    .badge-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .badge.success {
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--success);
+      border-color: rgba(52, 211, 153, 0.35);
+    }
+
+    h1 {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 900px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* TOOLBAR INTERACTIVA */
+    .interactive-toolbar {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.85rem 1.15rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .toolbar-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 0.42rem 0.8rem;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      user-select: none;
+    }
+
+    .btn:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: #475569;
+    }
+
+    .btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+
+    .btn-action {
+      background: #0f766e;
+      border-color: #14b8a6;
+      color: #fff;
+    }
+    .btn-action:hover {
+      background: #115e59;
+      color: #fff;
+    }
+
+    /* BANNER EXPLICATIVO SINCRONIZADO */
+    .explanation-banner {
+      background: rgba(17, 24, 39, 0.95);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      padding: 1rem 1.35rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+      color: #f1f5f9;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      transition: all 0.3s ease;
+    }
+
+    .explanation-banner .icon {
+      font-size: 1.4rem;
+      line-height: 1;
+      margin-top: 0.15rem;
+      color: var(--accent);
+    }
+
+    .explanation-content h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.25rem;
+    }
+
+    .explanation-content p {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .explanation-quote {
+      margin-top: 0.4rem;
+      padding: 0.4rem 0.75rem;
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 2px solid var(--accent);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #93c5fd;
+      font-style: italic;
+    }
+
+    /* LAYOUT PRINCIPAL */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1100px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* VENTANA VS CODE */
+    .editor-window {
+      background-color: var(--code-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+    }
+
+    .window-titlebar {
+      background-color: #323233;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      position: relative;
+      user-select: none;
+      border-bottom: 1px solid #252526;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .control-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-close { background-color: #ff5f56; }
+    .dot-minimize { background-color: #ffbd2e; }
+    .dot-maximize { background-color: #27c93f; }
+
+    .window-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.78rem;
+      color: #aaa;
+      font-weight: 500;
+    }
+
+    .editor-tabs {
+      display: flex;
+      background-color: #252526;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      font-size: 0.82rem;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border-top: 2px solid var(--accent);
+      border-right: 1px solid #252526;
+      cursor: pointer;
+    }
+
+    .tab-icon {
+      color: #e34c26;
+      font-weight: 900;
+      font-size: 0.75rem;
+    }
+
+    .breadcrumbs {
+      background-color: #1e1e1e;
+      padding: 5px 16px;
+      font-size: 0.75rem;
+      color: #888;
+      border-bottom: 1px solid #282828;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .breadcrumbs span { color: #bbb; }
+
+    /* EDITOR CONTAINER */
+    .code-container {
+      background: var(--code-bg);
+      padding: 0.75rem 0;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", "Fira Code", Consolas, Menlo, Monaco, monospace;
+      font-size: 0.83rem;
+      line-height: 1.6;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 1rem;
+      transition: all 0.2s ease;
+      position: relative;
+      white-space: pre;
+    }
+
+    .code-line.spotlight {
+      background: rgba(56, 189, 248, 0.16);
+      border-left: 3px solid var(--accent);
+      padding-left: calc(1rem - 3px);
+    }
+
+    .code-line.dimmed {
+      opacity: 0.28;
+      filter: grayscale(40%);
+    }
+
+    .line-num {
+      width: 2.2rem;
+      color: #555;
+      text-align: right;
+      margin-right: 1.25rem;
+      user-select: none;
+      font-size: 0.78rem;
+    }
+
+    .line-content { flex: 1; }
+
+    /* SINTAXIS */
+    .kw { color: var(--syn-keyword); font-weight: 600; }
+    .st { color: var(--syn-storage); }
+    .tp { color: var(--syn-type); }
+    .vr { color: var(--syn-var); }
+    .fn { color: var(--syn-func); }
+    .nm { color: var(--syn-num); }
+    .cm { color: var(--syn-comment); font-style: italic; }
+    .dc { color: var(--syn-decorator); font-weight: 600; }
+    .bi { color: var(--syn-builtin); }
+    .op { color: var(--syn-op); }
+
+    /* PANEL LATERAL */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .hud-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .hud-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ESQUEMA DEL HALO */
+    .halo-diagram {
+      background: #0b1120;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 0.85rem;
+      text-align: center;
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      line-height: 1.4;
+      margin-bottom: 0.75rem;
+    }
+
+    .halo-legend {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      font-size: 0.72rem;
+      margin-top: 0.4rem;
+    }
+
+    .legend-tag {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .legend-box {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+    .box-halo { background: #f59e0b; }
+    .box-core { background: #38bdf8; }
+
+    /* TABLA COMPARATIVA */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+
+    .compare-table th {
+      background: #0f172a;
+      color: #94a3b8;
+      font-weight: 600;
+      text-align: left;
+      padding: 0.5rem;
+      border-bottom: 1px solid #334155;
+    }
+
+    .compare-table td {
+      padding: 0.5rem;
+      border-bottom: 1px solid #1e293b;
+      color: #e2e8f0;
+    }
+
+    .compare-table tr:last-child td { border-bottom: none; }
+    .badge-win {
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    .stat-chip {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.5rem;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .stat-val { font-size: 1.15rem; font-weight: 800; }
+    .stat-label { font-size: 0.68rem; color: #94a3b8; text-transform: uppercase; }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #10b981;
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      z-index: 1000;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    kbd {
+      background: #334155;
+      color: #f8fafc;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-family: inherit;
+      border: 1px solid #475569;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- CABECERA -->
+  <header>
+    <div>
+      <div class="badge-group">
+        <span class="badge">Capítulo 4 • Apartado 5</span>
+        <span class="badge success">Algoritmo 2: Apron Caching en SRAM</span>
+      </div>
+      <h1>Convolución Optimizada con Halo y Memoria Compartida</h1>
+      <p class="subtitle">
+        Arquitectura de baldosas con delantal de frontera en <code>var&lt;workgroup&gt;</code>,
+        carga cooperativa en bucle <em>strided</em> y reducción del 86% en tráfico a memoria global.
+      </p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-action" onclick="copyFullWgsl()">
+        📋 Copiar WGSL Optimizado
+      </button>
+    </div>
+  </header>
+
+  <!-- TOOLBAR INTERACTIVA (SPOTLIGHT) -->
+  <div class="interactive-toolbar">
+    <div class="toolbar-label">
+      🎯 Fases del Algoritmo Optimizado
+    </div>
+    <div class="btn-group" id="spotlight-buttons">
+      <button class="btn active" data-phase="all" onclick="setSpotlight('all', this)">Código Completo</button>
+      <button class="btn" data-phase="fase1" onclick="setSpotlight('fase1', this)">1. Constantes y var&lt;workgroup&gt;</button>
+      <button class="btn" data-phase="fase2" onclick="setSpotlight('fase2', this)">2. Clamping Seguro</button>
+      <button class="btn" data-phase="fase3" onclick="setSpotlight('fase3', this)">3. Base del Bloque e Hilo Lineal</button>
+      <button class="btn" data-phase="fase4" onclick="setSpotlight('fase4', this)">4. Carga Cooperativa Strided</button>
+      <button class="btn" data-phase="fase5" onclick="setSpotlight('fase5', this)">5. workgroupBarrier()</button>
+      <button class="btn" data-phase="fase6" onclick="setSpotlight('fase6', this)">6. Muestreo 3×3 desde SRAM</button>
+      <button class="btn" data-phase="fase7" onclick="setSpotlight('fase7', this)">7. Gradientes y textureStore</button>
+    </div>
+    <div style="font-size:0.75rem; color:#94a3b8;">
+      Atajos: <kbd>←</kbd> <kbd>→</kbd>
+    </div>
+  </div>
+
+  <!-- BANNER EXPLICATIVO SINCRONIZADO -->
+  <div class="explanation-banner" id="explanation-banner">
+    <div class="icon" id="banner-icon">⚡</div>
+    <div class="explanation-content">
+      <h3 id="banner-title">Convolución Optimizada mediante Región de Halo en SRAM</h3>
+      <p id="banner-desc">
+        En lugar de que cada hilo emita 9 lecturas independientes a la memoria externa, los 256 hilos cooperan para
+        cargar una baldosa ampliada de 18×18 elementos en la memoria compartida on-chip. A partir de ese instante,
+        todas las operaciones de convolución se resuelven a la velocidad del registro físico (1-2 ciclos).
+      </p>
+      <div class="explanation-quote" id="banner-quote">
+        "La única forma de romper este muro y catapultar la velocidad es cooperar: cargar los datos una sola vez en la memoria compartida on-chip..."
+      </div>
+    </div>
+  </div>
+
+  <!-- GRID PRINCIPAL -->
+  <div class="main-grid">
+
+    <!-- COLUMNA 1: EDITOR VS CODE -->
+    <div class="editor-window">
+      <div class="window-titlebar">
+        <div class="window-controls">
+          <div class="control-dot dot-close"></div>
+          <div class="control-dot dot-minimize"></div>
+          <div class="control-dot dot-maximize"></div>
+        </div>
+        <div class="window-title">sobel_convolucion_halo_workgroup.wgsl — Visual Studio Code</div>
+      </div>
+      <div class="editor-tabs">
+        <div class="tab">
+          <span class="tab-icon">⚡</span>
+          <span>sobel_convolucion_halo_workgroup.wgsl</span>
+        </div>
+      </div>
+      <div class="breadcrumbs">
+        shaders <span class="op">&gt;</span> compute <span class="op">&gt;</span> <span>sobel_convolucion_halo_workgroup.wgsl</span> <span class="op">&gt;</span> <span class="fn" id="bc-func">cs_sobel_halo</span>
+      </div>
+
+      <div class="code-container" id="code-block">
+
+        <!-- LÍNEAS 1 A 20: CONSTANTES Y VAR<WORKGROUP> (FASE 1) -->
+        <div class="code-line" data-section="fase1"><span class="line-num">1</span><span class="line-content"><span class="cm">// Recursos: Textura de entrada (muestreable) y salida (almacenamiento)</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">2</span><span class="line-content"><span class="dc">@group</span><span class="op">(</span><span class="nm">0</span><span class="op">)</span> <span class="dc">@binding</span><span class="op">(</span><span class="nm">0</span><span class="op">)</span> <span class="st">var</span> <span class="vr">textura_entrada</span><span class="op">:</span> <span class="tp">texture_2d</span><span class="op">&lt;</span><span class="tp">f32</span><span class="op">&gt;;</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">3</span><span class="line-content"><span class="dc">@group</span><span class="op">(</span><span class="nm">0</span><span class="op">)</span> <span class="dc">@binding</span><span class="op">(</span><span class="nm">1</span><span class="op">)</span> <span class="st">var</span> <span class="vr">textura_salida</span><span class="op">:</span> <span class="tp">texture_storage_2d</span><span class="op">&lt;</span><span class="tp">rgba8unorm</span><span class="op">,</span> <span class="bi">write</span><span class="op">&gt;;</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">4</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">5</span><span class="line-content"><span class="cm">// Dimensiones del Workgroup y la Región de Halo (R = 1)</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">6</span><span class="line-content"><span class="st">const</span> <span class="vr">TILE_ANCHO</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="nm">16u</span><span class="op">;</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">7</span><span class="line-content"><span class="st">const</span> <span class="vr">TILE_ALTO</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="nm">16u</span><span class="op">;</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">8</span><span class="line-content"><span class="st">const</span> <span class="vr">HALO_ANCHO</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="nm">18u</span><span class="op">;</span>  <span class="cm">// 16 + 2 * 1</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">9</span><span class="line-content"><span class="st">const</span> <span class="vr">TOTAL_PIXELES_HALO</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="nm">324u</span><span class="op">;</span>  <span class="cm">// 18 x 18 = 324 píxeles</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">10</span><span class="line-content"><span class="st">const</span> <span class="vr">TOTAL_HILOS_WORKGROUP</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="nm">256u</span><span class="op">;</span> <span class="cm">// 16 x 16 = 256 hilos</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">11</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">12</span><span class="line-content"><span class="cm">// Baldosa compartida en SRAM on-chip: 324 elementos f32 = 1.296 bytes (1.3 KB)</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">13</span><span class="line-content"><span class="st">var</span><span class="op">&lt;</span><span class="st">workgroup</span><span class="op">&gt;</span> <span class="vr">baldosa_halo</span><span class="op">:</span> <span class="tp">array</span><span class="op">&lt;</span><span class="tp">array</span><span class="op">&lt;</span><span class="tp">f32</span><span class="op">,</span> <span class="nm">18</span><span class="op">&gt;,</span> <span class="nm">18</span><span class="op">&gt;;</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">14</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 15 A 24: FUNCIÓN DE LECTURA CON CLAMPING (FASE 2) -->
+        <div class="code-line" data-section="fase2"><span class="line-num">15</span><span class="line-content"><span class="cm">// Función auxiliar: Clamping de coordenadas y luminancia perceptual</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">16</span><span class="line-content"><span class="st">fn</span> <span class="fn">leer_luminancia_global</span><span class="op">(</span><span class="vr">coords</span><span class="op">:</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;,</span> <span class="vr">dims</span><span class="op">:</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;)</span> <span class="op">-&gt;</span> <span class="tp">f32</span> <span class="op">{</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">17</span><span class="line-content">    <span class="st">let</span> <span class="vr">coords_seguras</span> <span class="op">=</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;(</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">18</span><span class="line-content">        <span class="fn">clamp</span><span class="op">(</span><span class="vr">coords</span><span class="op">,</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="nm">0</span><span class="op">,</span> <span class="nm">0</span><span class="op">),</span> <span class="vr">dims</span> <span class="op">-</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="nm">1</span><span class="op">,</span> <span class="nm">1</span><span class="op">))</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">19</span><span class="line-content">    <span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">20</span><span class="line-content">    <span class="st">let</span> <span class="vr">color</span><span class="op">:</span> <span class="tp">vec4</span><span class="op">&lt;</span><span class="tp">f32</span><span class="op">&gt;</span> <span class="op">=</span> <span class="fn">textureLoad</span><span class="op">(</span><span class="vr">textura_entrada</span><span class="op">,</span> <span class="vr">coords_seguras</span><span class="op">,</span> <span class="nm">0u</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">21</span><span class="line-content">    <span class="kw">return</span> <span class="nm">0.299</span> <span class="op">*</span> <span class="vr">color</span><span class="op">.</span><span class="vr">r</span> <span class="op">+</span> <span class="nm">0.587</span> <span class="op">*</span> <span class="vr">color</span><span class="op">.</span><span class="vr">g</span> <span class="op">+</span> <span class="nm">0.114</span> <span class="op">*</span> <span class="vr">color</span><span class="op">.</span><span class="vr">b</span><span class="op">;</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">22</span><span class="line-content"><span class="op">}</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">23</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 24 A 36: KERNEL, BASE DEL BLOQUE E HILO LINEAL (FASE 3) -->
+        <div class="code-line" data-section="fase3"><span class="line-num">24</span><span class="line-content"><span class="dc">@compute</span> <span class="dc">@workgroup_size</span><span class="op">(</span><span class="nm">16</span><span class="op">,</span> <span class="nm">16</span><span class="op">)</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">25</span><span class="line-content"><span class="st">fn</span> <span class="fn">cs_sobel_halo</span><span class="op">(</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">26</span><span class="line-content">    <span class="dc">@builtin</span><span class="op">(</span><span class="bi">global_invocation_id</span><span class="op">)</span> <span class="vr">global_id</span><span class="op">:</span> <span class="tp">vec3</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;,</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">27</span><span class="line-content">    <span class="dc">@builtin</span><span class="op">(</span><span class="bi">local_invocation_id</span><span class="op">)</span> <span class="vr">local_id</span><span class="op">:</span> <span class="tp">vec3</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;,</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">28</span><span class="line-content">    <span class="dc">@builtin</span><span class="op">(</span><span class="bi">workgroup_id</span><span class="op">)</span> <span class="vr">group_id</span><span class="op">:</span> <span class="tp">vec3</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">29</span><span class="line-content"><span class="op">)</span> <span class="op">{</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">30</span><span class="line-content">    <span class="st">let</span> <span class="vr">dims</span> <span class="op">=</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="fn">textureDimensions</span><span class="op">(</span><span class="vr">textura_entrada</span><span class="op">));</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">31</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">32</span><span class="line-content">    <span class="cm">// Origen global del bloque en la imagen (esquina superior izquierda interior)</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">33</span><span class="line-content">    <span class="st">let</span> <span class="vr">base_bloque</span><span class="op">:</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;</span> <span class="op">=</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">group_id</span><span class="op">.</span><span class="vr">xy</span><span class="op">)</span> <span class="op">*</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="nm">16</span><span class="op">,</span> <span class="nm">16</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">34</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">35</span><span class="line-content">    <span class="cm">// Índice lineal del hilo dentro del bloque (0 a 255)</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">36</span><span class="line-content">    <span class="st">let</span> <span class="vr">hilo_lineal</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="vr">local_id</span><span class="op">.</span><span class="vr">y</span> <span class="op">*</span> <span class="nm">16u</span> <span class="op">+</span> <span class="vr">local_id</span><span class="op">.</span><span class="vr">x</span><span class="op">;</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">37</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 38 A 48: CARGA COOPERATIVA STRIDED (FASE 4) -->
+        <div class="code-line" data-section="fase4"><span class="line-num">38</span><span class="line-content">    <span class="cm">// 3. CARGA COOPERATIVA EN SRAM (Strided Loop):</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">39</span><span class="line-content">    <span class="cm">// 256 hilos cargan 324 píxeles (los primeros 68 hilos cargan 2 píxeles)</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">40</span><span class="line-content">    <span class="kw">for</span> <span class="op">(</span><span class="st">var</span> <span class="vr">i</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="vr">hilo_lineal</span><span class="op">;</span> <span class="vr">i</span> <span class="op">&lt;</span> <span class="vr">TOTAL_PIXELES_HALO</span><span class="op">;</span> <span class="vr">i</span> <span class="op">+=</span> <span class="vr">TOTAL_HILOS_WORKGROUP</span><span class="op">)</span> <span class="op">{</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">41</span><span class="line-content">        <span class="st">let</span> <span class="vr">halo_y</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="vr">i</span> <span class="op">/</span> <span class="vr">HALO_ANCHO</span><span class="op">;</span>  <span class="cm">// Fila local (0 a 17)</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">42</span><span class="line-content">        <span class="st">let</span> <span class="vr">halo_x</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="vr">i</span> <span class="op">%</span> <span class="vr">HALO_ANCHO</span><span class="op">;</span>  <span class="cm">// Columna local (0 a 17)</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">43</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">44</span><span class="line-content">        <span class="cm">// Coordenada global en la imagen con offset -1 de halo</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">45</span><span class="line-content">        <span class="st">let</span> <span class="vr">coords_globales</span> <span class="op">=</span> <span class="vr">base_bloque</span> <span class="op">+</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="tp">i32</span><span class="op">(</span><span class="vr">halo_x</span><span class="op">)</span> <span class="op">-</span> <span class="nm">1</span><span class="op">,</span> <span class="tp">i32</span><span class="op">(</span><span class="vr">halo_y</span><span class="op">)</span> <span class="op">-</span> <span class="nm">1</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">46</span><span class="line-content">        <span class="vr">baldosa_halo</span><span class="op">[</span><span class="vr">halo_y</span><span class="op">][</span><span class="vr">halo_x</span><span class="op">]</span> <span class="op">=</span> <span class="fn">leer_luminancia_global</span><span class="op">(</span><span class="vr">coords_globales</span><span class="op">,</span> <span class="vr">dims</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">47</span><span class="line-content">    <span class="op">}</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">48</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 49 A 52: BARRERA DE SINCRONIZACIÓN (FASE 5) -->
+        <div class="code-line" data-section="fase5"><span class="line-num">49</span><span class="line-content">    <span class="cm">// 4. BARRERA DE SINCRONIZACIÓN: Asegura que la baldosa SRAM está llena</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">50</span><span class="line-content">    <span class="fn">workgroupBarrier</span><span class="op">();</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">51</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 52 A 69: GUARDA Y LECTURA 3X3 EN SRAM (FASE 6) -->
+        <div class="code-line" data-section="fase6"><span class="line-num">52</span><span class="line-content">    <span class="cm">// 5. Guarda de límites para descartar píxeles sobrantes de escritura</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">53</span><span class="line-content">    <span class="kw">if</span> <span class="op">(</span><span class="tp">i32</span><span class="op">(</span><span class="vr">global_id</span><span class="op">.</span><span class="vr">x</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="vr">dims</span><span class="op">.</span><span class="vr">x</span> <span class="op">||</span> <span class="tp">i32</span><span class="op">(</span><span class="vr">global_id</span><span class="op">.</span><span class="vr">y</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="vr">dims</span><span class="op">.</span><span class="vr">y</span><span class="op">)</span> <span class="op">{</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">54</span><span class="line-content">        <span class="kw">return</span><span class="op">;</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">55</span><span class="line-content">    <span class="op">}</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">56</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">57</span><span class="line-content">    <span class="cm">// 6. LECTURA 3x3 DIRECTA DESDE SRAM ON-CHIP (1-2 ciclos de latencia)</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">58</span><span class="line-content">    <span class="st">let</span> <span class="vr">lx</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="vr">local_id</span><span class="op">.</span><span class="vr">x</span> <span class="op">+</span> <span class="nm">1u</span><span class="op">;</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">59</span><span class="line-content">    <span class="st">let</span> <span class="vr">ly</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="vr">local_id</span><span class="op">.</span><span class="vr">y</span> <span class="op">+</span> <span class="nm">1u</span><span class="op">;</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">60</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">61</span><span class="line-content">    <span class="st">let</span> <span class="vr">l00</span> <span class="op">=</span> <span class="vr">baldosa_halo</span><span class="op">[</span><span class="vr">ly</span> <span class="op">-</span> <span class="nm">1u</span><span class="op">][</span><span class="vr">lx</span> <span class="op">-</span> <span class="nm">1u</span><span class="op">];</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">62</span><span class="line-content">    <span class="st">let</span> <span class="vr">l10</span> <span class="op">=</span> <span class="vr">baldosa_halo</span><span class="op">[</span><span class="vr">ly</span> <span class="op">-</span> <span class="nm">1u</span><span class="op">][</span><span class="vr">lx</span><span class="op">];</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">63</span><span class="line-content">    <span class="st">let</span> <span class="vr">l20</span> <span class="op">=</span> <span class="vr">baldosa_halo</span><span class="op">[</span><span class="vr">ly</span> <span class="op">-</span> <span class="nm">1u</span><span class="op">][</span><span class="vr">lx</span> <span class="op">+</span> <span class="nm">1u</span><span class="op">];</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">64</span><span class="line-content">    <span class="st">let</span> <span class="vr">l01</span> <span class="op">=</span> <span class="vr">baldosa_halo</span><span class="op">[</span><span class="vr">ly</span><span class="op">][</span><span class="vr">lx</span> <span class="op">-</span> <span class="nm">1u</span><span class="op">];</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">65</span><span class="line-content">    <span class="st">let</span> <span class="vr">l21</span> <span class="op">=</span> <span class="vr">baldosa_halo</span><span class="op">[</span><span class="vr">ly</span><span class="op">][</span><span class="vr">lx</span> <span class="op">+</span> <span class="nm">1u</span><span class="op">];</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">66</span><span class="line-content">    <span class="st">let</span> <span class="vr">l02</span> <span class="op">=</span> <span class="vr">baldosa_halo</span><span class="op">[</span><span class="vr">ly</span> <span class="op">+</span> <span class="nm">1u</span><span class="op">][</span><span class="vr">lx</span> <span class="op">-</span> <span class="nm">1u</span><span class="op">];</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">67</span><span class="line-content">    <span class="st">let</span> <span class="vr">l12</span> <span class="op">=</span> <span class="vr">baldosa_halo</span><span class="op">[</span><span class="vr">ly</span> <span class="op">+</span> <span class="nm">1u</span><span class="op">][</span><span class="vr">lx</span><span class="op">];</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">68</span><span class="line-content">    <span class="st">let</span> <span class="vr">l22</span> <span class="op">=</span> <span class="vr">baldosa_halo</span><span class="op">[</span><span class="vr">ly</span> <span class="op">+</span> <span class="nm">1u</span><span class="op">][</span><span class="vr">lx</span> <span class="op">+</span> <span class="nm">1u</span><span class="op">];</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">69</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 70 A 82: GRADIENTES Y SALIDA (FASE 7) -->
+        <div class="code-line" data-section="fase7"><span class="line-num">70</span><span class="line-content">    <span class="cm">// 7. Convolución Sobel (Kx y Ky) y Magnitud Euclídea</span></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">71</span><span class="line-content">    <span class="st">let</span> <span class="vr">gx</span> <span class="op">=</span> <span class="op">(-</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l00</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l20</span><span class="op">)</span> <span class="op">+</span></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">72</span><span class="line-content">             <span class="op">(-</span><span class="nm">2.0</span> <span class="op">*</span> <span class="vr">l01</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="nm">2.0</span> <span class="op">*</span> <span class="vr">l21</span><span class="op">)</span> <span class="op">+</span></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">73</span><span class="line-content">             <span class="op">(-</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l02</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l22</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">74</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">75</span><span class="line-content">    <span class="st">let</span> <span class="vr">gy</span> <span class="op">=</span> <span class="op">(-</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l00</span><span class="op">)</span> <span class="op">+</span> <span class="op">(-</span><span class="nm">2.0</span> <span class="op">*</span> <span class="vr">l10</span><span class="op">)</span> <span class="op">+</span> <span class="op">(-</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l20</span><span class="op">)</span> <span class="op">+</span></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">76</span><span class="line-content">             <span class="op">(</span> <span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l02</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span> <span class="nm">2.0</span> <span class="op">*</span> <span class="vr">l12</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span> <span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l22</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">77</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">78</span><span class="line-content">    <span class="st">let</span> <span class="vr">magnitud</span> <span class="op">=</span> <span class="fn">sqrt</span><span class="op">(</span><span class="vr">gx</span> <span class="op">*</span> <span class="vr">gx</span> <span class="op">+</span> <span class="vr">gy</span> <span class="op">*</span> <span class="vr">gy</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">79</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">80</span><span class="line-content">    <span class="cm">// Escritura directa en VRAM</span></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">81</span><span class="line-content">    <span class="fn">textureStore</span><span class="op">(</span><span class="vr">textura_salida</span><span class="op">,</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;(</span><span class="vr">global_id</span><span class="op">.</span><span class="vr">xy</span><span class="op">),</span> <span class="tp">vec4</span><span class="op">&lt;</span><span class="tp">f32</span><span class="op">&gt;(</span><span class="vr">magnitud</span><span class="op">,</span> <span class="vr">magnitud</span><span class="op">,</span> <span class="vr">magnitud</span><span class="op">,</span> <span class="nm">1.0</span><span class="op">));</span></span></div>
+        <div class="code-line" data-section="fase7"><span class="line-num">82</span><span class="line-content"><span class="op">}</span></span></div>
+
+      </div>
+    </div>
+
+    <!-- COLUMNA 2: PANEL DE APOYO TÉCNICO Y ARQUITECTURA -->
+    <div class="side-panel">
+
+      <!-- TARJETA 1: ARQUITECTURA DEL HALO 18X18 -->
+      <div class="hud-card">
+        <div class="hud-title">
+          <span>🧩 Geometría de la Baldosa (Halo)</span>
+          <span style="color:var(--success); font-size:0.75rem;">18×18 SRAM</span>
+        </div>
+        <div class="halo-diagram">
+          ┌──────────────────────────────────┐<br>
+          │ &nbsp; &nbsp; &nbsp; &nbsp;DELANTAL SUPERIOR &nbsp; &nbsp; &nbsp; &nbsp; │ (y = 0)<br>
+          │ &nbsp; ┌──────────────────────────┐ &nbsp; │<br>
+          │ I │ &nbsp; &nbsp;NÚCLEO DE CÓMPUTO &nbsp; &nbsp; │ D │<br>
+          │ Z │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;16×16 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ E │<br>
+          │ Q │ &nbsp; (256 hilos de trabajo) │ R │<br>
+          │ &nbsp; └──────────────────────────┘ &nbsp; │<br>
+          │ &nbsp; &nbsp; &nbsp; &nbsp;DELANTAL INFERIOR &nbsp; &nbsp; &nbsp; &nbsp; │ (y = 17)<br>
+          └──────────────────────────────────┘
+          <div class="halo-legend">
+            <span class="legend-tag"><span class="legend-box box-halo"></span> Halo (68 px)</span>
+            <span class="legend-tag"><span class="legend-box box-core"></span> Núcleo (256 px)</span>
+          </div>
+        </div>
+        <div style="font-size:0.8rem; color:#cbd5e1; line-height:1.45;">
+          <strong>Total:</strong> 324 píxeles en SRAM. Los primeros 68 hilos cargan 2 texels; los 188 restantes cargan 1 texel.
+        </div>
+      </div>
+
+      <!-- TARJETA 2: BENCHMARK Y REDUCCIÓN DE TRÁFICO -->
+      <div class="hud-card">
+        <div class="hud-title">
+          <span>📊 Impacto en el Bus de Memoria</span>
+        </div>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Métrica</th>
+              <th>Sobel Básico (Ap. 4)</th>
+              <th>Con Halo (Ap. 5)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Lecturas VRAM / bloque</td>
+              <td style="color:#f87171;">2.304</td>
+              <td class="badge-win">324 (-86%)</td>
+            </tr>
+            <tr>
+              <td>Tráfico 1080p Full HD</td>
+              <td style="color:#f87171;">74.65 MB</td>
+              <td class="badge-win">10.45 MB</td>
+            </tr>
+            <tr>
+              <td>Latencia lectura 3×3</td>
+              <td style="color:#fbbf24;">~200-400 ciclos</td>
+              <td class="badge-win">1-2 ciclos</td>
+            </tr>
+            <tr>
+              <td>Uso SRAM por bloque</td>
+              <td>0 bytes</td>
+              <td>1.296 B (8.1%)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- TARJETA 3: PRINCIPIO DE KIRK & HWU -->
+      <div class="hud-card">
+        <div class="hud-title">
+          <span>📖 Principio de Diseño O'Reilly</span>
+        </div>
+        <p style="font-size:0.82rem; color:#94a3b8; line-height:1.5; font-style:italic;">
+          "El caching cooperativo con delantal de frontera transforma un algoritmo estrictamente limitado por ancho de banda (Memory-Bound) en una ejecución de alta velocidad limitada únicamente por la tasa de emisión de instrucciones de las unidades ALUs."
+        </p>
+        <div style="margin-top:0.5rem; font-size:0.75rem; color:#38bdf8; font-weight:600;">
+          — David B. Kirk & Wen-mei W. Hwu, <em>Programming Massively Parallel Processors</em> (4th Edition).
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✅ ¡Código WGSL optimizado copiado al portapapeles!</div>
+
+<script>
+  const phaseData = {
+    'all': {
+      title: 'Convolución Optimizada mediante Región de Halo en SRAM',
+      desc: 'En lugar de que cada hilo emita 9 lecturas independientes a la memoria externa, los 256 hilos cooperan para cargar una baldosa ampliada de 18×18 elementos en la memoria compartida on-chip. A partir de ese instante, todas las operaciones de convolución se resuelven a la velocidad del registro físico (1-2 ciclos).',
+      quote: '"La única forma de romper este muro y catapultar la velocidad es cooperar: cargar los datos una sola vez en la memoria compartida on-chip..."',
+      icon: '⚡',
+      func: 'cs_sobel_halo'
+    },
+    'fase1': {
+      title: '1. Constantes y Reserva de Baldosa en var<workgroup>',
+      desc: 'Declaramos una baldosa bidimensional de 18×18 elementos en SRAM (baldosa_halo). Esto representa 1.296 bytes de memoria ultrarrápida compartida on-chip, apenas un 8% del presupuesto mínimo garantizado por la especificación WebGPU.',
+      quote: '"...declaramos la baldosa en memoria compartida on-chip, añadiendo un delantal perimetral de un píxel a cada lado para cubrir el radio de la máscara."',
+      icon: '📦',
+      func: 'baldosa_halo [SRAM 18x18]'
+    },
+    'fase2': {
+      title: '2. Función de Lectura Global con Clamping Seguro',
+      desc: 'Extrae la luminancia de la textura original aplicando clamp() en coordenadas globales. Esta función se ejecuta únicamente durante la fase de carga inicial, blindando todo el cálculo posterior.',
+      quote: '"...el tratamiento de bordes se efectúa de forma limpia durante la fase de carga cooperativa, garantizando que el halo perimetral en los extremos de la pantalla contenga valores válidos."',
+      icon: '🛡️',
+      func: 'leer_luminancia_global'
+    },
+    'fase3': {
+      title: '3. Identificación del Bloque y Aplanado de Índices',
+      desc: 'Calculamos el origen global del bloque multiplicando group_id por 16. Aplanamos las coordenadas 2D del hilo local a un índice escalar de 0 a 255 (local_id.y * 16 + local_id.x) para orquestar la carga colectiva.',
+      quote: '"...cada hilo localiza su posición en el grupo de trabajo y calcula su identificador lineal dentro del bloque de doscientos cincuenta y seis invocaciones."',
+      icon: '📐',
+      func: 'base_bloque e hilo_lineal'
+    },
+    'fase4': {
+      title: '4. Carga Cooperativa en Bucle Strided (324 Píxeles)',
+      desc: 'La técnica canónica de Kirk & Hwu: los 256 hilos avanzan a saltos de 256. En la primera pasada cargan 256 píxeles; en la segunda pasada, los primeros 68 hilos cargan los 68 píxeles del delantal exterior restante.',
+      quote: '"...mediante un bucle distribuido a saltos, los doscientos cincuenta y seis hilos cargan cooperativamente los trescientos veinticuatro píxeles de la baldosa completa desde la V-RAM."',
+      icon: '🔄',
+      func: 'for (var i = hilo_lineal; i < 324; i += 256)'
+    },
+    'fase5': {
+      title: '5. Barrera de Sincronización Obligatoria (workgroupBarrier)',
+      desc: 'Cláusula crítica de silicio: ningún hilo puede comenzar el cómputo de gradientes hasta que todos los hilos del grupo hayan terminado de volcar los píxeles en SRAM. Previene condiciones de carrera catastróficas.',
+      quote: '"...ejecutamos la barrera de sincronización obligatoria workgroupBarrier. Nadie avanza hasta que la baldosa on-chip está completamente cargada y coherente."',
+      icon: '🛑',
+      func: 'workgroupBarrier()'
+    },
+    'fase6': {
+      title: '6. Muestreo de la Vecindad 3×3 desde Memoria On-Chip (SRAM)',
+      desc: 'Cada hilo lee los 9 valores vecinos (l00 a l22) directamente de baldosa_halo con latencia de 1 a 2 ciclos de reloj. ¡Cero accesos al bus de memoria externa VRAM durante la convolución!',
+      quote: '"...los hilos leen ahora sus nueve vecinos a velocidad de registro físico desde la memoria compartida, eliminando por completo la congestión del bus externo."',
+      icon: '🔍',
+      func: 'baldosa_halo[ly][lx]'
+    },
+    'fase7': {
+      title: '7. Gradientes Sobel, Magnitud Euclídea y Escritura Directa',
+      desc: 'Calculamos Gx y Gy mediante sumas ponderadas, extraemos la magnitud euclídea con sqrt() y emitimos el píxel procesado a la Storage Texture mediante textureStore().',
+      quote: '"...obtenemos la magnitud euclídea y escribimos el contorno limpio en la textura de almacenamiento. El rendimiento se multiplica y la GPU respira aliviada."',
+      icon: '✨',
+      func: 'textureStore(salida)'
+    }
+  };
+
+  const phasesList = ['all', 'fase1', 'fase2', 'fase3', 'fase4', 'fase5', 'fase6', 'fase7'];
+  let currentPhaseIndex = 0;
+
+  function setSpotlight(phase, buttonEl) {
+    const lines = document.querySelectorAll('.code-line');
+    const buttons = document.querySelectorAll('#spotlight-buttons .btn');
+
+    buttons.forEach(b => b.classList.remove('active'));
+    if (buttonEl) {
+      buttonEl.classList.add('active');
+    } else {
+      const targetBtn = document.querySelector(`#spotlight-buttons .btn[data-phase="${phase}"]`);
+      if (targetBtn) targetBtn.classList.add('active');
+    }
+
+    currentPhaseIndex = phasesList.indexOf(phase);
+
+    const info = phaseData[phase] || phaseData['all'];
+    document.getElementById('banner-icon').innerText = info.icon;
+    document.getElementById('banner-title').innerText = info.title;
+    document.getElementById('banner-desc').innerText = info.desc;
+    document.getElementById('banner-quote').innerText = info.quote;
+    document.getElementById('bc-func').innerText = info.func;
+
+    lines.forEach(line => {
+      const section = line.getAttribute('data-section');
+      if (phase === 'all') {
+        line.classList.remove('spotlight', 'dimmed');
+      } else if (section === phase) {
+        line.classList.add('spotlight');
+        line.classList.remove('dimmed');
+      } else {
+        line.classList.remove('spotlight');
+        line.classList.add('dimmed');
+      }
+    });
+
+    if (phase !== 'all') {
+      const firstHighlighted = document.querySelector(`.code-line.spotlight`);
+      if (firstHighlighted) {
+        firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+      currentPhaseIndex = (currentPhaseIndex + 1) % phasesList.length;
+      setSpotlight(phasesList[currentPhaseIndex], null);
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      currentPhaseIndex = (currentPhaseIndex - 1 + phasesList.length) % phasesList.length;
+      setSpotlight(phasesList[currentPhaseIndex], null);
+    }
+  });
+
+  function copyFullWgsl() {
+    const rawWgsl = `// COMPUTE SHADER OPTIMIZADO: Convolución 2D de Sobel con Región de Halo en SRAM
+// Archivo: sobel_convolucion_halo_workgroup.wgsl
+
+@group(0) @binding(0) var textura_entrada: texture_2d<f32>;
+@group(0) @binding(1) var textura_salida: texture_storage_2d<rgba8unorm, write>;
+
+const TILE_ANCHO: u32 = 16u;
+const TILE_ALTO: u32 = 16u;
+const HALO_ANCHO: u32 = 18u;
+const TOTAL_PIXELES_HALO: u32 = 324u;
+const TOTAL_HILOS_WORKGROUP: u32 = 256u;
+
+var<workgroup> baldosa_halo: array<array<f32, 18>, 18>;
+
+fn leer_luminancia_global(coords: vec2<i32>, dims: vec2<i32>) -> f32 {
+    let coords_seguras = vec2<u32>(clamp(coords, vec2<i32>(0, 0), dims - vec2<i32>(1, 1)));
+    let color: vec4<f32> = textureLoad(textura_entrada, coords_seguras, 0u);
+    return 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
+}
+
+@compute @workgroup_size(16, 16)
+fn cs_sobel_halo(
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+    @builtin(workgroup_id) group_id: vec3<u32>
+) {
+    let dims = vec2<i32>(textureDimensions(textura_entrada));
+    let base_bloque: vec2<i32> = vec2<i32>(group_id.xy) * vec2<i32>(16, 16);
+    let hilo_lineal: u32 = local_id.y * 16u + local_id.x;
+
+    for (var i: u32 = hilo_lineal; i < TOTAL_PIXELES_HALO; i += TOTAL_HILOS_WORKGROUP) {
+        let halo_y: u32 = i / HALO_ANCHO;
+        let halo_x: u32 = i % HALO_ANCHO;
+        let coords_globales = base_bloque + vec2<i32>(i32(halo_x) - 1, i32(halo_y) - 1);
+        baldosa_halo[halo_y][halo_x] = leer_luminancia_global(coords_globales, dims);
+    }
+
+    workgroupBarrier();
+
+    if (i32(global_id.x) >= dims.x || i32(global_id.y) >= dims.y) {
+        return;
+    }
+
+    let lx: u32 = local_id.x + 1u;
+    let ly: u32 = local_id.y + 1u;
+
+    let l00 = baldosa_halo[ly - 1u][lx - 1u];
+    let l10 = baldosa_halo[ly - 1u][lx];
+    let l20 = baldosa_halo[ly - 1u][lx + 1u];
+    let l01 = baldosa_halo[ly][lx - 1u];
+    let l21 = baldosa_halo[ly][lx + 1u];
+    let l02 = baldosa_halo[ly + 1u][lx - 1u];
+    let l12 = baldosa_halo[ly + 1u][lx];
+    let l22 = baldosa_halo[ly + 1u][lx + 1u];
+
+    let gx = (-1.0 * l00) + (1.0 * l20) + (-2.0 * l01) + (2.0 * l21) + (-1.0 * l02) + (1.0 * l22);
+    let gy = (-1.0 * l00) + (-2.0 * l10) + (-1.0 * l20) + (1.0 * l02) + (2.0 * l12) + (1.0 * l22);
+
+    let magnitud = sqrt(gx * gx + gy * gy);
+    textureStore(textura_salida, vec2<u32>(global_id.xy), vec4<f32>(magnitud, magnitud, magnitud, 1.0));
+}`;
+
+    navigator.clipboard.writeText(rawWgsl).then(() => {
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => { toast.classList.remove('show'); }, 2500);
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,103 @@
+GUION NARRATIVO: INTRODUCCIÓN AL CAPÍTULO 3
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 3: Compute Shaders y Jerarquía de Memoria
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Primer plano del silicio de una GPU moderna con destellos de luz recorriendo las pistas electrónicas y el título principal: "Capítulo 3: Compute Shaders y Jerarquía de Memoria"]
+
+Hay una fascinante paradoja física en el corazón de la computación moderna que casi nadie te cuenta cuando empiezas a programar gráficos o inteligencia artificial. Vivimos fascinados por las cifras brutas. Nos deslumbran las hojas de especificaciones de los fabricantes cuando anuncian tarjetas gráficas con diez mil núcleos, treinta teraflops de potencia y frecuencias de reloj de infarto. Creemos, con la ingenuidad de quien confía ciegamente en el marketing, que basta con volcar un algoritmo en la GPU para que, como por arte de magia, todo vuele a la velocidad del rayo.
+
+[00:00:42]
+[En pantalla: Gráfico conceptual de "La Ilusión de la Fuerza Bruta": un procesador titánico con miles de unidades de cálculo pero con compuertas de entrada vacías]
+
+Y sin embargo, la primera vez que un programador escribe un compute shader para procesar millones de datos en paralelo, el choque con la realidad suele ser demoledor: el código se arrastra, los ventiladores rugen y el rendimiento apenas supera al de un modesto bucle en la CPU. ¿Por qué ocurre esto? ¿Dónde se esfuman esos supuestos millones de operaciones por segundo?
+
+[00:01:14]
+[En pantalla: Esquema animado que ilustra la distancia física entre el chip central y los módulos externos de memoria GDDR6 en la placa base]
+
+La respuesta no está en las matemáticas, sino en las leyes inexorables del silicio. En este tercer capítulo de nuestra serie vamos a adentrarnos en la trastienda física del hardware para comprender una verdad que distingue a los programadores aficionados de los auténticos arquitectos de sistemas: las GPUs actuales no están limitadas por lo rápido que hacen cálculos aritméticos, sino por lo desesperadamente lentos que son los cables que transportan los datos desde la memoria hasta las unidades de cómputo.
+
+[00:01:52]
+[En pantalla: Gráfica del Teorema del Techo (Roofline Model) y cita en pantalla de Patterson & Hennessy: "The Memory Wall"]
+
+Durante décadas, la velocidad de los transistores creció a un ritmo vertiginoso siguiendo la Ley de Moore, pero la velocidad a la que la memoria externa puede escupir bytes se quedó muy atrás. A este abismo insalvable los ingenieros de arquitectura de computadoras, como los maestros David Patterson y John Hennessy, lo bautizaron con un nombre elocuente: "La Pared de Memoria", The Memory Wall. Cuando tus miles de hilos de cálculo se estrellan contra ese muro, la GPU entra en hambruna física de datos; tiene hambre de números, pero la despensa está demasiado lejos.
+
+[00:02:35]
+[En pantalla: Animación que contrasta el pipeline gráfico tradicional (vértices, rasterizado, fragmentos) frente al Compute Shader directo (Buffer -> Núcleos -> Buffer)]
+
+Pero antes de aprender a sortear ese muro, detengámonos un instante para no dar nada por sabido. ¿Qué es exactamente un Compute Shader y por qué representa una revolución en la web? En los capítulos anteriores vimos la sintaxis de WGSL y cómo definir tipos de datos estrictos. Pero hasta la llegada de WebGPU, el navegador nos obligaba a fingir. Si querías multiplicar matrices o simular partículas con WebGL, tenías que disfrazar tus datos de colores, tus vectores de coordenadas de pantalla y dibujar triángulos invisibles para engañar a la tarjeta gráfica.
+
+[00:03:20]
+[En pantalla: Diagrama claro de bloques: "CPU (JavaScript/Wasm) ───[GPUBindGroup]───> Silicio de la GPU (Miles de hilos paralelos)"]
+
+Un Compute Shader es la emancipación definitiva del silicio gráfico. Es un programa sin ataduras visuales: no hay píxeles, no hay texturas obligatorias, no hay triángulos. Es, literalmente, una inmensa factoría donde despachamos una cuadrícula tridimensional de miles o millones de obreros independientes —a los que llamamos hilos o invocaciones— con una única orden: "Leed estos números brutos de la memoria, ejecutad este algoritmo matemático en paralelo y escribid los resultados en este otro búfer".
+
+[00:04:02]
+[En pantalla: Tabla animada con la Jerarquía de Memoria mostrando los cuatro niveles: Registros, Memoria Compartida, Caché Uniforme y Memoria Global DRAM con sus latencias]
+
+Ahora bien, para que esa factoría funcione sin atascarse, necesitamos entender dónde viven los datos mientras se procesan. Imaginad por un momento a un cocinero de élite capaz de cortar verduras a la velocidad de la luz. Si cada vez que necesita una zanahoria tiene que salir de la cocina, coger el ascensor, bajar al sótano del edificio, abrir un almacén frío y volver a subir, no importa lo rápido que mueva el cuchillo: pasará el noventa y nueve por ciento de su jornada esperando en el ascensor.
+
+[00:04:44]
+[En pantalla: Comparativa gráfica de barras rojas y azules: "DRAM Global Off-Chip: ~600 ciclos de reloj" frente a "SRAM Compartida On-Chip: ~4 ciclos de reloj"]
+
+Eso es exactamente lo que ocurre cuando un hilo de la GPU lee directamente de la memoria global DRAM, la VRAM externa que veis en la barra roja: cada lectura le cuesta entre doscientos y ochocientos ciclos de reloj en blanco. En el mundo de los microprocesadores, esperar seiscientos ciclos es una eternidad geológica. Si nuestros diez mil hilos van a buscar datos al almacén externo para cada cálculo, el bus de la memoria se colapsa instantáneamente.
+
+[00:05:22]
+[En pantalla: Iluminación de la memoria compartida dentro del Streaming Multiprocessor / Compute Unit: etiqueta destacada "var<workgroup>"]
+
+¿Cuál es la solución que los arquitectos del silicio inventaron para salvar este abismo? Poner una mesa de trabajo común dentro de la propia cocina, justo al lado de las tablas de cortar. En el hardware de la GPU, esa mesa de trabajo es una diminuta pero rapidísima memoria estática integrada en la propia oblea de silicio del procesador: la memoria compartida de grupo de trabajo, que en WGSL declaramos con la palabra mágica var<workgroup>. 
+
+[00:05:58]
+[En pantalla: Fragmento de código WGSL resaltando la declaración: "var<workgroup> tile: array<f32, 256>;" junto a la mención del límite garantizado de 16 KB]
+
+Esta memoria compartida tarda apenas entre dos y cuatro ciclos en responder. Es cien veces más rápida que la memoria externa. Pero tiene sus reglas y sus límites: no podemos meter en ella gigabytes de información. El estándar WebGPU nos garantiza un espacio precioso y compacto de dieciséis kilobytes por grupo de trabajo. Saber racionar y exprimir esos dieciséis kilobytes es la auténtica frontera que separa el código amateur del software de grado profesional.
+
+[00:06:36]
+[En pantalla: Ilustración animada de 256 hilos intentando escribir a la vez en la misma casilla: destello de alerta "Data Race / Carrera de Datos"]
+
+Sin embargo, trabajar en equipo en una mesa compartida entraña un peligro temible: el caos. Si doscientos cincuenta y seis obreros intentan escribir y leer al mismo tiempo sobre las mismas casillas de la memoria, se produce lo que en ingeniería llamamos carreras de datos. Un hilo intentará leer un resultado antes de que su compañero haya terminado de escribirlo, o dos hilos sobrescribirán la misma celda a la vez, arruinando todo el cómputo con números corruptos.
+
+[00:07:12]
+[En pantalla: El silbato de sincronización: aparece en el código la instrucción "workgroupBarrier();" deteniendo a todos los hilos en una línea de meta común]
+
+Para mantener el orden absoluto en el silicio, WGSL nos proporciona una herramienta de disciplina implacable: la barrera de sincronización, workgroupBarrier(). Pensad en ella como un silbato militar: cuando un hilo llega a la barrera, se detiene en seco. Ningún hilo tiene permiso para dar el siguiente paso hasta que todos y cada uno de sus doscientos cincuenta y seis compañeros hayan llegado a la línea de meta y hayan completado sus escrituras. Solo cuando la mesa está en orden, todos reanudan la marcha al unísono.
+
+[00:07:54]
+[En pantalla: Animación de bifurcación condicional en rojo con señal de prohibición: "Barrier Divergence -> GPU DEADLOCK / DEVICE LOST"]
+
+Pero cuidado, porque con las barreras no se juega. A lo largo de este capítulo os advertiré contra el pecado capital más peligroso de la computación paralela: la divergencia de barreras. Si metéis una barrera dentro de un "if" condicional que solo toman algunos hilos, la GPU se bloqueará en un callejón sin salida del que jamás podrá escapar. La mitad del equipo esperará eternamente a unos compañeros que nunca van a llegar, el sistema operativo congelará la pantalla y vuestra aplicación WebGPU morirá fulminada en el acto.
+
+[00:08:34]
+[En pantalla: Diagrama animado de Reducción en Árbol: 256 valores plegándose a 128, luego a 64, 32, 16, 8, 4, 2 y finalmente 1 suma total]
+
+Una vez dominadas las armas de la memoria compartida y las barreras, nos adentraremos en el territorio de los algoritmos paralelos de élite. El primero de ellos es la Reducción en Árbol. ¿Cómo sumar un millón de números en la GPU sin recurrir al lento bucle secuencial de la CPU? Veremos cómo plegar los datos a la mitad en cada paso, como un fuelle que se cierra en tiempo logarítmico, reduciendo doscientas cincuenta y seis sumas a una sola en apenas ocho latidos. Y descubriremos el truco de silicio para evitar la divergencia de warps, manteniendo a los procesadores SIMD funcionando al cien por cien de su capacidad.
+
+[00:09:23]
+[En pantalla: Esquema visual de dos matrices gigantes descomponiéndose en baldosas (tiles) de 16x16 que encajan como piezas de ajedrez]
+
+Y culminaremos con la joya de la corona: la Multiplicación Matricial por Bloques, la técnica de Tiled GEMM. Esta no es una simple lección académica; es el motor invisible que mueve el mundo hoy en día. Cada vez que hacéis una consulta a un modelo de lenguaje como ChatGPT, cada vez que una red neuronal reconoce una voz o sintetiza una imagen, en el fondo lo único que está ocurriendo son trillones de multiplicaciones de matrices. 
+
+[00:10:01]
+[En pantalla: Métricas del simulador interactivo: "Ahorro de Ancho de Banda: 93.75%" e "Intensidad Aritmética: 32.0 FLOP/Byte"]
+
+Aprenderemos cómo descomponer matrices gigantes en pequeñas baldosas de dieciséis por dieciséis números que cargamos cooperativamente en la memoria compartida. Al hacerlo, cada dato que traemos desde el almacén lejano de la DRAM no se usa una vez, sino dieciséis veces seguidas a velocidad de vértigo. El resultado es asombroso: reducimos el tráfico sobre el bus de memoria en más de un noventa y tres por ciento, catapultando la velocidad de cálculo y demostrando que la inferencia de inteligencia artificial local, privada y fluida dentro del navegador web no es una quimera del futuro, sino una realidad palpable que podemos construir con nuestras propias manos.
+
+[00:10:52]
+[En pantalla: Demostración interactiva en vivo del archivo "workshop_06_tiled_gemm_and_reduction.html", alternando pestañas, pulsando los controles de spotlight y observando cómo se iluminan las baldosas en el simulador]
+
+Para que nada de esto quede en teoría abstracta, tendréis a vuestra disposición un nuevo taller interactivo, el laboratorio número seis, diseñado para que veáis en tiempo real cómo viajan las baldosas por el silicio, cómo se organizan los bancos de memoria y cómo vuestro código cobra vida en el hardware de vuestro propio equipo.
+
+[00:11:21]
+[En pantalla: Ficha de las obras canónicas en O'Reilly: Wen-mei Hwu & David Kirk, Patterson & Hennessy, y Niels Cautaerts]
+
+Como siempre, todo este viaje está cimentado sobre el rigor de la mejor literatura técnica de la biblioteca de O'Reilly Learning, con los textos clásicos de Hwu, Kirk, Patterson y Hennessy guiándonos en cada decisión de arquitectura.
+
+[00:11:42]
+[En pantalla: Primer plano del título final y el cursor parpadeando en la primera línea de código del shader: "Bienvenidos al corazón del silicio"]
+
+Dejemos atrás las suposiciones y los mitos de la fuerza bruta. Ajustaos los cinturones, abrid vuestro editor y entremos juntos en el corazón del silicio. Bienvenidos al Capítulo Tres.
+
+================================================================================

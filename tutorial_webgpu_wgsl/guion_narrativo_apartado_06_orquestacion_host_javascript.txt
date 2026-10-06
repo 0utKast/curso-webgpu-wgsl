@@ -1,0 +1,59 @@
+GUION NARRATIVO: APARTADO 6 DEL CAPÍTULO 4
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 4: Texturas, Samplers y Computación Gráfica Avanzada en WGSL
+Apartado 6: Orquestación en Host (JavaScript WebGPU): Formatos, Subida de Imágenes y BindGroups
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Título del apartado: "Apartado 6: Orquestación en Host (JavaScript WebGPU) — Formatos, Subida de Imágenes y BindGroups". Se muestra una animación que conecta el runtime de JavaScript en la CPU con la cola de comandos de la GPU]
+
+En los apartados anteriores hemos esculpido el silicio desde dentro: dominamos las Curvas de Morton, las Unidades de Filtrado y programamos un kernel de convolución con delantal de halo en memoria compartida capaz de recortar el ochenta y seis por ciento del tráfico de memoria. Sin embargo, un compute shader en uve doble ge ese ele es solo un motor en reposo. Para que empiece a rugir y procese imágenes reales en vuestra pantalla, necesitamos que el Host —la CPU ejecutando la API de WebGPU en JavaScript— tome el mando.
+
+Hoy saldremos del sombreador para aprender a orquestar esta factoría desde el navegador: aprenderemos a inicializar texturas de hardware con permisos estrictos, descubriremos el atajo de velocidad más impresionante de la web moderna para transferir vídeo en vivo y despacharemos nuestros grupos de trabajo bidimensionales a sesenta fotogramas por segundo.
+
+[00:00:54]
+[En pantalla: Código JavaScript resaltando "device.createTexture" con las banderas "TEXTURE_BINDING", "STORAGE_BINDING" y "COPY_DST". Aparecen cartelas explicativas sobre cada permiso de hardware]
+
+A diferencia de las viejas librerías gráficas donde las texturas eran objetos opacos y permisivos, WebGPU nos exige declarar con precisión militar el propósito de cada recurso. En pantalla veis la creación de nuestras dos texturas principales.
+
+La textura de entrada requiere dos banderas indispensables: copy destination, para que podamos inyectarle fotogramas desde el exterior, y texture binding, para que el compute shader pueda leer sus píxeles. La textura de salida, en cambio, necesita storage binding, el permiso de hardware que autoriza a nuestro kernel a realizar escrituras directas con texture store, y además texture binding o render attachment para poder presentar el resultado final en el lienzo. Si un shader intenta escribir en una textura sin este permiso, el controlador gráfico abortará la ejecución antes de enviar la orden al procesador.
+
+[00:01:52]
+[En pantalla: Esquema visual de los formatos: "rgba8unorm" (32 bits, 4 bytes por píxel, cuantización [0.0, 1.0] a [0, 255]) frente a "r32float" (precisión matemática de 32 bits en coma flotante)]
+
+Prestemos especial atención al formato de los píxeles: el estándar indiscutible para la web es erre ge be a ocho unorm. Este formato empaqueta cuatro canales de ocho bits sin signo en treinta y dos bits por píxel. Lo fascinante de este formato es que el silicio normaliza automáticamente los valores: en vuestro código JavaScript o en la memoria física son números enteros de cero a doscientos cincuenta y cinco, pero en cuanto entran en el sombreador de uve doble ge ese ele se transforman de forma transparente en números de coma flotante continuos entre cero punto cero y uno punto cero.
+
+[00:02:40]
+[En pantalla: Comparativa gráfica de dos caminos de datos: en rojo, "writeTexture" viajando por la CPU y la RAM; en verde brillante, "copyExternalImageToTexture" viajando directo del decodificador NVDEC a la VRAM sin tocar la CPU]
+
+Pero el auténtico salto de ingeniería de WebGPU reside en la forma en que introducimos los fotogramas en el silicio. Si trabajáramos con arrays de bytes sintéticos, usaríamos write texture. Pero si queremos procesar una imagen, un lienzo o un flujo de vídeo en directo procedente de la cámara web, WebGPU nos entrega su arma más poderosa: la función copy external image to texture.
+
+Fijaos en la infografía que tenéis en pantalla. En los navegadores modernos, la decodificación de vídeo se realiza en los circuitos integrados de descompresión de la propia tarjeta gráfica. Con las tecnologías antiguas, el navegador tenía que descargar el fotograma decodificado a la memoria RAM de la CPU, serializarlo en JavaScript y volver a subirlo por el bus PCIe a la memoria gráfica. Con copy external image to texture, la transferencia se ejecuta directamente en la memoria de vídeo, de V-RAM a V-RAM. Cero ciclos de CPU, cero copias intermedias en memoria RAM y cero interrupciones del recolector de basura de JavaScript. Es una autopista directa que permite procesar vídeo en cuatro ka a sesenta fotogramas por segundo sin que el procesador central se inmute.
+
+[00:04:05]
+[En pantalla: Diagrama de "GPUBindGroupLayout" y "GPUBindGroup" emparejando la textura de entrada en el binding 0, la textura de almacenamiento en el binding 1 y el sampler en el binding 2]
+
+Una vez que las texturas residen en la V-RAM, debemos formalizar el contrato de enlace con el pipeline mediante un BindGroup. Como podéis ver en el código, definimos un layout estricto: el enlace cero es una textura muestreable de tipo float; el enlace uno es una storage texture de solo escritura en formato erre ge be a ocho unorm; y el enlace dos es el sampler de filtrado bilineal. Al instanciar el BindGroup, conectamos las vistas de nuestras texturas reales con estos puntos de anclaje.
+
+[00:04:50]
+[En pantalla: Animación que muestra el cálculo: "Math.ceil(ancho / 16)" y "Math.ceil(alto / 16)", generando una cuadrícula de bloques que cubre exactamente la resolución de 1920x1080]
+
+Con los recursos enlazados, llega el momento cumbre: emitir la orden de despacho bidimensional. Como nuestro compute shader está configurado con grupos de trabajo de dieciséis por dieciséis hilos, dividimos el ancho y el alto del fotograma entre dieciséis, redondeando siempre hacia arriba con Math punto ceil.
+
+Si procesamos una imagen en alta definición de mil novecientos veinte por mil ochenta, el despachador calcula ciento veinte grupos en equis y sesenta y ocho grupos en ye, activando una legión de más de dos millones de hilos paralelos que barren el fotograma en una fracción de milisegundo.
+
+[00:05:38]
+[En pantalla: Recorrido por la función "renderFrame": 1. copyExternalImageToTexture; 2. Compute Pass con dispatchWorkgroups; 3. Render Pass dibujando la textura en el canvas; 4. submit a la cola; 5. requestAnimationFrame]
+
+Todo esto se ensambla en el bucle continuo de renderizado que veis en pantalla. En cada ciclo de refresco, capturamos el fotograma actual de la cámara web, registramos el pase de computación para aplicar el filtro de convolución con halo, ejecutamos un pase de render ultraligero para proyectar la textura procesada sobre el lienzo en pantalla y enviamos el paquete de comandos a la cola de la GPU con device queue submit.
+
+El resultado es pura magia de ingeniería: la cámara web se procesa en tiempo real con una fluidez asombrosa, con un retardo imperceptible y aprovechando al máximo el silicio de vuestro equipo.
+
+[00:06:30]
+[En pantalla: Anticipo del Workshop 07 con la interfaz web completa: selector de cámara, visualizador interactivo de Curva de Morton y telemetría de FPS en vivo]
+
+Como destacan Patterson y Hennessy en su tratado canónico sobre arquitectura de computadores, el coste de mover datos a través del bus supera con creces el coste de la computación matemática. Eliminar las copias intermedias mediante transferencias directas en V-RAM es la piedra angular que permite a WebGPU transformar el navegador en un auténtico sistema operativo para aplicaciones visuales de alto rendimiento.
+
+Tenemos los shaders, tenemos la física del silicio y tenemos la orquestación en JavaScript. En el Apartado Siete abriremos las puertas de nuestro laboratorio interactivo: el Workshop número Siete, donde podréis encender vuestra propia cámara web, activar los filtros en vivo y diseccionar la telemetría del silicio en tiempo real.

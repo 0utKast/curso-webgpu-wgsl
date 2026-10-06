@@ -1,0 +1,69 @@
+GUION NARRATIVO: APARTADO 3 DEL CAPÍTULO 4
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 4: Texturas, Samplers y Computación Gráfica Avanzada en WGSL
+Apartado 3: Tipos de Texturas y Primitivas en el Sistema de Tipos de WGSL
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Título del apartado: "Apartado 3: Tipos de Texturas y Primitivas en el Sistema de Tipos de WGSL". Debajo, animación que despliega dos grandes ramas: "Texturas Muestreables (texture_2d)" a la izquierda y "Texturas de Almacenamiento (texture_storage_2d)" a la derecha]
+
+En los dos apartados anteriores hemos explorado la arquitectura del silicio: la geometría espacial de las Curvas de Morton en la memoria y los circuitos integrados de las Unidades de Filtrado de Texturas. Pero para que el compilador de WebGPU sepa exactamente qué compuertas lógicas activar en cada instrucción, el lenguaje WGSL no nos permite tratar a las texturas como simples punteros opacos. Nos exige una disciplina de tipado estricta y transparente.
+
+Hoy vamos a abrir la caja de herramientas de WGSL para dominar su catálogo de tipos de textura y las instrucciones intrínsecas que nos permitirán leer, muestrear y escribir píxeles en tiempo real.
+
+[00:00:48]
+[En pantalla: Fragmento de código WGSL resaltando la declaración: "@group(0) @binding(0) var textura_entrada: texture_2d<f32>;" y "@group(0) @binding(1) var muestreador: sampler;"]
+
+La primera gran familia son las Texturas Muestreables, declaradas con el tipo texture_2d. Este tipo representa una textura bidimensional de solo lectura, optimizada para ser leída a través de las cachés de textura y los circuitos de la TFU. Su parámetro genérico indica el tipo de dato que devuelve al leerla, que casi siempre será f32 para valores de color normalizados. Trabajar con una texture_2d suele requerir un objeto sampler acompañante para que el hardware sepa cómo resolver la interpolación y el comportamiento en los bordes.
+
+[00:01:34]
+[En pantalla: Fragmento de código WGSL resaltando: "@group(0) @binding(2) var textura_salida: texture_storage_2d<rgba8unorm, write>;". Se iluminan los parámetros "rgba8unorm" y "write" con anotaciones explicativas]
+
+Sin embargo, en el mundo de los Compute Shaders necesitamos algo más potente: necesitamos la capacidad de escribir píxeles arbitrarios en cualquier coordenada de la imagen. Para eso existe la segunda gran familia: las Texturas de Almacenamiento, declaradas con el tipo texture_storage_2d.
+
+Fijaos en la declaración que tenéis en pantalla: texture_storage_2d exige dos parámetros obligatorios. El primero es el formato binario exacto en memoria, como rgba8unorm, que almacena cuatro canales de ocho bits empaquetados en treinta y dos bits por píxel. El segundo es el modo de acceso, que en la especificación estándar de WebGPU es write, indicando que nuestra función de cómputo escribirá sobre ella. Las texturas de almacenamiento son la llave maestra que nos permite utilizar la GPU como una inmensa fábrica de procesamiento de matrices de píxeles, saltándonos por completo la tubería gráfica tradicional.
+
+[00:02:45]
+[En pantalla: Comparativa visual entre "sampler" ordinario y "sampler_comparison". Se ilustra un cono de luz arrojando sombras con el texto: "Shadow Mapping y PCF en silicio"]
+
+Y junto a las texturas encontramos los muestreadores: el tipo sampler convencional, que gobierna el filtrado bilineal o trilineal, y un tipo especializado llamado sampler_comparison. Este último es una joya del hardware para sombras en tres dimensiones: la TFU no devuelve un color, sino que compara de forma nativa la profundidad del texel contra una referencia fija, resolviendo el filtrado suave de sombras por hardware sin consumir una sola línea de código aritmético.
+
+[00:03:26]
+[En pantalla: Alerta roja animada mostrando el error de compilación: "textureSample cannot be called in compute shaders". Debajo, animación de un quad 2x2 de fragmentos comparando derivadas frente a la cuadrícula independiente de hilos en Compute]
+
+Pero entremos ahora en las funciones intrínsecas de WGSL, porque aquí es donde muchos desarrolladores tropiezan con el primer muro. Si venís de programar sombreadores de fragmentos, vuestro primer instinto será invocar la clásica función textureSample. Y en el mismo instante en que lo hagáis dentro de un compute shader, el navegador rechazará vuestro código con un error implacable.
+
+¿Por qué está prohibido textureSample en Compute Shaders? Por una razón fundamental de silicio. En la tubería gráfica tradicional, los fragmentos se ejecutan siempre en pequeños grupos de cuatro píxeles llamados quads. La GPU compara los hilos vecinos para calcular derivadas de pantalla automáticas y deducir el nivel de detalle necesario. Pero en un Compute Shader no hay quads de rasterización: cada hilo es un obrero independiente. No existen derivadas implícitas.
+
+[00:04:30]
+[En pantalla: Sintaxis de "textureSampleLevel(textura, sampler, uv, 0.0)" resaltando el parámetro de nivel MIP "0.0" en verde brillante]
+
+Para muestrear con interpolación continua dentro de un Compute Shader, WGSL nos proporciona la instrucción textureSampleLevel. Como podéis ver en pantalla, la firma es idéntica a textureSample, pero añade un cuarto parámetro: el nivel de detalle o nivel MIP explícito. Si le pasamos cero punto cero, la GPU aplicará la interpolación bilineal de la TFU sobre la imagen a su máxima resolución nativa.
+
+[00:05:08]
+[En pantalla: Comparativa de sintaxis entre "textureLoad" y "textureStore". Se resalta que ambos usan "vec2<u32>" con índices enteros en lugar de coordenadas flotantes normalizadas]
+
+Sin embargo, cuando entramos en el terreno de la visión artificial, la convolución o los detectores de bordes, no queremos promedios continuos; queremos leer y escribir texels discretos exactos. Para eso disponemos del tándem definitivo: textureLoad y textureStore.
+
+textureLoad no necesita ningún sampler: recibe la textura, un vector de coordenadas enteras de tipo vec2 de u32 y el nivel de detalle entero, devolviéndonos el color original intacto. Y su contrapartida, textureStore, toma la textura de almacenamiento de salida, las coordenadas enteras donde queremos escribir y el vector de cuatro flotantes con el color procesado.
+
+[00:06:05]
+[En pantalla: Demostración de "textureDimensions(textura)". La imagen de 1920x1080 devuelve un vector (1920, 1080) que se utiliza en la comprobación: "if (coords.x >= dims.x || coords.ye >= dims.ye) return;"]
+
+Y para cerrar este círculo de primitivas, WGSL nos ofrece textureDimensions. Esta función interroga directamente a la controladora de memoria en el silicio para averiguar el ancho y el alto exactos de la textura en texels. Esto es extraordinariamente útil: hace que nuestros shaders sean completamente agnósticos al tamaño de la imagen, eliminando la necesidad de crear y sincronizar molestos uniform buffers desde JavaScript solo para pasarle el ancho y el alto al shader.
+
+[00:06:50]
+[En pantalla: Código completo del Compute Shader de Escala de Grises (ITU-R BT.601) recorriéndose línea por línea. Se resalta la comprobación de límites y la conversión matemática de luminancia]
+
+Fijaos en el shader completo que tenéis en pantalla, que reúne todas estas piezas en una sinfonía perfecta. Declaramos un grupo de trabajo bidimensional de dieciséis por dieciséis hilos, sumando doscientos cincuenta y seis obreros en paralelo. Cada hilo extrae su coordenada global equis y ye. Consultamos las dimensiones de la imagen con textureDimensions y aplicamos la cláusula de seguridad más importante de la computación visual: la comprobación de límites. Si el hilo cae fuera de la imagen —lo que ocurre siempre que las dimensiones no sean múltiplos exactos de dieciséis—, el hilo se aborta inmediatamente.
+
+A continuación, leemos el texel con textureLoad, calculamos la luminancia perceptual del estándar internacional ITU-R BT.601 aplicando mayor sensibilidad al verde que al rojo o azul, y escribimos el resultado en la textura de almacenamiento con textureStore.
+
+[00:08:00]
+[En pantalla: Vista previa del siguiente apartado: una matriz de convolución 3x3 pasando sobre una fotografía y revelando contornos luminosos mediante el Filtro de Sobel]
+
+Como explican Sergey Kosarevsky y Viktor Latypov en el Vulkan 3D Graphics Rendering Cookbook, las texturas de almacenamiento rompen las cadenas del pipeline gráfico tradicional, transformando la tarjeta gráfica en un colosal procesador matricial donde cada hilo es a la vez un sensor de lectura y un actuador de escritura.
+
+Con el sistema de tipos y las instrucciones intrínsecas de WGSL firmemente asimilados, estamos listos para el gran desafío: en el Apartado Cuatro construiremos nuestro primer algoritmo de visión artificial en tiempo real, implementando la Convolución Bidimensional y los Filtros de Sobel en Compute Shaders.

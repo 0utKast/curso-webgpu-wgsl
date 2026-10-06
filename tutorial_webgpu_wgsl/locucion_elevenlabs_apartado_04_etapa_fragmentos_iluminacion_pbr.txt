@@ -1,0 +1,36 @@
+Si el Vertex Shader es el arquitecto del espacio tridimensional, encargado de ubicar vértices, calcular matrices y proyectar volúmenes, el Fragment Shader es el auténtico físico de la materia y de la luz.
+
+Una vez que el rasterizador de función fija ha evaluado las funciones de arista y ha interpolado los atributos baricéntricos con corrección de perspectiva, la GPU activa la última fase programable de la línea de montaje gráfico. La misión del Fragment Shader consiste en resolver la radiometría de cada fragmento candidato: muestrear mapas de textura continuos en silicio, evaluar la orientación microscópica de las superficies y simular cómo interactúan los fotones incidentes con la materia para emitir el color final hacia la pantalla.
+
+En uve doble ge ese ele, el Fragment Shader se declara con la anotación arroba fragment. A diferencia de un Compute Shader, que procesa búferes de memoria planos, aquí el compilador y el silicio nos entregan una interfaz fuertemente tipada.
+
+Recibimos variables integradas fundamentales de hardware: arroba builtin position nos entrega las coordenadas de pantalla del píxel en equis y ye, junto con la profundidad normalizada zeta y el inverso exacto de la perspectiva uno dividido por uve doble. Asimismo, el booleano arroba builtin front facing nos revela al instante si el fragmento pertenece a la cara frontal o trasera de la malla, permitiendo corregir las normales en geometrías de doble cara como hojas o telas sin gastar un solo triángulo adicional.
+
+El primer gran desafío del fragmento es el color de superficie. En el código en uve doble ge ese ele, invocamos la instrucción texture sample. Pero bajo esa inocente instrucción no se ejecuta ningún bucle de software: el cálculo se delega íntegramente a las Unidades de Filtrado de Texturas del silicio, las T F Us.
+
+Al muestrear en el dominio continuo de cero punto cero a uno punto cero, el hardware calcula en milmillonésimas de segundo la huella del píxel en la textura. Si el objeto se aleja hacia el horizonte, un único píxel cubre decenas de téxeles. Para evitar el parpadeo y el aliasing destructivo, las T F Us evalúan la tasa de cambio de las coordenadas y seleccionan automáticamente el nivel de detalle de textura, promediando los dos niveles más cercanos mediante filtrado trilineal acelerado por transistores dedicados.
+
+¿Cómo sabe el Fragment Shader a qué velocidad cambian las coordenadas si cada píxel se procesa en un hilo independiente? Aquí descubrimos uno de los secretos mejor guardados del silicio gráfico: las Derivadas Parciales de Pantalla.
+
+Las GPUs jamás ejecutan fragmentos aislados; los despachan en quads rígidos de dos por dos píxeles en estricto sincronismo. Mediante las instrucciones intrínsecas de pe de equis y de pe de ye, el chip realiza una simple resta de registros entre hilos vecinos del mismo quad.
+
+Esto nos otorga poderes extraordinarios: podemos calcular la normal física perfecta de una superficie poligonal en una sola línea de código sin cargar atributos de normales de vértice, o eliminar el aliasing de patrones procedurales usando efe width. Pero exige una disciplina absoluta: las derivadas exigen un flujo de control uniforme. Si colocáis un texture sample dentro de una bifurcación condicional divergente, los registros vecinos se vuelven inválidos y el compilador detendrá la ejecución para protegeros de artefactos visuales.
+
+Con las normales y texturas listas, abordamos el modelado de la luz. Durante décadas, la industria confió en el modelo de Blinn-Phong, formulado por Jim Blinn en mil novecientos setenta y siete.
+
+Blinn-Phong descompone la luz en tres términos: una base ambiental que simula el rebote indirecto, una componente difusa lambertiana modulada por el producto escalar entre la normal y la dirección de la luz, y una componente especular para los brillos intensos. La genialidad de Jim Blinn consistió en sustituir el costoso vector de reflexión de Phong por el semivector intermedio H, obtenido al normalizar la suma del vector de la luz y el vector de la cámara. Al medir la coincidencia entre la normal y este semivector, el cálculo es mucho más rápido en silicio y modela de forma más limpia el comportamiento de los brillos en ángulos rasantes.
+
+Sin embargo, los modelos empíricos como Blinn-Phong tienen un talón de Aquiles: violan las leyes de la termodinámica. Al sumar luz difusa y especular sin restricciones, pueden rebotar más energía de la que reciben, y son incapaces de distinguir de forma creíble entre un plástico y un metal.
+
+Por eso, el estándar moderno en WebGPU es el Renderizado Basado en la Física, o P B R. El P B R descansa sobre tres pilares inquebrantables:
+Primero, la Conservación de la Energía: la suma de luz reflejada y refractada nunca puede superar a la luz entrante.
+Segundo, la Teoría de Microfacetas: las superficies no son lisas, sino paisajes microscópicos de diminutos espejos cuya orientación estadística define la rugosidad del material.
+Y tercero, el Efecto Fresnel: a ángulos rasantes de noventa grados, absolutamente todos los materiales del universo se convierten en espejos perfectos.
+
+En el corazón matemático del P B R late la formulación de Cook-Torrance. La luz especular se calcula mediante el cociente entre tres factores: la distribución D de G G X, que modela cuántas microfacetas apuntan hacia la cámara; el término F de Fresnel-Schlick, que distingue cómo los dieléctricos reflejan apenas un cuatro por ciento de frente mientras los metales tiñen el reflejo con su propio albedo; y el factor geométrico G de Smith, que calcula la auto-oclusión entre micro-valles.
+
+En nuestro código en uve doble ge ese ele implementamos el flujo estándar metálico-rugoso: regulamos con precisión matemática la absorción de los conductores, aplicamos mapeo tonal de Reinhard para comprimir el rango dinámico y corregimos la curva gamma para emitir colores cromáticamente exactos en el monitor del usuario.
+
+Con el color y la profundidad física calculados en cada fragmento, el shader culmina su tarea. Los datos viajan ahora a los circuitos de salida de la GPU, los R O Ps, donde se librará la batalla final de la visibilidad y la transparencia.
+
+En el Apartado 5, descubriremos cómo orquestar los Pases de Render en WebGPU, cómo evitar el temido conflicto del Zeta-fighting, cómo opera el descarte ultrarrápido Early Zeta en silicio y cómo dominar las matemáticas de la mezcla de colores con Alpha Blending.

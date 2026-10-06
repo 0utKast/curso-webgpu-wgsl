@@ -1,0 +1,68 @@
+GUION NARRATIVO: APARTADO 7 DEL CAPÍTULO 5
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 5: El Pipeline Gráfico Completo, Rasterización y la Síntesis Compute-to-Render en WebGPU
+Apartado 7: Orquestación en Host (JavaScript WebGPU) y el Ciclo de Presentación del Swapchain
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Título cinemático del apartado: "Apartado 7: Orquestación en Host (JavaScript WebGPU) y el Ciclo de Presentación del Swapchain". De fondo, animación técnica que visualiza el hilo principal de JavaScript interactuando con la GPU a través de un canal PCI-Express virtual; se observa una línea de tiempo con pulsos de sincronización vertical a 120 Hz donde los fotogramas se entregan con precisión milimétrica sin la menor fluctuación]
+
+A lo largo de los apartados anteriores de este capítulo hemos conquistado las profundidades del silicio gráfico: las matemáticas de proyección del Vertex Shader, la física del rasterizador de función fija, el sombreado físico en el Fragment Shader y la síntesis directa de cómputo y render.
+
+Sin embargo, ninguna tarjeta gráfica del planeta opera en el vacío. Toda la potencia de cálculo de los núcleos gráficos carece de utilidad si el procesador central del sistema, el host, es incapaz de alimentarla con cadencia perfecta, gestionar los eventos del usuario, adaptar la resolución a la pantalla física y entregar los fotogramas terminados al compositor del sistema operativo sin saltos ni tirones.
+
+En el paradigma de BrowserOS, el host es el entorno de ejecución de JavaScript y WebAssembly sobre el motor del navegador. En este apartado descenderemos al terreno de la orquestación en host, dominando el ciclo de vida del Swapchain, la sincronización de refresco con el compositor, el redimensionamiento dinámico sin fugas de memoria y las técnicas de sumisión monolítica de comandos que mantienen la aplicación en una fluidez indestructible a sesenta o ciento veinte fotogramas por segundo.
+
+[00:01:15]
+[En pantalla: Esquema interactivo del navegador web. Se resalta el elemento canvas en el DOM y se abre una ventana de inspección mostrando el objeto GPUCanvasContext. A continuación, animación de swizzling de canales mostrando cómo una textura RGBA debe reorganizarse a BGRA en macOS si no se usa el formato preferido, causando una penalización de rendimiento]
+
+El punto de encuentro entre el árbol de documentos del navegador y el hardware gráfico es el elemento canvas. A diferencia de WebGL, donde el contexto acumulaba tanto los comandos de dibujo como el estado global de la máquina, en WebGPU el contexto del lienzo tiene una única y estricta misión: gobernar la configuración y la presentación de la cadena de intercambio.
+
+Para vincular el lienzo con nuestro dispositivo lógico, invocamos el método de configuración del contexto. Aquí surge la primera decisión crítica de ingeniería: el formato de píxel. En lugar de forzar un formato arbitrario, debemos consultar siempre la función nativa que devuelve el formato preferido por el navegador. En sistemas Apple Silicon y macOS, el compositor de ventanas opera internamente en formato BGRA, mientras que en otros entornos utiliza RGBA. Al respetar el formato nativo del sistema, eliminamos cualquier sobrecarga oculta de reorganización de canales en la composición de cada fotograma.
+
+Asimismo, al configurar el modo alfa como opaco en aplicaciones a pantalla completa, le ahorramos al navegador el coste computacional de calcular transparencias con elementos HTML subyacentes. Y para aquellos escenarios de máxima exigencia donde no deseamos que la lógica de la interfaz interfiera con el renderizado, WebGPU permite transferir el control del lienzo a un hilo secundario mediante OffscreenCanvas, ejecutando el bucle gráfico dentro de un Web Worker con independencia absoluta del hilo principal.
+
+[00:02:40]
+[En pantalla: Diagrama visual en movimiento del mecanismo de Swapchain con Triple Buffering. El Back Buffer recibe las operaciones de rasterización de la GPU; al llegar el pulso de V-Sync, se produce el intercambio instantáneo (flip) convirtiéndose en Front Buffer visible mientras el monitor barre la pantalla, erradicando por completo el efecto de rasgado horizontal (Screen Tearing)]
+
+En el núcleo de la presentación gráfica reside el concepto de Swapchain. Su propósito fundamental es desacoplar el tiempo de dibujo de la GPU del barrido continuo del panel de visualización, impidiendo que aparezca el desagradable corte horizontal de pantalla cuando un fotograma se actualiza a mitad de refresco.
+
+En WebGPU, este proceso se gestiona a través de la llamada al método que adquiere la textura actual del lienzo. Cada vez que iniciamos un fotograma, solicitamos esta textura efímera, generamos su vista de renderizado y la asignamos como adjunto de color en nuestro descriptor de pase.
+
+Esta textura tiene un ciclo de vida estrictamente acotado a ese fotograma. Si llamamos varias veces al método dentro del mismo fotograma, recibiremos la misma instancia. Pero en el instante en que nuestro código de JavaScript cede el control al bucle de eventos del navegador, el compositor toma posesión del búfer, lo presenta en la pantalla y la textura queda invalidada para cualquier uso posterior. A diferencia de APIs como Vulkan, donde el programador debe sincronizar manualmente semáforos de presentación y llamar explícitamente a colas de envío, en WebGPU la presentación es implícita, automática y coordinada con el refresco vertical del sistema.
+
+[00:04:05]
+[En pantalla: Gráfico de cronometraje de fotograma (Frame Budget). Una barra de 16.6 milisegundos a 60 Hz y otra de 8.3 milisegundos a 120 Hz. El segmento de CPU asignado a JavaScript se ilumina en verde mostrando 1.8 milisegundos, dejando un colchón de seguridad holgado. Al lado, simulación de una partícula física atravesando una pared cuando el delta time no tiene clamping frente a una trayectoria contenida con clamping de seguridad]
+
+Para que la cadencia de presentación sea impecable, sincronizamos el bucle de renderizado mediante la función estándar de petición de fotograma de animación. Aquí entra en juego la disciplina del presupuesto temporal del fotograma.
+
+En una pantalla convencional a sesenta hercios disponemos de dieciséis punto seis milisegundos, pero en paneles modernos a ciento veinte hercios ese margen se contrae a ocho punto tres milisegundos. Como subraya el experto Addy Osmani, la labor del procesador central en el hilo de JavaScript debe completarse estrictamente en menos de dos a tres milisegundos. El resto del tiempo pertenece al motor del navegador para resolver eventos y a la GPU para ejecutar el silicio.
+
+Para que las animaciones y la física se muevan a velocidad idéntica sin importar la frecuencia de refresco, calculamos el delta time entre fotogramas consecutivos. Y aquí aplicamos una regla de oro indispensable: la sujeción o clamping del tiempo delta. Si el usuario minimiza la pestaña o el sistema entra en reposo, el tiempo transcurrido puede dispararse a varios segundos. Al limitar el delta time a un valor máximo de cero punto cero cinco segundos, evitamos el temido fenómeno de la espiral de la muerte, impidiendo que los cálculos físicos colapsen o que las entidades atraviesen las colisiones al reanudar la pestaña.
+
+[00:05:30]
+[En pantalla: Demostración gráfica de la trampa de resolución. A la izquierda: un modelo 3D renderizado a resolución CSS en pantalla Retina con pixelado y bordes borrosos. A la derecha: el mismo modelo renderizado en píxeles físicos exactos mediante ResizeObserver y devicePixelContentBoxSize con nitidez cristalina. Abajo: la consola del navegador mostrando un error en rojo por falta de coincidencia de tamaño en el Depth Buffer]
+
+Otro gran desafío del host es la gestión de la resolución en pantallas de alta densidad. Muchos desarrolladores cometen el error de asumir que los píxeles de estilo CSS equivalen a los píxeles reales de la pantalla. En un panel Retina o de alta resolución con un factor de escala de dos o tres, ignorar este multiplicador condena a la escena a un aspecto borroso y degradado.
+
+La técnica definitiva consiste en utilizar un observador de tamaño con la propiedad de caja de píxeles físicos del dispositivo. Esta moderna interfaz del navegador nos entrega la cantidad exacta de píxeles físicos del panel, eliminando los errores de redondeo fraccionario provocados por el nivel de zoom.
+
+Pero esta adaptación exige sincronizar con precisión militar el búfer de profundidad. En WebGPU, si la textura del lienzo cambia de dimensiones y no recreamos de inmediato la textura del búfer de profundidad con ese mismo tamaño, la tarjeta gráfica arrojará un error fatal de validación, ya que todos los adjuntos de un pase de renderizado deben coincidir al milímetro. Al detectar un cambio de escala, destruimos la textura de profundidad antigua y creamos una nueva con las dimensiones físicas exactas del lienzo.
+
+[00:06:55]
+[En pantalla: Comparativa de rendimiento entre sumisión fragmentada y sumisión atómica monolítica. Se observa el monitor de la GPU con picos entrecortados de inactividad frente a una saturación continua y eficiente del 99% con sumisión única. En paralelo, animación del consumo de memoria de vídeo (VRAM) acumulando megabytes hasta que se aplica el método destroy() devolviendo la memoria al sistema]
+
+Llegamos al principio rector de la sumisión de comandos: el patrón de sumisión atómica monolítica. Cada llamada al método de sumisión de la cola del dispositivo cruza una frontera de comunicación entre procesos hacia el controlador nativo. Fragmentar un fotograma en múltiples llamadas individuales genera sobrecarga de sincronización y burbujas de inactividad en la GPU.
+
+La arquitectura canónica empaqueta todas las etapas del fotograma, desde la simulación física en el pase de cómputo hasta el dibujado de geometría en el pase de renderizado, dentro de un único codificador de comandos o en un único lote de sumisión. Con una sola orden atómica, la GPU recibe el plan de trabajo completo y satura sus unidades de cálculo al máximo rendimiento.
+
+Finalmente, debemos recordar que la memoria de vídeo no es el montón ordinario de JavaScript. Si creamos texturas de profundidad o búferes auxiliares y nos limitamos a desvincularlos en JavaScript, el recolector de basura del navegador no liberará la memoria física en silicio de forma oportuna. El uso riguroso del método de destrucción explícita sobre los recursos obsoletos garantiza que la memoria de vídeo se devuelva al hardware al instante, permitiendo que nuestra aplicación funcione durante días o semanas sin riesgo alguno de agotamiento de memoria.
+
+[00:08:15]
+[En pantalla: Resumen visual de los conceptos: configuración de contexto nativo, adquisición efímera de getCurrentTexture, sincronización de refresco con clamping de tiempo, redimensionamiento exacto en píxeles físicos y sumisión monolítica. Transición hacia el logo del Workshop 08: "El Universo 3D en Vivo de BrowserOS"]
+
+Con la orquestación en host y el control del Swapchain plenamente consolidados, disponemos de toda la armadura técnica y teórica necesaria para gobernar el silicio gráfico en la web.
+
+En el Apartado 8 daremos vida a todo este andamiaje en nuestro taller práctico interactivo: el Laboratorio 3D en Vivo de BrowserOS. Construiremos una aplicación tridimensional completa con simulación física Compute-to-Render, visualización interactiva del búfer de profundidad, inspección de vectores normales y sombreado PBR con control dinámico de parámetros. Un banco de pruebas profesional donde podréis experimentar en directo con el poderío gráfico de la web moderna.

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taller Práctico 1: El Modelo Mental de WebGPU vs CPU</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --code-bg: #0b1120;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 2rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+
+    .status-ok {
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: var(--success);
+    }
+
+    .status-fail {
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      color: var(--danger);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      border: 1px solid var(--card-border);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    select {
+      background: var(--code-bg);
+      color: var(--text-main);
+      margin-bottom: 1.25rem;
+    }
+
+    button {
+      background: linear-gradient(135deg, #0284c7, #0ea5e9);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    button:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .metrics-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .metric-row {
+      background: var(--code-bg);
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .bar-bg {
+      width: 100%;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .bar-fill-cpu {
+      height: 100%;
+      width: 0%;
+      background: #f43f5e;
+      transition: width 0.5s ease;
+    }
+
+    .bar-fill-gpu {
+      height: 100%;
+      width: 0%;
+      background: var(--success);
+      transition: width 0.5s ease;
+    }
+
+    .speedup-box {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 8px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      text-align: center;
+    }
+
+    .speedup-number {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: var(--accent);
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", Menlo, Consolas, Monaco, monospace;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      margin-top: 0.5rem;
+    }
+
+    .code-comment { color: #64748b; }
+    .code-keyword { color: #f43f5e; font-weight: 600; }
+    .code-func { color: #38bdf8; }
+    .code-type { color: #34d399; }
+    .code-builtin { color: #fbbf24; }
+
+    .explanation-list {
+      list-style: none;
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .explanation-list li strong {
+      color: var(--text-main);
+    }
+
+    .tab-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .tab-btn {
+      width: auto;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      box-shadow: none;
+    }
+
+    .tab-btn.active {
+      background: var(--card-border);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <span class="badge">Capítulo 1 • Laboratorio Práctico</span>
+      <h1>WebGPU Compute vs. CPU Benchmark</h1>
+      <p class="subtitle">Demostración en vivo de computación paralela masiva (GPGPU) sin elementos visuales en el navegador.</p>
+    </header>
+
+    <!-- Estado del Soporte de Hardware -->
+    <div id="gpu-status" class="status-indicator status-ok">
+      <div class="status-dot"></div>
+      <span id="gpu-status-text">Verificando compatibilidad de WebGPU en tu navegador...</span>
+    </div>
+
+    <div class="grid-2">
+      <!-- Panel de Control y Configuración -->
+      <div class="card">
+        <h2 class="card-title">⚙️ Parámetros del Experimento</h2>
+        
+        <label for="array-size">Volumen de Datos a Procesar (Flotantes de 32 bits):</label>
+        <select id="array-size">
+          <option value="100000">100.000 elementos (~400 KB)</option>
+          <option value="500000">500.000 elementos (~2 MB)</option>
+          <option value="1000000" selected>1.000.000 elementos (~4 MB)</option>
+          <option value="2000000">2.000.000 elementos (~8 MB)</option>
+          <option value="5000000">5.000.000 elementos (~20 MB)</option>
+        </select>
+
+        <label for="iterations">Intensidad Aritmética (Pasadas de Cómputo por Elemento):</label>
+        <select id="iterations">
+          <option value="1">1 iteración (Revela el cuello de botella del bus)</option>
+          <option value="10" selected>10 iteraciones (Cómputo iterativo / Red Neuronal)</option>
+          <option value="30">30 iteraciones (Carga intensiva de IA Local)</option>
+          <option value="60">60 iteraciones (Alta exigencia matemática)</option>
+        </select>
+
+        <button id="run-btn" onclick="ejecutarBenchmark()">🚀 Ejecutar Benchmark CPU vs WebGPU</button>
+
+        <ul class="explanation-list">
+          <li><strong>Ecuación evaluada:</strong> $f(x) = \sqrt{x} \times 2.5 + \sin(x)$ repetida $N$ veces.</li>
+          <li><strong>CPU:</strong> 1 hilo de JavaScript ejecutando un bucle secuencial en el Event Loop.</li>
+          <li><strong>WebGPU:</strong> Compute Shader en WGSL despachando miles de hilos paralelos (SIMT).</li>
+        </ul>
+      </div>
+
+      <!-- Panel de Resultados y Telemetría -->
+      <div class="card">
+        <h2 class="card-title">📊 Resultados y Telemetría</h2>
+        
+        <div class="metrics-container">
+          <div class="metric-row">
+            <div class="metric-header">
+              <span>💻 CPU (JavaScript Secuencial)</span>
+              <span id="cpu-time-ops">-- M ops/s</span>
+            </div>
+            <div class="metric-value" id="cpu-time">-- ms</div>
+            <div class="bar-bg"><div id="cpu-bar" class="bar-fill-cpu"></div></div>
+          </div>
+
+          <div class="metric-row">
+            <div class="metric-header">
+              <span>⚡ WebGPU (Total con Retorno a CPU)</span>
+              <span id="gpu-time-ops">-- M ops/s</span>
+            </div>
+            <div class="metric-value" id="gpu-time">-- ms</div>
+            <div class="bar-bg"><div id="gpu-bar" class="bar-fill-gpu"></div></div>
+            
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.6rem; padding-top: 0.4rem; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between;">
+              <span>⚡ Silicio GPU puro: <strong id="gpu-hardware-time" style="color: var(--accent);">-- ms</strong></span>
+              <span>🔄 Bus / mapAsync: <strong id="gpu-transfer-time" style="color: #fbbf24;">-- ms</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="speedup-box">
+          <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase;">Factor de Aceleración (Speedup)</div>
+          <div class="speedup-number" id="speedup-val">-- x</div>
+          <div id="verification-status" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Esperando ejecución...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Banner Arquitectónico: El Modelo Roofline y el Cuello de Botella del Bus -->
+    <div class="card" style="margin-bottom: 1.5rem; background: rgba(56, 189, 248, 0.04); border-left: 4px solid var(--accent);">
+      <h3 style="font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--accent);">💡 Clave Arquitectónica: ¿Por qué a 1 sola iteración los tiempos son parecidos?</h3>
+      <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5;">
+        Con 1 sola pasada sobre 1M de elementos (4 MB), el chip GPU termina el cálculo en apenas <strong>~1 ms</strong>. Sin embargo, llamar a <code>stagingBuffer.mapAsync()</code> para copiar esos 4 MB de vuelta a la memoria de JavaScript y resolver la promesa añade entre <strong>15 y 18 ms de latencia del bus</strong>. En sistemas reales (como redes neuronales de IA o renderizado), los datos <strong>nunca salen de la GPU</strong> entre capas sucesivas. Aumenta la <em>Intensidad Aritmética</em> a 10 o 30 iteraciones para comprobar cómo la GPU pulveriza a la CPU cuando el cómputo domina sobre la transferencia.
+      </p>
+    </div>
+
+      <!-- Visor de Código Técnico -->
+      <div class="card">
+        <h2 class="card-title">🔍 Inspección del Código del Taller</h2>
+        <div class="tab-buttons">
+          <button class="tab-btn active" id="btn-tab-cpu" onclick="mostrarTab('cpu')">1. Bucle CPU (JavaScript)</button>
+          <button class="tab-btn" id="btn-tab-wgsl" onclick="mostrarTab('wgsl')">2. Compute Shader (WGSL)</button>
+          <button class="tab-btn" id="btn-tab-js" onclick="mostrarTab('js')">3. Pipeline WebGPU (JavaScript)</button>
+        </div>
+
+        <div id="tab-cpu">
+          <pre><code><span class="code-comment">// Ejecución secuencial en CPU (hilo principal / Event Loop de JavaScript)</span>
+<span class="code-keyword">const</span> cpuOutput = <span class="code-keyword">new</span> <span class="code-type">Float32Array</span>(size);
+<span class="code-keyword">const</span> startCpu = performance.<span class="code-func">now</span>();
+
+<span class="code-comment">// Un único hilo procesa cada elemento uno a uno en serie, repitiendo N iteraciones</span>
+<span class="code-keyword">for</span> (<span class="code-keyword">let</span> i = 0; i &lt; size; i++) {
+  <span class="code-keyword">let</span> val = inputData[i];
+  <span class="code-keyword">for</span> (<span class="code-keyword">let</span> k = 0; k &lt; iterations; k++) {
+    val = Math.<span class="code-func">sqrt</span>(val) * 2.5 + Math.<span class="code-func">sin</span>(val);
+  }
+  cpuOutput[i] = val;
+}
+
+<span class="code-keyword">const</span> cpuTime = performance.<span class="code-func">now</span>() - startCpu;</code></pre>
+        </div>
+
+        <div id="tab-wgsl" style="display: none;">
+          <pre><code><span class="code-keyword">struct</span> <span class="code-type">Params</span> {
+    iterations: <span class="code-type">u32</span>,
+};
+
+<span class="code-builtin">@group</span>(0) <span class="code-builtin">@binding</span>(0) <span class="code-keyword">var</span>&lt;<span class="code-keyword">storage</span>, <span class="code-keyword">read</span>&gt; inputData: <span class="code-type">array</span>&lt;<span class="code-type">f32</span>&gt;;
+<span class="code-builtin">@group</span>(0) <span class="code-builtin">@binding</span>(1) <span class="code-keyword">var</span>&lt;<span class="code-keyword">storage</span>, <span class="code-keyword">read_write</span>&gt; outputData: <span class="code-type">array</span>&lt;<span class="code-type">f32</span>&gt;;
+<span class="code-builtin">@group</span>(0) <span class="code-builtin">@binding</span>(2) <span class="code-keyword">var</span>&lt;<span class="code-keyword">uniform</span>&gt; params: <span class="code-type">Params</span>;
+
+<span class="code-builtin">@compute</span> <span class="code-builtin">@workgroup_size</span>(64)
+<span class="code-keyword">fn</span> <span class="code-func">main</span>(<span class="code-builtin">@builtin</span>(global_invocation_id) global_id: <span class="code-type">vec3</span>&lt;<span class="code-type">u32</span>&gt;) {
+    <span class="code-keyword">let</span> index = global_id.x;
+    <span class="code-keyword">if</span> (index &gt;= <span class="code-func">arrayLength</span>(&amp;inputData)) { <span class="code-keyword">return</span>; }
+
+    <span class="code-comment">// Miles de hilos ejecutan sus iteraciones en paralelo directamente en el silicio</span>
+    <span class="code-keyword">var</span> val = inputData[index];
+    <span class="code-keyword">for</span> (<span class="code-keyword">var</span> k = 0u; k &lt; params.iterations; k = k + 1u) {
+        val = <span class="code-func">sqrt</span>(val) * 2.5 + <span class="code-func">sin</span>(val);
+    }
+    outputData[index] = val;
+}</code></pre>
+        </div>
+
+        <div id="tab-js" style="display: none;">
+          <pre><code><span class="code-comment">// 1. Despacho y configuración del pipeline WebGPU en JavaScript</span>
+<span class="code-keyword">const</span> commandEncoder = device.<span class="code-func">createCommandEncoder</span>();
+<span class="code-keyword">const</span> pass = commandEncoder.<span class="code-func">beginComputePass</span>();
+pass.<span class="code-func">setPipeline</span>(computePipeline);
+pass.<span class="code-func">setBindGroup</span>(0, bindGroup);
+
+<span class="code-comment">// 2. Despachar grupos de trabajo (Workgroups de 64 hilos cada uno)</span>
+pass.<span class="code-func">dispatchWorkgroups</span>(Math.<span class="code-func">ceil</span>(totalElements / 64));
+pass.<span class="code-func">end</span>();
+
+<span class="code-comment">// 3. Enviar a la GPU y esperar fin de cómputo en hardware</span>
+device.queue.<span class="code-func">submit</span>([commandEncoder.<span class="code-func">finish</span>()]);
+<span class="code-keyword">await</span> device.queue.<span class="code-func">onSubmittedWorkDone</span>(); <span class="code-comment">// ~1 ms de silicio</span>
+
+<span class="code-comment">// 4. Lectura asíncrona hacia memoria de JavaScript (latencia del bus)</span>
+<span class="code-keyword">await</span> stagingBuffer.<span class="code-func">mapAsync</span>(GPUMapMode.READ);</code></pre>
+        </div>
+      </div>
+
+  <script>
+    let adapter = null;
+    let device = null;
+
+    // Inicialización y Comprobación de WebGPU
+    async function initWebGPU() {
+      const statusEl = document.getElementById('gpu-status');
+      const textEl = document.getElementById('gpu-status-text');
+      const btn = document.getElementById('run-btn');
+
+      if (!navigator.gpu) {
+        statusEl.className = 'status-indicator status-fail';
+        textEl.textContent = '❌ WebGPU no está disponible en este navegador. Por favor utiliza Chrome 113+, Edge, Safari 18+ o activa WebGPU en flags.';
+        btn.disabled = true;
+        return;
+      }
+
+      try {
+        adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          throw new Error('No se encontró un adaptador GPU compatible.');
+        }
+        device = await adapter.requestDevice();
+        
+        statusEl.className = 'status-indicator status-ok';
+        textEl.innerHTML = `✅ <strong>WebGPU Inicializado Correctamente</strong> • Adaptador: <code>${adapter.info?.vendor || 'GPU Nativa'}</code> (${adapter.info?.architecture || 'Hardware Acelerado'})`;
+      } catch (err) {
+        statusEl.className = 'status-indicator status-fail';
+        textEl.textContent = `❌ Error al obtener dispositivo WebGPU: ${err.message}`;
+        btn.disabled = true;
+      }
+    }
+
+    // Código WGSL del Compute Shader con soporte de Iteraciones de Cómputo
+    const wgslShaderCode = `
+      struct Params {
+        iterations: u32,
+      };
+
+      @group(0) @binding(0) var<storage, read> inputData: array<f32>;
+      @group(0) @binding(1) var<storage, read_write> outputData: array<f32>;
+      @group(0) @binding(2) var<uniform> params: Params;
+
+      @compute @workgroup_size(64)
+      fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+          let index = global_id.x;
+          if (index >= arrayLength(&inputData)) {
+              return;
+          }
+          var val = inputData[index];
+          for (var k = 0u; k < params.iterations; k = k + 1u) {
+              val = sqrt(val) * 2.5 + sin(val);
+          }
+          outputData[index] = val;
+      }
+    `;
+
+    async function ejecutarBenchmark() {
+      const size = parseInt(document.getElementById('array-size').value, 10);
+      const iterations = parseInt(document.getElementById('iterations').value, 10);
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Computando en CPU y GPU...';
+
+      // 1. Generar datos de prueba
+      const inputData = new Float32Array(size);
+      for (let i = 0; i < size; i++) {
+        inputData[i] = i + 0.5;
+      }
+
+      // 2. Ejecutar en CPU (JavaScript en el hilo principal)
+      const cpuOutput = new Float32Array(size);
+      const startCpu = performance.now();
+      for (let i = 0; i < size; i++) {
+        let val = inputData[i];
+        for (let k = 0; k < iterations; k++) {
+          val = Math.sqrt(val) * 2.5 + Math.sin(val);
+        }
+        cpuOutput[i] = val;
+      }
+      const endCpu = performance.now();
+      const cpuTime = endCpu - startCpu;
+
+      // Telemetría CPU
+      const totalOps = size * iterations;
+      const cpuOpsSec = (totalOps / (cpuTime / 1000)) / 1e6;
+      document.getElementById('cpu-time').textContent = `${cpuTime.toFixed(2)} ms`;
+      document.getElementById('cpu-time-ops').textContent = `${cpuOpsSec.toFixed(2)} M ops/s`;
+
+      // 3. Ejecutar en WebGPU
+      const gpuMetrics = await ejecutarEnWebGPU(inputData, size, iterations, cpuOutput);
+      
+      // Telemetría GPU
+      const gpuOpsSec = (totalOps / (gpuMetrics.totalGpuTime / 1000)) / 1e6;
+      document.getElementById('gpu-time').textContent = `${gpuMetrics.totalGpuTime.toFixed(2)} ms`;
+      document.getElementById('gpu-time-ops').textContent = `${gpuOpsSec.toFixed(2)} M ops/s`;
+      document.getElementById('gpu-hardware-time').textContent = `${gpuMetrics.gpuHardwareTime.toFixed(2)} ms`;
+      document.getElementById('gpu-transfer-time').textContent = `${gpuMetrics.transferTime.toFixed(2)} ms`;
+
+      // Calcular Speedup Total y Speedup de Cómputo Puro
+      const speedupTotal = cpuTime / gpuMetrics.totalGpuTime;
+      const speedupEl = document.getElementById('speedup-val');
+      speedupEl.textContent = `${speedupTotal.toFixed(1)}x`;
+
+      // Barras comparativas
+      const maxTime = Math.max(cpuTime, gpuMetrics.totalGpuTime);
+      document.getElementById('cpu-bar').style.width = `${(cpuTime / maxTime) * 100}%`;
+      document.getElementById('gpu-bar').style.width = `${(gpuMetrics.totalGpuTime / maxTime) * 100}%`;
+
+      btn.disabled = false;
+      btn.textContent = '🚀 Ejecutar Benchmark CPU vs WebGPU';
+    }
+
+    async function ejecutarEnWebGPU(inputData, size, iterations, expectedCpuOutput) {
+      const shaderModule = device.createShaderModule({ code: wgslShaderCode });
+
+      // Crear buffers en la GPU
+      const byteSize = inputData.byteLength;
+
+      const inputBuffer = device.createBuffer({
+        size: byteSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+
+      const outputBuffer = device.createBuffer({
+        size: byteSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+      });
+
+      const stagingBuffer = device.createBuffer({
+        size: byteSize,
+        usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+      });
+
+      // Buffer uniforme de parámetros (16 bytes con alineamiento)
+      const paramsBuffer = device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+
+      // Escribir datos y parámetros en la GPU
+      device.queue.writeBuffer(inputBuffer, 0, inputData);
+      device.queue.writeBuffer(paramsBuffer, 0, new Uint32Array([iterations]));
+
+      // Crear Pipeline de Cómputo
+      const computePipeline = device.createComputePipeline({
+        layout: 'auto',
+        compute: {
+          module: shaderModule,
+          entryPoint: 'main',
+        },
+      });
+
+      // Crear Bind Group con 3 recursos
+      const bindGroup = device.createBindGroup({
+        layout: computePipeline.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: { buffer: inputBuffer } },
+          { binding: 1, resource: { buffer: outputBuffer } },
+          { binding: 2, resource: { buffer: paramsBuffer } },
+        ],
+      });
+
+      const startGpu = performance.now();
+
+      // Grabar comandos
+      const commandEncoder = device.createCommandEncoder();
+      const pass = commandEncoder.beginComputePass();
+      pass.setPipeline(computePipeline);
+      pass.setBindGroup(0, bindGroup);
+      pass.dispatchWorkgroups(Math.ceil(size / 64));
+      pass.end();
+
+      // Copiar buffer de salida al buffer de staging para leer de vuelta a CPU
+      commandEncoder.copyBufferToBuffer(outputBuffer, 0, stagingBuffer, 0, byteSize);
+      device.queue.submit([commandEncoder.finish()]);
+
+      // Medir tiempo de ejecución del hardware en cola
+      await device.queue.onSubmittedWorkDone();
+      const gpuHardwareTime = performance.now() - startGpu;
+
+      // Mapear el buffer de vuelta a memoria de JavaScript (transferencia bus)
+      const startTransfer = performance.now();
+      await stagingBuffer.mapAsync(GPUMapMode.READ);
+      const copyArrayBuffer = stagingBuffer.getMappedRange();
+      const gpuResult = new Float32Array(copyArrayBuffer.slice(0));
+      stagingBuffer.unmap();
+      const transferTime = performance.now() - startTransfer;
+
+      const totalGpuTime = performance.now() - startGpu;
+
+      // Verificación de Integridad Matemática
+      let maxDiff = 0;
+      for (let i = 0; i < Math.min(size, 1000); i++) {
+        const diff = Math.abs(gpuResult[i] - expectedCpuOutput[i]);
+        if (diff > maxDiff) maxDiff = diff;
+      }
+
+      const verifEl = document.getElementById('verification-status');
+      if (maxDiff < 0.01) {
+        verifEl.innerHTML = `✅ <span style="color: var(--success)">Verificación Exitosa</span>: Salidas coinciden al 100% (Δ máx = ${maxDiff.toExponential(2)})`;
+      } else {
+        verifEl.innerHTML = `⚠️ Discrepancia detectada: Δ máx = ${maxDiff}`;
+      }
+
+      // Liberar recursos de memoria GPU
+      inputBuffer.destroy();
+      outputBuffer.destroy();
+      stagingBuffer.destroy();
+      paramsBuffer.destroy();
+
+      return { totalGpuTime, gpuHardwareTime, transferTime };
+    }
+
+    function mostrarTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-cpu').style.display = 'none';
+      document.getElementById('tab-wgsl').style.display = 'none';
+      document.getElementById('tab-js').style.display = 'none';
+
+      if (tab === 'cpu') {
+        document.getElementById('tab-cpu').style.display = 'block';
+        document.getElementById('btn-tab-cpu').classList.add('active');
+      } else if (tab === 'wgsl') {
+        document.getElementById('tab-wgsl').style.display = 'block';
+        document.getElementById('btn-tab-wgsl').classList.add('active');
+      } else if (tab === 'js') {
+        document.getElementById('tab-js').style.display = 'block';
+        document.getElementById('btn-tab-js').classList.add('active');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', initWebGPU);
+  </script>
+</body>
+</html>

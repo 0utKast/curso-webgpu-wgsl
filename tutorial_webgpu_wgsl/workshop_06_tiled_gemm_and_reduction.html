@@ -1,0 +1,2003 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taller Práctico: Jerarquía de Memoria, var&lt;workgroup&gt; y Algoritmos Paralelos — WebGPU & WGSL</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #131b2e;
+      --card-border: #23304d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --purple: #c084fc;
+      --code-bg: #090d16;
+      --tab-active: #1e293b;
+      --tab-inactive: #0f172a;
+      
+      /* VS Code Dark+ Syntax Colors */
+      --syn-keyword: #c586c0;
+      --syn-storage: #569cd6;
+      --syn-type: #4ec9b0;
+      --syn-var: #9cdcfe;
+      --syn-func: #dcdcaa;
+      --syn-num: #b5cea8;
+      --syn-str: #ce9178;
+      --syn-comment: #6a9955;
+      --syn-decorator: #ffd700;
+      --syn-builtin: #4fc1ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 2rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .gpu-status-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      min-width: 270px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
+
+    .gpu-status-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fbbf24;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.ok {
+      background: #34d399;
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
+    }
+
+    .status-dot.fail {
+      background: #f87171;
+      box-shadow: 0 0 10px rgba(248, 113, 113, 0.6);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.75rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 950px;
+    }
+
+    /* Selector de Algoritmo Principal */
+    .algo-selector {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .algo-tab {
+      flex: 1;
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .algo-tab:hover {
+      border-color: #3b82f6;
+      transform: translateY(-2px);
+    }
+
+    .algo-tab.active {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.15);
+    }
+
+    .algo-icon {
+      font-size: 2rem;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1e293b;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .algo-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #ffffff;
+    }
+
+    .algo-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Toolbar de Foco / Spotlight */
+    .interactive-toolbar {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .toolbar-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: #475569;
+    }
+
+    .btn.active {
+      background: var(--accent);
+      color: #0b0f19;
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .explanation-banner {
+      background: #0f172a;
+      border-left: 4px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    /* Layout Principal de 2 Columnas */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 1080px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Tarjeta de Código (VS Code Dark+) */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editor-tabs {
+      display: flex;
+      background: var(--tab-inactive);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .editor-tab {
+      padding: 0.65rem 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-right: 1px solid var(--card-border);
+      background: transparent;
+      border-top: 2px solid transparent;
+    }
+
+    .editor-tab.active {
+      background: var(--code-bg);
+      color: #ffffff;
+      border-top: 2px solid var(--accent);
+    }
+
+    .code-container {
+      background: var(--code-bg);
+      padding: 1.25rem 0.5rem;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.83rem;
+      line-height: 1.55;
+      max-height: 640px;
+      overflow-y: auto;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 1rem;
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+    }
+
+    .code-line.spotlight {
+      background: rgba(56, 189, 248, 0.12);
+      border-left-color: var(--accent);
+    }
+
+    .code-line.dimmed {
+      opacity: 0.35;
+    }
+
+    .line-number {
+      width: 2.5rem;
+      text-align: right;
+      padding-right: 1rem;
+      color: #475569;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .line-content {
+      white-space: pre;
+      color: #d4d4d4;
+    }
+
+    /* Clases de Sintaxis */
+    .kw { color: var(--syn-keyword); font-weight: 600; }
+    .st { color: var(--syn-storage); font-weight: 600; }
+    .tp { color: var(--syn-type); }
+    .vr { color: var(--syn-var); }
+    .fn { color: var(--syn-func); }
+    .nm { color: var(--syn-num); }
+    .st-lit { color: var(--syn-str); }
+    .cm { color: var(--syn-comment); font-style: italic; }
+    .dc { color: var(--syn-decorator); font-weight: 600; }
+    .bi { color: var(--syn-builtin); font-weight: 600; }
+    .op { color: #d4d4d4; }
+
+    /* Panel Derecho: Simulador del Silicio y Memoria */
+    .simulator-panel {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      background: var(--card-bg);
+    }
+
+    .panel-section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    #simStepBadge {
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 0.2rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    @keyframes tileLoadPulseA {
+      0% { transform: scale(0.92); filter: brightness(2.2); }
+      50% { transform: scale(1.06); filter: brightness(1.7); box-shadow: 0 0 10px rgba(56, 189, 248, 0.9); }
+      100% { transform: scale(1); filter: brightness(1); }
+    }
+
+    @keyframes tileLoadPulseB {
+      0% { transform: scale(0.92); filter: brightness(2.2); }
+      50% { transform: scale(1.06); filter: brightness(1.7); box-shadow: 0 0 10px rgba(192, 132, 252, 0.9); }
+      100% { transform: scale(1); filter: brightness(1); }
+    }
+
+    .pulse-load-a {
+      animation: tileLoadPulseA 0.45s ease-out;
+    }
+
+    .pulse-load-b {
+      animation: tileLoadPulseB 0.45s ease-out;
+    }
+
+    .sim-phase-banner {
+      width: 100%;
+      background: #060910;
+      border: 1px solid var(--card-border);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 0.55rem 0.8rem;
+      font-size: 0.77rem;
+      color: #e2e8f0;
+      line-height: 1.45;
+      margin-top: 0.5rem;
+      text-align: left;
+    }
+
+    /* Visualizador Tiled GEMM */
+    .matrix-visualizer {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .gemm-diagram-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .matrix-box {
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.5rem;
+      position: relative;
+    }
+
+    .matrix-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      margin-bottom: 0.25rem;
+    }
+
+    .grid-preview {
+      display: grid;
+      gap: 2px;
+      background: #1e293b;
+      padding: 2px;
+      border-radius: 4px;
+    }
+
+    .grid-cell {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      background: #334155;
+      transition: all 0.2s ease;
+    }
+
+    .grid-cell.active-tile-a {
+      background: #38bdf8;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+    }
+
+    .grid-cell.active-tile-b {
+      background: #c084fc;
+      box-shadow: 0 0 6px rgba(192, 132, 252, 0.6);
+    }
+
+    .grid-cell.active-output-c {
+      background: #34d399;
+      box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
+    }
+
+    .grid-cell.active-output-c.accum-25 {
+      background: rgba(52, 211, 153, 0.35);
+      border: 1px solid #34d399;
+      box-shadow: 0 0 4px rgba(52, 211, 153, 0.3);
+    }
+    .grid-cell.active-output-c.accum-50 {
+      background: rgba(52, 211, 153, 0.60);
+      border: 1px solid #34d399;
+      box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+    }
+    .grid-cell.active-output-c.accum-75 {
+      background: rgba(52, 211, 153, 0.85);
+      border: 1px solid #a7f3d0;
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.7);
+    }
+    .grid-cell.active-output-c.accum-100 {
+      background: #34d399;
+      border: 1px solid #ffffff;
+      box-shadow: 0 0 16px rgba(52, 211, 153, 0.95);
+      transform: scale(1.15);
+    }
+
+    /* Memoria Compartida On-Chip (SRAM) */
+    .shared-memory-box {
+      width: 100%;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px dashed var(--accent);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .shared-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .shared-tiles {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .shared-tile-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* Visualizador Reducción en Árbol */
+    .reduction-visualizer {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .tree-stage {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .stage-label {
+      width: 80px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+
+    .thread-array {
+      display: flex;
+      gap: 3px;
+      flex-grow: 1;
+    }
+
+    .t-cell {
+      flex: 1;
+      height: 34px;
+      background: #1e293b;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      transition: all 0.25s ease;
+      line-height: 1.1;
+      border: 1px solid transparent;
+    }
+
+    .t-cell.active-thread {
+      background: #38bdf8;
+      color: #0b0f19;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+      border-color: #7dd3fc;
+    }
+
+    .t-cell.retired-thread {
+      background: #0b1120;
+      color: #334155;
+      border: 1px solid #1e293b;
+    }
+
+    .t-cell.winner-thread {
+      background: #34d399;
+      color: #0b0f19;
+      font-weight: 900;
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.7);
+      border-color: #a7f3d0;
+    }
+
+    /* Consola de Silicio y Telemetría */
+    .hardware-console-container {
+      background: #060910;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      overflow: hidden;
+      font-family: 'SF Mono', Monaco, Menlo, Consolas, monospace;
+      margin-top: 1rem;
+    }
+
+    .console-header {
+      background: #0d131f;
+      padding: 0.4rem 0.8rem;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .console-clear-btn {
+      background: none;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .console-clear-btn:hover {
+      color: #ffffff;
+      background: #1e293b;
+    }
+
+    .hardware-console {
+      padding: 0.75rem 1rem;
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .console-line {
+      margin-bottom: 0.25rem;
+    }
+    .console-line.info { color: #38bdf8; }
+    .console-line.success { color: #34d399; font-weight: 600; }
+    .console-line.warn { color: #fbbf24; }
+    .console-line.error { color: #f87171; }
+
+    /* Telemetría de Rendimiento */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .stat-card {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: baseline;
+      gap: 0.35rem;
+    }
+
+    .stat-unit {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #94a3b8;
+    }
+
+    .latency-bar-container {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .latency-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .latency-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    /* Controles Interactivos */
+    .sim-controls {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-top: 0.5rem;
+    }
+
+    .ctrl-btn {
+      flex: 1;
+      padding: 0.5rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: all 0.2s ease;
+    }
+
+    .ctrl-btn:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .ctrl-btn.primary {
+      background: #0284c7;
+      border-color: #38bdf8;
+    }
+
+    .ctrl-btn.primary:hover {
+      background: #0369a1;
+    }
+
+    /* Comparativa de Arquitectura de Memoria */
+    .memory-hierarchy-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-top: 1rem;
+    }
+
+    .memory-hierarchy-table th, 
+    .memory-hierarchy-table td {
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .memory-hierarchy-table th {
+      color: #94a3b8;
+      font-weight: 600;
+      background: #090d16;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
+      <div style="flex: 1; min-width: 320px;">
+        <div class="badge">Taller Práctico 6 • WebGPU & WGSL</div>
+        <h1>Jerarquía de Memoria: var&lt;workgroup&gt;, Barreras y Algoritmos Paralelos</h1>
+        <p class="subtitle">
+          Explora en vivo la diferencia física entre la memoria global (DRAM ~600 ciclos) y la memoria compartida en chip (SRAM ~4 ciclos). Experimenta con la multiplicación matricial por bloques (Tiled GEMM) y la reducción en árbol libre de divergencia de warps.
+        </p>
+      </div>
+      <!-- Indicador de Dispositivo WebGPU en Tiempo Real -->
+      <div id="gpuStatusCard" class="gpu-status-card">
+        <div class="gpu-status-header">
+          <span class="status-dot" id="gpuStatusDot"></span>
+          <span id="gpuStatusTitle" style="font-weight: 700; font-size: 0.85rem; color: #f8fafc;">Comprobando WebGPU...</span>
+        </div>
+        <div id="gpuStatusDetail" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Consultando navigator.gpu
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Selector de Algoritmo -->
+  <div class="algo-selector">
+    <div class="algo-tab active" id="tabAlgoGemm" onclick="switchAlgorithm('gemm')">
+      <div class="algo-icon">🔲</div>
+      <div>
+        <div class="algo-title">Multiplicación Matricial por Bloques (Tiled GEMM)</div>
+        <div class="algo-desc">Reutilización colaborativa en SRAM para acelerar tensores de IA y Redes Neuronales.</div>
+      </div>
+    </div>
+    <div class="algo-tab" id="tabAlgoReduction" onclick="switchAlgorithm('reduction')">
+      <div class="algo-icon">🌲</div>
+      <div>
+        <div class="algo-title">Reducción Paralela en Árbol (Parallel Tree Reduction)</div>
+        <div class="algo-desc">Plegado logarítmico O(log N) sin divergencia SIMD entre hilos del mismo warp.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de Herramientas de Foco Pedagógico -->
+  <div class="interactive-toolbar">
+    <div class="toolbar-title">
+      <span>🔍 Foco Pedagógico</span>
+    </div>
+    <div class="btn-group" id="spotlightBtnGroup">
+      <!-- Los botones cambian dinámicamente según el algoritmo seleccionado -->
+    </div>
+  </div>
+
+  <!-- Banner Explicativo Sincronizado -->
+  <div class="explanation-banner" id="explanationText">
+    Selecciona un hito pedagógico para aislar las instrucciones del shader y observar cómo se coordinan los hilos en el silicio.
+  </div>
+
+  <!-- Rejilla Principal: Código y Simulador -->
+  <div class="main-grid">
+
+    <!-- Panel Izquierdo: Editor de Código VS Code Dark+ -->
+    <div class="card">
+      <div class="editor-tabs">
+        <div class="editor-tab active" id="tabCodeShader" onclick="switchCodeTab('shader')">
+          <span style="color: #4ec9b0;">⚡</span> <span id="shaderTabTitle">tiled_gemm.wgsl (Shader)</span>
+        </div>
+        <div class="editor-tab" id="tabCodeHost" onclick="switchCodeTab('host')">
+          <span style="color: #f1e05a;">📜</span> host_dispatch.js (Host)
+        </div>
+      </div>
+
+      <!-- Código Shader WGSL -->
+      <div class="code-container" id="codeShaderContainer">
+        <!-- Generado dinámicamente según el modo -->
+      </div>
+
+      <!-- Código Host JavaScript -->
+      <div class="code-container" id="codeHostContainer" style="display: none;">
+        <!-- Generado dinámicamente -->
+      </div>
+    </div>
+
+    <!-- Panel Derecho: Simulador del Silicio y Hardware -->
+    <div class="card">
+      <div class="simulator-panel">
+        
+        <div class="panel-section-title">
+          <span id="simPanelTitle">Simulación Silicio: Baldosas en SRAM</span>
+          <span id="simStepBadge" style="color: var(--accent); font-size: 0.75rem;">Fase: Carga Inicial</span>
+        </div>
+
+        <!-- Contenedor Visual GEMM -->
+        <div id="gemmVisualContainer" class="matrix-visualizer">
+          <div class="gemm-diagram-container">
+            <div class="matrix-box">
+              <div class="matrix-title">Matriz A (Global DRAM)</div>
+              <div class="grid-preview" id="gridMatrixA" style="grid-template-columns: repeat(4, 14px);"></div>
+            </div>
+            <div style="font-size: 1.2rem; color: #64748b; font-weight: 700;">×</div>
+            <div class="matrix-box">
+              <div class="matrix-title">Matriz B (Global DRAM)</div>
+              <div class="grid-preview" id="gridMatrixB" style="grid-template-columns: repeat(4, 14px);"></div>
+            </div>
+            <div style="font-size: 1.2rem; color: #64748b; font-weight: 700;">=</div>
+            <div class="matrix-box">
+              <div class="matrix-title">Matriz C (Resultado)</div>
+              <div class="grid-preview" id="gridMatrixC" style="grid-template-columns: repeat(4, 14px);"></div>
+            </div>
+          </div>
+
+          <!-- Memoria Compartida en Chip (var<workgroup>) -->
+          <div class="shared-memory-box">
+            <div class="shared-header">
+              <span>MEMORIA COMPARTIDA ON-CHIP (SRAM var&lt;workgroup&gt;)</span>
+              <span id="sharedMemUsage" style="color: #34d399;">2 KB / 16 KB Reservados</span>
+            </div>
+            <div class="shared-tiles">
+              <div class="shared-tile-item">
+                <span style="font-size: 0.75rem; color: #38bdf8; font-weight: 600;" id="tileALabel">Baldosa A (Tile A)</span>
+                <div class="grid-preview" id="gridTileA" style="grid-template-columns: repeat(4, 14px);"></div>
+              </div>
+              <div style="font-size: 1.1rem; color: #94a3b8;">+</div>
+              <div class="shared-tile-item">
+                <span style="font-size: 0.75rem; color: #c084fc; font-weight: 600;" id="tileBLabel">Baldosa B (Tile B)</span>
+                <div class="grid-preview" id="gridTileB" style="grid-template-columns: repeat(4, 14px);"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-controls">
+            <button class="ctrl-btn" onclick="prevGemmStep()">◀ Baldosa Anterior</button>
+            <button class="ctrl-btn primary" onclick="nextGemmStep()">Avanzar Baldosa (K-Tile) ▶</button>
+            <button class="ctrl-btn" id="btnAutoPlayGemm" onclick="toggleAutoPlayGemm()">▶ Auto-Play</button>
+            <button class="ctrl-btn" onclick="resetGemmSim()">↺ Reiniciar</button>
+          </div>
+          <div class="sim-phase-banner" id="gemmPhaseBanner">
+            ⚡ [Iteración t=0]: Carga cooperativa de baldosas A y B en SRAM on-chip (2 KB).
+          </div>
+        </div>
+
+        <!-- Contenedor Visual Reducción -->
+        <div id="reductionVisualContainer" class="reduction-visualizer" style="display: none;">
+          <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.25rem;">
+            Plegado de 16 hilos en árbol logarítmico (4 fases):
+          </div>
+
+          <div class="tree-stage">
+            <div class="stage-label">Fase 0 (Init)</div>
+            <div class="thread-array" id="stageArray0"></div>
+          </div>
+          <div class="tree-stage">
+            <div class="stage-label">Paso 1 (s=8)</div>
+            <div class="thread-array" id="stageArray1"></div>
+          </div>
+          <div class="tree-stage">
+            <div class="stage-label">Paso 2 (s=4)</div>
+            <div class="thread-array" id="stageArray2"></div>
+          </div>
+          <div class="tree-stage">
+            <div class="stage-label">Paso 3 (s=2)</div>
+            <div class="thread-array" id="stageArray3"></div>
+          </div>
+          <div class="tree-stage">
+            <div class="stage-label">Paso 4 (s=1)</div>
+            <div class="thread-array" id="stageArray4"></div>
+          </div>
+
+          <div class="sim-controls">
+            <button class="ctrl-btn" onclick="prevReductionStep()">◀ Paso Anterior</button>
+            <button class="ctrl-btn primary" onclick="nextReductionStep()">Paso Siguiente (stride &gt;&gt;= 1) ▶</button>
+            <button class="ctrl-btn" id="btnAutoPlayRed" onclick="toggleAutoPlayReduction()">▶ Auto-Play</button>
+            <button class="ctrl-btn" onclick="resetReductionSim()">↺ Reiniciar</button>
+          </div>
+          <div class="sim-phase-banner" id="reductionPhaseBanner">
+            🌲 [Fase 0]: Carga cooperativa de 16 elementos en memoria compartida s_data.
+          </div>
+        </div>
+
+        <!-- Telemetría de Rendimiento y Física del Silicio -->
+        <div class="panel-section-title">
+          <span>Telemetría de Memoria y Rendimiento</span>
+          <span id="telemetrySubTitle" style="color: #34d399; font-size: 0.75rem;">Optimizado con Tiling</span>
+        </div>
+
+        <div class="telemetry-grid">
+          <div class="stat-card">
+            <span class="stat-label" id="statLabel1">Tráfico a DRAM Global</span>
+            <div class="stat-value" id="statTrafficGlobal">16× <span class="stat-unit">reducido</span></div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label" id="statLabel2">Intensidad Aritmética</span>
+            <div class="stat-value" id="statArithmeticIntensity">16.0 <span class="stat-unit">FLOP/Byte</span></div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label" id="statLabel3">Divergencia de Warps</span>
+            <div class="stat-value" id="statDivergence" style="color: #34d399;">0% <span class="stat-unit">SIMD óptimo</span></div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label" id="statLabel4">Conflictos de Banco</span>
+            <div class="stat-value" id="statBankConflicts" style="color: #34d399;">0 <span class="stat-unit">32 bancos libres</span></div>
+          </div>
+        </div>
+
+        <!-- Comparativa de Latencias de Hardware -->
+        <div class="latency-bar-container">
+          <div class="panel-section-title" style="margin-bottom: 0.25rem;">
+            <span>Comparativa de Latencia de Hardware</span>
+          </div>
+
+          <div class="latency-row">
+            <div class="latency-labels">
+              <span style="color: #f87171; font-weight: 600;">DRAM VRAM Global (Off-Chip)</span>
+              <span style="color: #f87171;">~600 ciclos</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width: 100%; background: #f87171;"></div>
+            </div>
+          </div>
+
+          <div class="latency-row">
+            <div class="latency-labels">
+              <span style="color: #38bdf8; font-weight: 600;">SRAM Compartida var&lt;workgroup&gt; (On-Chip)</span>
+              <span style="color: #38bdf8;">~4 ciclos</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width: 2%; background: #38bdf8;"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Banco de Pruebas: Despacho en Silicio Nativo WebGPU -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div style="background: #0f172a; padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+      <div style="display: flex; align-items: center; gap: 0.6rem;">
+        <span style="font-size: 1.2rem;">⚡</span>
+        <span style="font-weight: 800; font-size: 0.95rem; color: #38bdf8; letter-spacing: 0.02em;">BANCO DE PRUEBAS EN SILICIO NATIVO (WEBGPU HARDWARE PIPELINE)</span>
+      </div>
+      <span id="hardwareBadge" class="badge" style="margin: 0; background: rgba(52, 211, 153, 0.15); color: #34d399; border-color: rgba(52, 211, 153, 0.3);">Pipeline Listo</span>
+    </div>
+    
+    <div style="padding: 1.25rem;">
+      <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap;">
+        <button class="ctrl-btn primary" id="btnRunRealGpu" onclick="ejecutarEnHardwareReal()" style="padding: 0.65rem 1.4rem; font-size: 0.95rem; font-weight: 700;">
+          🚀 Despachar Compute Shader en GPU Real
+        </button>
+        <div style="color: var(--text-muted); font-size: 0.88rem;" id="execStatusHint">
+          Compila el shader WGSL actual en el chip gráfico local, ejecuta la operación paralela y verifica el resultado numérico contra la CPU.
+        </div>
+      </div>
+
+      <!-- Métricas de Hardware en Vivo -->
+      <div class="telemetry-grid" style="margin-bottom: 1.25rem;">
+        <div class="stat-card">
+          <span class="stat-label">Tiempo Total GPU (Despacho + Fin)</span>
+          <div class="stat-value" id="realGpuTime" style="color: #38bdf8;">-- <span class="stat-unit">ms</span></div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Operaciones de Cómputo</span>
+          <div class="stat-value" id="realOpsTotal" style="color: #c084fc;">-- <span class="stat-unit">FLOPs</span></div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Rendimiento Calculado</span>
+          <div class="stat-value" id="realThroughput" style="color: #34d399;">-- <span class="stat-unit">GFLOP/s</span></div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Verificación Numérica (CPU vs GPU)</span>
+          <div class="stat-value" id="realVerification" style="color: #fbbf24; font-size: 1.05rem;">Sin ejecutar</div>
+        </div>
+      </div>
+
+      <!-- Consola de Silicio y Controladores -->
+      <div class="hardware-console-container">
+        <div class="console-header">
+          <span>TERMINAL DE SILICIO Y TELEMETRÍA DEL CONTROLADOR</span>
+          <button class="console-clear-btn" onclick="limpiarConsola()">Limpiar</button>
+        </div>
+        <div class="hardware-console" id="hardwareConsole">
+          <div class="console-line info">[SISTEMA] Listo para despachar compute shader sobre el silicio gráfico...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección Comparativa: Jerarquía de Memoria en WebGPU -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div style="background: #0f172a; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--card-border);">
+      <span style="font-weight: 700; font-size: 0.9rem; color: #cbd5e1;">TABLA DE NIVELES FÍSICOS DE MEMORIA EN LA GPU</span>
+    </div>
+    <div style="padding: 1.25rem; overflow-x: auto;">
+      <table class="memory-hierarchy-table">
+        <thead>
+          <tr>
+            <th>Nivel de Memoria</th>
+            <th>Declaración WGSL</th>
+            <th>Ámbito (Scope)</th>
+            <th>Latencia Física</th>
+            <th>Ancho de Banda</th>
+            <th>Tamaño Típico</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color: #e2e8f0;">Registros Privados</strong></td>
+            <td><code>var&lt;private&gt;</code> / <code>let</code></td>
+            <td>Hilo individual</td>
+            <td>~0-1 ciclos</td>
+            <td>&gt; 20 TB/s</td>
+            <td>Decenas de KB por bloque</td>
+          </tr>
+          <tr>
+            <td><strong style="color: #38bdf8;">Memoria Compartida (SRAM)</strong></td>
+            <td><code>var&lt;workgroup&gt;</code></td>
+            <td>Grupo de trabajo (Workgroup)</td>
+            <td>~1-10 ciclos</td>
+            <td>~10-15 TB/s</td>
+            <td>16 KB a 64 KB por SM</td>
+          </tr>
+          <tr>
+            <td><strong style="color: #fbbf24;">Caché de Constantes / Uniform</strong></td>
+            <td><code>var&lt;uniform&gt;</code></td>
+            <td>Global (Broadcast)</td>
+            <td>~5-15 ciclos</td>
+            <td>~5 TB/s (Caché L1/L2)</td>
+            <td>64 KB garantizados</td>
+          </tr>
+          <tr>
+            <td><strong style="color: #f87171;">Memoria Global de Almacenamiento</strong></td>
+            <td><code>var&lt;storage&gt;</code></td>
+            <td>Universal (Todos los hilos / CPU)</td>
+            <td>~200-800 ciclos</td>
+            <td>~0.3 - 2 TB/s (GDDR6 / HBM)</td>
+            <td>Gigabytes (VRAM total)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let currentAlgorithm = 'gemm'; // 'gemm' o 'reduction'
+  let currentCodeTab = 'shader';
+  let gemmStep = 0; // 0 a 3 (k-tiles)
+  let reductionStep = 0; // 0 a 4 (fases)
+
+  // Definición de hitos para GEMM
+  const gemmSpotlights = [
+    { id: 'all', label: 'Código Completo' },
+    { id: 'shared_decl', label: '1. Memoria Compartida var<workgroup>' },
+    { id: 'load_tile', label: '2. Carga Colaborativa (Global ➔ Shared)' },
+    { id: 'barrier_1', label: '3. Primera Barrera workgroupBarrier()' },
+    { id: 'tile_math', label: '4. Acumulación en Baldosa (SRAM)' },
+    { id: 'barrier_2', label: '5. Segunda Barrera (Protección)' }
+  ];
+
+  // Definición de hitos para Reducción
+  const reductionSpotlights = [
+    { id: 'all', label: 'Código Completo' },
+    { id: 'red_shared', label: '1. Buffer Compartido var<workgroup>' },
+    { id: 'red_load', label: '2. Carga Cooperativa Inicial' },
+    { id: 'red_loop', label: '3. Bucle en Árbol (stride >>= 1)' },
+    { id: 'red_nodiv', label: '4. Agrupación sin Divergencia SIMD' },
+    { id: 'red_write', label: '5. Escritura Global (Hilo 0)' }
+  ];
+
+  const gemmDescriptions = {
+    'all': '<strong>Algoritmo Tiled GEMM Completo:</strong> Multiplicación matricial por bloques. Los hilos colaboran para cargar baldosas de 16×16 floats desde la VRAM lenta a la SRAM rápida, reutilizando cada dato 16 veces y reduciendo el tráfico de memoria en un 93.75%.',
+    'shared_decl': '<strong>Declaración de Memoria Compartida:</strong> Las variables <code>tile_a</code> y <code>tile_b</code> residen en la SRAM on-chip del procesador. Tienen alcance de workgroup y son compartidas por los 256 hilos del bloque.',
+    'load_tile': '<strong>Carga Colaborativa:</strong> Cada hilo lee exactamente un elemento de la matriz A y un elemento de la matriz B desde la memoria global DRAM. Los 256 hilos llenan las baldosas en paralelo con accesos continuos y coalescentes.',
+    'barrier_1': '<strong>Primera Barrera de Sincronización:</strong> La llamada a <code>workgroupBarrier()</code> garantiza que ningún hilo empiece a calcular hasta que TODOS los 256 hilos hayan terminado de escribir en la memoria compartida.',
+    'tile_math': '<strong>Cómputo en Baldosa (SRAM Ultrarrápida):</strong> Cada hilo acumula el producto punto leyendo 16 valores directamente de la SRAM on-chip a velocidad de registro (~4 ciclos de latencia frente a ~600 ciclos de la DRAM).',
+    'barrier_2': '<strong>Segunda Barrera (Protección Anti-Sobrescritura):</strong> Esta barrera impide que los hilos más rápidos salten a la siguiente iteración y sobrescriban <code>tile_a</code> o <code>tile_b</code> mientras los hilos más lentos aún están leyendo la baldosa actual.'
+  };
+
+  const reductionDescriptions = {
+    'all': '<strong>Reducción Paralela en Árbol:</strong> Algoritmo para sumar miles de elementos con complejidad O(log N). El vector se pliega a la mitad en cada paso hasta converger en una única suma final.',
+    'red_shared': '<strong>Buffer de Reducción Compartido:</strong> Se reserva un array en la memoria compartida con capacidad para los 256 hilos del workgroup. Aquí se realizarán las sumas intermedias.',
+    'red_load': '<strong>Carga Cooperativa Inicial:</strong> Cada hilo copia su elemento de la memoria global al array compartido y espera en <code>workgroupBarrier()</code> para sincronizar el estado del bloque.',
+    'red_loop': '<strong>Plegado Logarítmico:</strong> En cada iteración, la zancada (<code>stride</code>) se reduce a la mitad mediante desplazamiento de bits (<code>stride >>= 1u</code>), sumando pares de elementos en paralelo.',
+    'red_nodiv': '<strong>Cero Divergencia de Warps:</strong> La condición <code>if (tid < stride)</code> asegura que los hilos activos sean siempre contiguos (hilos 0 a stride-1). Esto mantiene a los warps completos ejecutando código sin ramificación divergente.',
+    'red_write': '<strong>Consolidación del Resultado:</strong> Al finalizar el árbol, únicamente el hilo maestro <code>tid == 0</code> escribe la suma total del bloque en el buffer global de salida.'
+  };
+
+  // Código Shader GEMM
+  const gemmShaderCode = [
+    { num: 1, sec: 'shared_decl', code: '<span class="cm">// Parámetro de baldosa: 16x16 = 256 hilos por workgroup</span>' },
+    { num: 2, sec: 'shared_decl', code: '<span class="kw">const</span> <span class="vr">TILE_SIZE</span>: <span class="tp">u32</span> = <span class="nm">16u</span>;' },
+    { num: 3, sec: 'shared_decl', code: '' },
+    { num: 4, sec: 'shared_decl', code: '<span class="dc">@group</span>(<span class="nm">0</span>) <span class="dc">@binding</span>(<span class="nm">0</span>) <span class="st">var</span>&lt;<span class="st">storage</span>, <span class="st">read</span>&gt; <span class="vr">matA</span>: <span class="tp">array</span>&lt;<span class="tp">f32</span>&gt;;' },
+    { num: 5, sec: 'shared_decl', code: '<span class="dc">@group</span>(<span class="nm">0</span>) <span class="dc">@binding</span>(<span class="nm">1</span>) <span class="st">var</span>&lt;<span class="st">storage</span>, <span class="st">read</span>&gt; <span class="vr">matB</span>: <span class="tp">array</span>&lt;<span class="tp">f32</span>&gt;;' },
+    { num: 6, sec: 'shared_decl', code: '<span class="dc">@group</span>(<span class="nm">0</span>) <span class="dc">@binding</span>(<span class="nm">2</span>) <span class="st">var</span>&lt;<span class="st">storage</span>, <span class="st">read_write</span>&gt; <span class="vr">matC</span>: <span class="tp">array</span>&lt;<span class="tp">f32</span>&gt;;' },
+    { num: 7, sec: 'shared_decl', code: '' },
+    { num: 8, sec: 'shared_decl', code: '<span class="cm">// Memoria compartida ultrarrápida on-chip (SRAM de ~4 ciclos de latencia)</span>' },
+    { num: 9, sec: 'shared_decl', code: '<span class="st">var</span>&lt;<span class="st">workgroup</span>&gt; <span class="vr">tile_a</span>: <span class="tp">array</span>&lt;<span class="tp">array</span>&lt;<span class="tp">f32</span>, <span class="nm">16</span>&gt;, <span class="nm">16</span>&gt;;' },
+    { num: 10, sec: 'shared_decl', code: '<span class="st">var</span>&lt;<span class="st">workgroup</span>&gt; <span class="vr">tile_b</span>: <span class="tp">array</span>&lt;<span class="tp">array</span>&lt;<span class="tp">f32</span>, <span class="nm">16</span>&gt;, <span class="nm">16</span>&gt;;' },
+    { num: 11, sec: 'shared_decl', code: '' },
+    { num: 12, sec: 'all', code: '<span class="dc">@compute</span> <span class="dc">@workgroup_size</span>(<span class="nm">16</span>, <span class="nm">16</span>)' },
+    { num: 13, sec: 'all', code: '<span class="kw">fn</span> <span class="fn">main</span>(' },
+    { num: 14, sec: 'all', code: '  <span class="dc">@builtin</span>(<span class="bi">global_invocation_id</span>) <span class="vr">global_id</span>: <span class="tp">vec3</span>&lt;<span class="tp">u32</span>&gt;,' },
+    { num: 15, sec: 'all', code: '  <span class="dc">@builtin</span>(<span class="bi">local_invocation_id</span>) <span class="vr">local_id</span>: <span class="tp">vec3</span>&lt;<span class="tp">u32</span>&gt;' },
+    { num: 16, sec: 'all', code: ') {' },
+    { num: 17, sec: 'all', code: '  <span class="st">let</span> <span class="vr">row</span> = <span class="vr">global_id</span>.<span class="vr">y</span>; <span class="st">let</span> <span class="vr">col</span> = <span class="vr">global_id</span>.<span class="vr">x</span>;' },
+    { num: 18, sec: 'all', code: '  <span class="st">let</span> <span class="vr">lx</span> = <span class="vr">local_id</span>.<span class="vr">x</span>;   <span class="st">let</span> <span class="vr">ly</span> = <span class="vr">local_id</span>.<span class="vr">y</span>;' },
+    { num: 19, sec: 'all', code: '  <span class="st">var</span> <span class="vr">accum</span>: <span class="tp">f32</span> = <span class="nm">0.0</span>;' },
+    { num: 20, sec: 'all', code: '' },
+    { num: 21, sec: 'load_tile', code: '  <span class="cm">// Itera a través de las baldosas a lo largo de la dimensión compartida K</span>' },
+    { num: 22, sec: 'load_tile', code: '  <span class="kw">for</span> (<span class="st">var</span> <span class="vr">t</span>: <span class="tp">u32</span> = <span class="nm">0u</span>; <span class="vr">t</span> &lt; <span class="nm">4u</span>; <span class="vr">t</span>++) {' },
+    { num: 23, sec: 'load_tile', code: '    <span class="cm">// Carga colaborativa: cada hilo transfiere 1 float de DRAM a SRAM</span>' },
+    { num: 24, sec: 'load_tile', code: '    <span class="vr">tile_a</span>[<span class="vr">ly</span>][<span class="vr">lx</span>] = <span class="vr">matA</span>[<span class="vr">row</span> * <span class="nm">64u</span> + (<span class="vr">t</span> * <span class="vr">TILE_SIZE</span> + <span class="vr">lx</span>)];' },
+    { num: 25, sec: 'load_tile', code: '    <span class="vr">tile_b</span>[<span class="vr">ly</span>][<span class="vr">lx</span>] = <span class="vr">matB</span>[(<span class="vr">t</span> * <span class="vr">TILE_SIZE</span> + <span class="vr">ly</span>) * <span class="nm">64u</span> + <span class="vr">col</span>];' },
+    { num: 26, sec: 'load_tile', code: '' },
+    { num: 27, sec: 'barrier_1', code: '    <span class="cm">// Barrera 1: Esperar a que los 256 hilos terminen de llenar la baldosa</span>' },
+    { num: 28, sec: 'barrier_1', code: '    <span class="fn">workgroupBarrier</span>();' },
+    { num: 29, sec: 'barrier_1', code: '' },
+    { num: 30, sec: 'tile_math', code: '    <span class="cm">// Cómputo ultra-rápido: lectura directa de SRAM (sin tocar DRAM)</span>' },
+    { num: 31, sec: 'tile_math', code: '    <span class="kw">for</span> (<span class="st">var</span> <span class="vr">k</span>: <span class="tp">u32</span> = <span class="nm">0u</span>; <span class="vr">k</span> &lt; <span class="vr">TILE_SIZE</span>; <span class="vr">k</span>++) {' },
+    { num: 32, sec: 'tile_math', code: '      <span class="vr">accum</span> += <span class="vr">tile_a</span>[<span class="vr">ly</span>][<span class="vr">k</span>] * <span class="vr">tile_b</span>[<span class="vr">k</span>][<span class="vr">lx</span>];' },
+    { num: 33, sec: 'tile_math', code: '    }' },
+    { num: 34, sec: 'tile_math', code: '' },
+    { num: 35, sec: 'barrier_2', code: '    <span class="cm">// Barrera 2: Proteger la lectura antes de la siguiente carga</span>' },
+    { num: 36, sec: 'barrier_2', code: '    <span class="fn">workgroupBarrier</span>();' },
+    { num: 37, sec: 'all', code: '  }' },
+    { num: 38, sec: 'all', code: '' },
+    { num: 39, sec: 'all', code: '  <span class="vr">matC</span>[<span class="vr">row</span> * <span class="nm">64u</span> + <span class="vr">col</span>] = <span class="vr">accum</span>;' },
+    { num: 40, sec: 'all', code: '}' }
+  ];
+
+  // Código Shader Reducción
+  const reductionShaderCode = [
+    { num: 1, sec: 'red_shared', code: '<span class="kw">const</span> <span class="vr">WG_SIZE</span>: <span class="tp">u32</span> = <span class="nm">256u</span>;' },
+    { num: 2, sec: 'red_shared', code: '' },
+    { num: 3, sec: 'red_shared', code: '<span class="dc">@group</span>(<span class="nm">0</span>) <span class="dc">@binding</span>(<span class="nm">0</span>) <span class="st">var</span>&lt;<span class="st">storage</span>, <span class="st">read</span>&gt; <span class="vr">datos_in</span>: <span class="tp">array</span>&lt;<span class="tp">f32</span>&gt;;' },
+    { num: 4, sec: 'red_shared', code: '<span class="dc">@group</span>(<span class="nm">0</span>) <span class="dc">@binding</span>(<span class="nm">1</span>) <span class="st">var</span>&lt;<span class="st">storage</span>, <span class="st">read_write</span>&gt; <span class="vr">bloques_out</span>: <span class="tp">array</span>&lt;<span class="tp">f32</span>&gt;;' },
+    { num: 5, sec: 'red_shared', code: '' },
+    { num: 6, sec: 'red_shared', code: '<span class="cm">// Memoria compartida para acumulación en árbol</span>' },
+    { num: 7, sec: 'red_shared', code: '<span class="st">var</span>&lt;<span class="st">workgroup</span>&gt; <span class="vr">s_data</span>: <span class="tp">array</span>&lt;<span class="tp">f32</span>, <span class="nm">256</span>&gt;;' },
+    { num: 8, sec: 'red_shared', code: '' },
+    { num: 9, sec: 'all', code: '<span class="dc">@compute</span> <span class="dc">@workgroup_size</span>(<span class="nm">256</span>)' },
+    { num: 10, sec: 'all', code: '<span class="kw">fn</span> <span class="fn">main</span>(' },
+    { num: 11, sec: 'all', code: '  <span class="dc">@builtin</span>(<span class="bi">global_invocation_id</span>) <span class="vr">gid</span>: <span class="tp">vec3</span>&lt;<span class="tp">u32</span>&gt;,' },
+    { num: 12, sec: 'all', code: '  <span class="dc">@builtin</span>(<span class="bi">local_invocation_id</span>) <span class="vr">lid</span>: <span class="tp">vec3</span>&lt;<span class="tp">u32</span>&gt;,' },
+    { num: 13, sec: 'all', code: '  <span class="dc">@builtin</span>(<span class="bi">workgroup_id</span>) <span class="vr">wgid</span>: <span class="tp">vec3</span>&lt;<span class="tp">u32</span>&gt;' },
+    { num: 14, sec: 'all', code: ') {' },
+    { num: 15, sec: 'all', code: '  <span class="st">let</span> <span class="vr">tid</span> = <span class="vr">lid</span>.<span class="vr">x</span>;' },
+    { num: 16, sec: 'red_load', code: '  <span class="cm">// 1. Carga cooperativa de memoria global a compartida</span>' },
+    { num: 17, sec: 'red_load', code: '  <span class="vr">s_data</span>[<span class="vr">tid</span>] = <span class="vr">datos_in</span>[<span class="vr">gid</span>.<span class="vr">x</span>];' },
+    { num: 18, sec: 'red_load', code: '  <span class="fn">workgroupBarrier</span>();' },
+    { num: 19, sec: 'red_load', code: '' },
+    { num: 20, sec: 'red_loop', code: '  <span class="cm">// 2. Bucle de reducción logarítmica: O(log N)</span>' },
+    { num: 21, sec: 'red_loop', code: '  <span class="kw">for</span> (<span class="st">var</span> <span class="vr">stride</span> = <span class="vr">WG_SIZE</span> / <span class="nm">2u</span>; <span class="vr">stride</span> &gt; <span class="nm">0u</span>; <span class="vr">stride</span> &gt;&gt;= <span class="nm">1u</span>) {' },
+    { num: 22, sec: 'red_nodiv', code: '    <span class="cm">// Condición óptima: hilos activos contiguos (CERO divergencia SIMD)</span>' },
+    { num: 23, sec: 'red_nodiv', code: '    <span class="kw">if</span> (<span class="vr">tid</span> &lt; <span class="vr">stride</span>) {' },
+    { num: 24, sec: 'red_nodiv', code: '      <span class="vr">s_data</span>[<span class="vr">tid</span>] += <span class="vr">s_data</span>[<span class="vr">tid</span> + <span class="vr">stride</span>];' },
+    { num: 25, sec: 'red_nodiv', code: '    }' },
+    { num: 26, sec: 'red_loop', code: '    <span class="fn">workgroupBarrier</span>(); <span class="cm">// Sincronización antes de la siguiente mitad</span>' },
+    { num: 27, sec: 'red_loop', code: '  }' },
+    { num: 28, sec: 'red_loop', code: '' },
+    { num: 29, sec: 'red_write', code: '  <span class="cm">// 3. Únicamente el hilo 0 consolida la suma del bloque en DRAM</span>' },
+    { num: 30, sec: 'red_write', code: '  <span class="kw">if</span> (<span class="vr">tid</span> == <span class="nm">0u</span>) {' },
+    { num: 31, sec: 'red_write', code: '    <span class="vr">bloques_out</span>[<span class="vr">wgid</span>.<span class="vr">x</span>] = <span class="vr">s_data</span>[<span class="nm">0</span>];' },
+    { num: 32, sec: 'red_write', code: '  }' },
+    { num: 33, sec: 'all', code: '}' }
+  ];
+
+  // Código Host JavaScript
+  const hostJsCode = [
+    { num: 1, sec: 'all', code: '<span class="cm">// Orquestación en Host (JavaScript WebGPU)</span>' },
+    { num: 2, sec: 'all', code: '<span class="kw">const</span> <span class="vr">adapter</span> = <span class="kw">await</span> <span class="vr">navigator</span>.<span class="vr">gpu</span>.<span class="fn">requestAdapter</span>();' },
+    { num: 3, sec: 'all', code: '<span class="kw">const</span> <span class="vr">device</span> = <span class="kw">await</span> <span class="vr">adapter</span>.<span class="fn">requestDevice</span>({' },
+    { num: 4, sec: 'all', code: '  <span class="vr">requiredLimits</span>: {' },
+    { num: 5, sec: 'all', code: '    <span class="cm">// Garantizamos 16 KB de memoria compartida por workgroup</span>' },
+    { num: 6, sec: 'all', code: '    <span class="vr">maxComputeWorkgroupStorageSize</span>: <span class="nm">16384</span>' },
+    { num: 7, sec: 'all', code: '  }' },
+    { num: 8, sec: 'all', code: '});' },
+    { num: 9, sec: 'all', code: '' },
+    { num: 10, sec: 'all', code: '<span class="kw">const</span> <span class="vr">pipeline</span> = <span class="vr">device</span>.<span class="fn">createComputePipeline</span>({' },
+    { num: 11, sec: 'all', code: '  <span class="vr">layout</span>: <span class="st-lit">"auto"</span>,' },
+    { num: 12, sec: 'all', code: '  <span class="vr">compute</span>: { <span class="vr">module</span>: <span class="vr">shaderModule</span>, <span class="vr">entryPoint</span>: <span class="st-lit">"main"</span> }' },
+    { num: 13, sec: 'all', code: '});' },
+    { num: 14, sec: 'all', code: '' },
+    { num: 15, sec: 'all', code: '<span class="kw">const</span> <span class="vr">pass</span> = <span class="vr">commandEncoder</span>.<span class="fn">beginComputePass</span>();' },
+    { num: 16, sec: 'all', code: '<span class="vr">pass</span>.<span class="fn">setPipeline</span>(<span class="vr">pipeline</span>);' },
+    { num: 17, sec: 'all', code: '<span class="vr">pass</span>.<span class="fn">setBindGroup</span>(<span class="nm">0</span>, <span class="vr">bindGroup</span>);' },
+    { num: 18, sec: 'all', code: '<span class="cm">// Despacho de baldosas de 16x16 hilos para cubrir matrices de 64x64</span>' },
+    { num: 19, sec: 'all', code: '<span class="vr">pass</span>.<span class="fn">dispatchWorkgroups</span>(<span class="nm">4</span>, <span class="nm">4</span>, <span class="nm">1</span>);' },
+    { num: 20, sec: 'all', code: '<span class="vr">pass</span>.<span class="fn">end</span>();' }
+  ];
+
+  function renderCodeLines(containerId, lines) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    lines.forEach(item => {
+      const lineEl = document.createElement('div');
+      lineEl.className = 'code-line';
+      lineEl.setAttribute('data-section', item.sec);
+      lineEl.innerHTML = `
+        <span class="line-number">${item.num}</span>
+        <span class="line-content">${item.code}</span>
+      `;
+      container.appendChild(lineEl);
+    });
+  }
+
+  function renderSpotlightButtons() {
+    const group = document.getElementById('spotlightBtnGroup');
+    group.innerHTML = '';
+    const items = (currentAlgorithm === 'gemm') ? gemmSpotlights : reductionSpotlights;
+
+    items.forEach((item, index) => {
+      const btn = document.createElement('button');
+      btn.className = 'btn' + (index === 0 ? ' active' : '');
+      btn.innerHTML = item.label;
+      btn.onclick = () => setSpotlight(item.id, btn);
+      group.appendChild(btn);
+    });
+  }
+
+  function setSpotlight(sectionId, buttonEl) {
+    document.querySelectorAll('#spotlightBtnGroup .btn').forEach(b => b.classList.remove('active'));
+    if (buttonEl) buttonEl.classList.add('active');
+
+    const descMap = (currentAlgorithm === 'gemm') ? gemmDescriptions : reductionDescriptions;
+    document.getElementById('explanationText').innerHTML = descMap[sectionId] || descMap['all'];
+
+    const activeContainer = (currentCodeTab === 'shader') ? 'codeShaderContainer' : 'codeHostContainer';
+    const lines = document.querySelectorAll(`#${activeContainer} .code-line`);
+
+    lines.forEach(line => {
+      const sec = line.getAttribute('data-section');
+      if (sectionId === 'all') {
+        line.classList.remove('spotlight', 'dimmed');
+      } else if (sec === sectionId) {
+        line.classList.add('spotlight');
+        line.classList.remove('dimmed');
+      } else {
+        line.classList.remove('spotlight');
+        line.classList.add('dimmed');
+      }
+    });
+  }
+
+  function switchAlgorithm(algo) {
+    currentAlgorithm = algo;
+    document.getElementById('tabAlgoGemm').classList.toggle('active', algo === 'gemm');
+    document.getElementById('tabAlgoReduction').classList.toggle('active', algo === 'reduction');
+
+    // Pausar auto-plays si estuvieran corriendo
+    if (gemmAutoPlayInterval) toggleAutoPlayGemm();
+    if (reductionAutoPlayInterval) toggleAutoPlayReduction();
+
+    if (algo === 'gemm') {
+      document.getElementById('shaderTabTitle').innerText = 'tiled_gemm.wgsl (Shader)';
+      document.getElementById('simPanelTitle').innerText = 'Simulación Silicio: Baldosas en SRAM';
+      document.getElementById('gemmVisualContainer').style.display = 'flex';
+      document.getElementById('reductionVisualContainer').style.display = 'none';
+      renderCodeLines('codeShaderContainer', gemmShaderCode);
+    } else {
+      document.getElementById('shaderTabTitle').innerText = 'parallel_reduction.wgsl (Shader)';
+      document.getElementById('simPanelTitle').innerText = 'Simulación Silicio: Árbol de Reducción';
+      document.getElementById('gemmVisualContainer').style.display = 'none';
+      document.getElementById('reductionVisualContainer').style.display = 'flex';
+      renderCodeLines('codeShaderContainer', reductionShaderCode);
+    }
+
+    renderSpotlightButtons();
+    setSpotlight('all', document.querySelector('#spotlightBtnGroup .btn'));
+    renderSimulators();
+  }
+
+  function switchCodeTab(tab) {
+    currentCodeTab = tab;
+    document.getElementById('tabCodeShader').classList.toggle('active', tab === 'shader');
+    document.getElementById('tabCodeHost').classList.toggle('active', tab === 'host');
+    document.getElementById('codeShaderContainer').style.display = (tab === 'shader') ? 'block' : 'none';
+    document.getElementById('codeHostContainer').style.display = (tab === 'host') ? 'block' : 'none';
+
+    // Restablecer foco al cambiar tab
+    setSpotlight('all', document.querySelector('#spotlightBtnGroup .btn'));
+  }
+
+  // Renderizadores Visuales del Silicio (GEMM Dinámico)
+  function renderGemmGrids() {
+    const gridA = document.getElementById('gridMatrixA');
+    const gridB = document.getElementById('gridMatrixB');
+    const gridC = document.getElementById('gridMatrixC');
+    const tileA = document.getElementById('gridTileA');
+    const tileB = document.getElementById('gridTileB');
+    const phaseBanner = document.getElementById('gemmPhaseBanner');
+    const tileALabel = document.getElementById('tileALabel');
+    const tileBLabel = document.getElementById('tileBLabel');
+    const sharedUsage = document.getElementById('sharedMemUsage');
+
+    if (!gridA || !gridB || !gridC || !tileA || !tileB) return;
+
+    gridA.innerHTML = ''; gridB.innerHTML = ''; gridC.innerHTML = '';
+    tileA.innerHTML = ''; tileB.innerHTML = '';
+
+    // Matriz 4x4 de baldosas
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 4; c++) {
+        // Matriz A: resaltar la baldosa [1, gemmStep]
+        const cellA = document.createElement('div');
+        cellA.className = 'grid-cell' + ((r === 1 && c === gemmStep) ? ' active-tile-a' : '');
+        gridA.appendChild(cellA);
+
+        // Matriz B: resaltar la baldosa [gemmStep, 2]
+        const cellB = document.createElement('div');
+        cellB.className = 'grid-cell' + ((r === gemmStep && c === 2) ? ' active-tile-b' : '');
+        gridB.appendChild(cellB);
+
+        // Matriz C (Resultado progresivo en la celda [1, 2])
+        const cellC = document.createElement('div');
+        if (r === 1 && c === 2) {
+          const accumClass = `accum-${(gemmStep + 1) * 25}`;
+          cellC.className = `grid-cell active-output-c ${accumClass}`;
+          cellC.title = `C[1,2]: ${(gemmStep + 1) * 25}% acumulado`;
+        } else {
+          cellC.className = 'grid-cell';
+        }
+        gridC.appendChild(cellC);
+
+        // Baldosas en Shared Memory con animación de pulso de carga
+        const cTileA = document.createElement('div');
+        cTileA.className = 'grid-cell active-tile-a pulse-load-a';
+        tileA.appendChild(cTileA);
+
+        const cTileB = document.createElement('div');
+        cTileB.className = 'grid-cell active-tile-b pulse-load-b';
+        tileB.appendChild(cTileB);
+      }
+    }
+
+    // Actualizar etiquetas en la memoria compartida
+    if (tileALabel) tileALabel.innerText = `Baldosa A: Sub-matriz A[1, ${gemmStep}]`;
+    if (tileBLabel) tileBLabel.innerText = `Baldosa B: Sub-matriz B[${gemmStep}, 2]`;
+    if (sharedUsage) sharedUsage.innerText = `2 KB / 16 KB SRAM • Iteración ${gemmStep + 1} de 4`;
+
+    // Actualizar badge superior con separación clara
+    const badge = document.getElementById('simStepBadge');
+    if (badge) badge.innerText = `Baldosa K = ${gemmStep + 1} de 4 (t = ${gemmStep})`;
+
+    // Banner didáctico del ciclo de silicio
+    const gemmPhaseTexts = [
+      `⚡ [Iteración t=0]: Los 256 hilos cargan cooperativamente las baldosas A[1,0] y B[0,2] en SRAM on-chip (2 KB). Tras workgroupBarrier(), cada hilo calcula 16 multiplicaciones en su registro privado. Acumulado: 25%.`,
+      `⚡ [Iteración t=1]: Segunda barrera superada. Se cargan A[1,1] y B[1,2] en SRAM. Lectura fulgurante a 4 ciclos de reloj. El acumulador sube al 50% sin tocar la lejana DRAM.`,
+      `⚡ [Iteración t=2]: Carga cooperativa de A[1,2] y B[2,2]. Acumulación en SRAM completada al 75%. El bus de datos externo permanece completamente desahogado.`,
+      `🎉 [Iteración t=3]: Última baldosa A[1,3] y B[3,2]. ¡100% completado! El hilo escribe el resultado final de C[1,2] en la memoria global DRAM. Tráfico total reducido en un 93.75% (16×).`
+    ];
+    if (phaseBanner) phaseBanner.innerText = gemmPhaseTexts[gemmStep];
+
+    // Actualizar Telemetría Dinámica en Tiempo Real
+    const stat1 = document.getElementById('statTrafficGlobal');
+    const stat2 = document.getElementById('statArithmeticIntensity');
+    const stat3 = document.getElementById('statDivergence');
+    const stat4 = document.getElementById('statBankConflicts');
+    const l1 = document.getElementById('statLabel1');
+    const l2 = document.getElementById('statLabel2');
+    const l3 = document.getElementById('statLabel3');
+    const l4 = document.getElementById('statLabel4');
+    const subTitle = document.getElementById('telemetrySubTitle');
+
+    if (subTitle) subTitle.innerText = `Iteración ${gemmStep + 1} de 4 (Tiled GEMM)`;
+    if (l1) l1.innerText = 'Tráfico a DRAM Global (Acumulado)';
+    if (l2) l2.innerText = 'Operaciones en SRAM On-Chip';
+    if (l3) l3.innerText = 'Acumulador C[1,2] (Registro Privado)';
+    if (l4) l4.innerText = 'Conflictos de Banco en SRAM';
+
+    const dramLoadedKB = (gemmStep + 1) * 2;
+    const naiveDramKB = (gemmStep + 1) * 32;
+    const savedKB = naiveDramKB - dramLoadedKB;
+    const opsPerThread = (gemmStep + 1) * 16;
+    const totalBlockFlops = opsPerThread * 256;
+    const accumPercent = (gemmStep + 1) * 25;
+
+    if (stat1) {
+      if (gemmStep === 3) {
+        stat1.innerHTML = `8 KB <span class="stat-unit">total (vs 128 KB ingenuo • 16×)</span>`;
+      } else {
+        stat1.innerHTML = `${dramLoadedKB} KB <span class="stat-unit">de 8 KB (${savedKB} KB ahorrados)</span>`;
+      }
+    }
+    if (stat2) stat2.innerHTML = `${opsPerThread} <span class="stat-unit">ops/hilo (${totalBlockFlops.toLocaleString()} FLOPs)</span>`;
+    if (stat3) {
+      if (gemmStep === 3) {
+        stat3.innerHTML = `<span style="color: #34d399; font-weight: 800;">100%</span> <span class="stat-unit" style="color: #34d399; font-weight: 700;">CONSOLIDADO EN DRAM</span>`;
+      } else {
+        stat3.innerHTML = `${accumPercent}% <span class="stat-unit">acumulado (${gemmStep + 1}/4 baldosas)</span>`;
+      }
+    }
+    if (stat4) stat4.innerHTML = `0 <span class="stat-unit">32 bancos libres (~4 ciclos)</span>`;
+  }
+
+  // Auto-play controllers
+  let gemmAutoPlayInterval = null;
+  let reductionAutoPlayInterval = null;
+
+  function toggleAutoPlayGemm() {
+    const btn = document.getElementById('btnAutoPlayGemm');
+    if (gemmAutoPlayInterval) {
+      clearInterval(gemmAutoPlayInterval);
+      gemmAutoPlayInterval = null;
+      btn.innerText = '▶ Auto-Play';
+      btn.classList.remove('primary');
+    } else {
+      btn.innerText = '⏸ Pausar';
+      btn.classList.add('primary');
+      gemmAutoPlayInterval = setInterval(() => {
+        nextGemmStep();
+      }, 1400);
+    }
+  }
+
+  function toggleAutoPlayReduction() {
+    const btn = document.getElementById('btnAutoPlayRed');
+    if (reductionAutoPlayInterval) {
+      clearInterval(reductionAutoPlayInterval);
+      reductionAutoPlayInterval = null;
+      btn.innerText = '▶ Auto-Play';
+      btn.classList.remove('primary');
+    } else {
+      btn.innerText = '⏸ Pausar';
+      btn.classList.add('primary');
+      reductionAutoPlayInterval = setInterval(() => {
+        if (reductionStep >= 4) {
+          reductionStep = 0;
+        } else {
+          reductionStep++;
+        }
+        renderReductionTrees();
+      }, 1400);
+    }
+  }
+
+  function nextGemmStep() {
+    gemmStep = (gemmStep + 1) % 4;
+    renderGemmGrids();
+  }
+
+  function prevGemmStep() {
+    gemmStep = (gemmStep - 1 + 4) % 4;
+    renderGemmGrids();
+  }
+
+  function resetGemmSim() {
+    gemmStep = 0;
+    renderGemmGrids();
+  }
+
+  // Renderizadores Visuales del Silicio (Reducción con Valores Plegados y Telemetría)
+  function renderReductionTrees() {
+    const stages = [
+      { id: 'stageArray0', stride: 16, activeCount: 16, labelVal: '1' },
+      { id: 'stageArray1', stride: 8,  activeCount: 8,  labelVal: '2' },
+      { id: 'stageArray2', stride: 4,  activeCount: 4,  labelVal: '4' },
+      { id: 'stageArray3', stride: 2,  activeCount: 2,  labelVal: '8' },
+      { id: 'stageArray4', stride: 1,  activeCount: 1,  labelVal: '16' }
+    ];
+
+    stages.forEach((st, idx) => {
+      const container = document.getElementById(st.id);
+      if (!container) return;
+      container.innerHTML = '';
+
+      for (let i = 0; i < 16; i++) {
+        const cell = document.createElement('div');
+        cell.className = 't-cell';
+
+        let displayVal = '1.0';
+        if (idx === 0) {
+          cell.classList.add('active-thread');
+          displayVal = '1.0';
+        } else if (idx <= reductionStep) {
+          if (idx === 4 && i === 0) {
+            cell.classList.add('winner-thread');
+            displayVal = '16.0';
+          } else if (i < st.activeCount) {
+            cell.classList.add('active-thread');
+            displayVal = st.labelVal + '.0';
+          } else {
+            cell.classList.add('retired-thread');
+            displayVal = '—';
+          }
+        } else {
+          cell.classList.add('retired-thread');
+          cell.style.opacity = '0.25';
+          displayVal = '—';
+        }
+
+        cell.innerHTML = `
+          <span style="font-size: 0.58rem; opacity: 0.75;">T${i}</span>
+          <span style="font-size: 0.75rem; font-weight: 800;">${displayVal}</span>
+        `;
+        container.appendChild(cell);
+      }
+    });
+
+    const currentStride = 16 >> reductionStep;
+    const badge = document.getElementById('simStepBadge');
+    if (badge) badge.innerText = `Fase ${reductionStep} de 4 (stride = ${currentStride > 0 ? currentStride : 1})`;
+
+    // Actualizar Telemetría Dinámica en Tiempo Real para Reducción
+    const stat1 = document.getElementById('statTrafficGlobal');
+    const stat2 = document.getElementById('statArithmeticIntensity');
+    const stat3 = document.getElementById('statDivergence');
+    const stat4 = document.getElementById('statBankConflicts');
+    const l1 = document.getElementById('statLabel1');
+    const l2 = document.getElementById('statLabel2');
+    const l3 = document.getElementById('statLabel3');
+    const l4 = document.getElementById('statLabel4');
+    const subTitle = document.getElementById('telemetrySubTitle');
+    const redBanner = document.getElementById('reductionPhaseBanner');
+
+    if (subTitle) subTitle.innerText = `Fase ${reductionStep} de 4 (Parallel Reduction)`;
+    if (l1) l1.innerText = 'Hilos Activos en SRAM';
+    if (l2) l2.innerText = 'Sumas Paralelas Acumuladas';
+    if (l3) l3.innerText = 'Divergencia de Warps (SIMD)';
+    if (l4) l4.innerText = 'Zancada Activa (stride)';
+
+    const redPhaseInfo = [
+      { active: 16, sums: 0,  stride: 16, banner: '🌲 [Fase 0 - Carga]: Los 16 hilos transfieren 16 elementos a la SRAM s_data. Sincronización con workgroupBarrier().' },
+      { active: 8,  sums: 8,  stride: 8,  banner: '🌲 [Paso 1 - stride=8]: 8 hilos contiguos (0..7) suman sus pares (T[i] += T[i+8]). 8 hilos inactivos apagados sin divergencia.' },
+      { active: 4,  sums: 12, stride: 4,  banner: '🌲 [Paso 2 - stride=4]: Plegado logarítmico: 4 hilos activos suman (T[i] += T[i+4]). El vector colapsa al 25% original.' },
+      { active: 2,  sums: 14, stride: 2,  banner: '🌲 [Paso 3 - stride=2]: Quedan solo 2 hilos activos sumando a 4 ciclos de reloj. Los warps inactivos están dormidos.' },
+      { active: 1,  sums: 15, stride: 1,  banner: '🏆 [Paso 4 - stride=1]: ¡Reducción finalizada! La suma total de los 16 números (16.0) está en s_data[0]. El Hilo 0 consolida en DRAM.' }
+    ];
+
+    const cur = redPhaseInfo[reductionStep];
+    if (stat1) stat1.innerHTML = `${cur.active} <span class="stat-unit">hilos en silicio</span>`;
+    if (stat2) stat2.innerHTML = `${cur.sums} <span class="stat-unit">sumas completadas</span>`;
+    if (stat3) stat3.innerHTML = `0% <span class="stat-unit">cero divergencia SIMD</span>`;
+    if (stat4) stat4.innerHTML = `${cur.stride} <span class="stat-unit">${reductionStep === 4 ? 'suma final en s_data[0]' : 'paso descendente'}</span>`;
+    if (redBanner) redBanner.innerText = cur.banner;
+  }
+
+  function nextReductionStep() {
+    if (reductionStep < 4) reductionStep++;
+    renderReductionTrees();
+  }
+
+  function prevReductionStep() {
+    if (reductionStep > 0) reductionStep--;
+    renderReductionTrees();
+  }
+
+  function resetReductionSim() {
+    reductionStep = 0;
+    renderReductionTrees();
+  }
+
+  function renderSimulators() {
+    renderGemmGrids();
+    renderReductionTrees();
+  }
+
+  // Consola de Silicio y Telemetría en Vivo
+  function logConsole(msg, type = 'info') {
+    const consoleEl = document.getElementById('hardwareConsole');
+    if (!consoleEl) return;
+    const time = new Date().toLocaleTimeString();
+    const line = document.createElement('div');
+    line.className = `console-line ${type}`;
+    line.innerText = `[${time}] ${msg}`;
+    consoleEl.appendChild(line);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  function limpiarConsola() {
+    const consoleEl = document.getElementById('hardwareConsole');
+    if (consoleEl) {
+      consoleEl.innerHTML = '<div class="console-line info">[SISTEMA] Consola limpia. Listo para nuevo despacho.</div>';
+    }
+  }
+
+  let gpuDevice = null;
+  let gpuAdapter = null;
+
+  async function checkWebGPU() {
+    const dot = document.getElementById('gpuStatusDot');
+    const title = document.getElementById('gpuStatusTitle');
+    const detail = document.getElementById('gpuStatusDetail');
+
+    if (!navigator.gpu) {
+      if (dot) dot.className = 'status-dot fail';
+      if (title) title.innerText = 'WebGPU No Disponible';
+      if (detail) detail.innerText = 'Navegador sin WebGPU. Simulador visual 100% activo.';
+      logConsole('⚠️ navigator.gpu no detectado en este navegador. Las simulaciones visuales operan en modo interactivo completo.', 'warn');
+      return;
+    }
+
+    try {
+      gpuAdapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      if (!gpuAdapter) {
+        throw new Error('No se encontró un adaptador GPU compatible.');
+      }
+      gpuDevice = await gpuAdapter.requestDevice({
+        requiredLimits: {
+          maxComputeWorkgroupStorageSize: 16384
+        }
+      });
+      if (dot) dot.className = 'status-dot ok';
+      if (title) title.innerText = 'WebGPU Nativo Conectado';
+      const vendor = gpuAdapter.info?.vendor || 'Acelerador Gráfico';
+      const arch = gpuAdapter.info?.architecture || 'GPU Hardware';
+      if (detail) detail.innerText = `${vendor} (${arch}) • var<workgroup> 16 KB`;
+      logConsole(`✅ Dispositivo GPU conectado con éxito: ${vendor} (${arch}).`, 'success');
+      logConsole(`ℹ️ Límite maxComputeWorkgroupStorageSize garantizado: 16.384 bytes (SRAM on-chip).`, 'info');
+    } catch (err) {
+      if (dot) dot.className = 'status-dot fail';
+      if (title) title.innerText = 'Error al Inicializar GPU';
+      if (detail) detail.innerText = err.message;
+      logConsole(`❌ Error inicializando WebGPU: ${err.message}`, 'error');
+    }
+  }
+
+  async function ejecutarEnHardwareReal() {
+    if (!gpuDevice) {
+      await checkWebGPU();
+      if (!gpuDevice) {
+        alert('WebGPU no está disponible o soportado en este navegador. Revisa Chrome 113+, Edge o Safari 18+ con WebGPU activo.');
+        return;
+      }
+    }
+
+    const btn = document.getElementById('btnRunRealGpu');
+    btn.disabled = true;
+    btn.innerText = '⏳ Ejecutando en silicio...';
+
+    try {
+      if (currentAlgorithm === 'gemm') {
+        await runRealGemmBenchmark();
+      } else {
+        await runRealReductionBenchmark();
+      }
+    } catch (err) {
+      logConsole(`❌ Error durante el pase de cómputo: ${err.message}`, 'error');
+      document.getElementById('realVerification').innerHTML = '<span style="color: #f87171;">Error</span>';
+    } finally {
+      btn.disabled = false;
+      btn.innerText = '🚀 Despachar Compute Shader en GPU Real';
+    }
+  }
+
+  async function runRealGemmBenchmark() {
+    logConsole('====================================================', 'info');
+    logConsole('🚀 [INICIO] Despachando Tiled GEMM (64x64) en silicio nativo...', 'info');
+    const N = 64;
+    const numElements = N * N;
+    const byteSize = numElements * 4;
+
+    // 1. Preparar datos host
+    const matA = new Float32Array(numElements);
+    const matB = new Float32Array(numElements);
+    for (let i = 0; i < numElements; i++) {
+      matA[i] = (i % 7) * 0.25 + 0.1;
+      matB[i] = (i % 5) * 0.20 + 0.05;
+    }
+
+    // 2. Crear Buffers GPU
+    const bufA = gpuDevice.createBuffer({ size: byteSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    const bufB = gpuDevice.createBuffer({ size: byteSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    const bufC = gpuDevice.createBuffer({ size: byteSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+    const stagingBuf = gpuDevice.createBuffer({ size: byteSize, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+
+    gpuDevice.queue.writeBuffer(bufA, 0, matA);
+    gpuDevice.queue.writeBuffer(bufB, 0, matB);
+
+    // 3. Shader WGSL Real Tiled GEMM
+    const wgslSource = `
+      const TILE_SIZE: u32 = 16u;
+      const MATRIX_DIM: u32 = 64u;
+
+      @group(0) @binding(0) var<storage, read> matA: array<f32>;
+      @group(0) @binding(1) var<storage, read> matB: array<f32>;
+      @group(0) @binding(2) var<storage, read_write> matC: array<f32>;
+
+      var<workgroup> tile_a: array<array<f32, 16>, 16>;
+      var<workgroup> tile_b: array<array<f32, 16>, 16>;
+
+      @compute @workgroup_size(16, 16)
+      fn main(
+          @builtin(global_invocation_id) global_id: vec3<u32>,
+          @builtin(local_invocation_id) local_id: vec3<u32>
+      ) {
+          let row = global_id.y;
+          let col = global_id.x;
+          let lx = local_id.x;
+          let ly = local_id.y;
+          var accum: f32 = 0.0;
+          let num_tiles = MATRIX_DIM / TILE_SIZE;
+
+          for (var t: u32 = 0u; t < num_tiles; t = t + 1u) {
+              tile_a[ly][lx] = matA[row * MATRIX_DIM + (t * TILE_SIZE + lx)];
+              tile_b[ly][lx] = matB[(t * TILE_SIZE + ly) * MATRIX_DIM + col];
+              workgroupBarrier();
+
+              for (var k: u32 = 0u; k < TILE_SIZE; k = k + 1u) {
+                  accum = accum + tile_a[ly][k] * tile_b[k][lx];
+              }
+              workgroupBarrier();
+          }
+          matC[row * MATRIX_DIM + col] = accum;
+      }
+    `;
+
+    logConsole('⚡ Compilando shader WGSL con var<workgroup> (baldosas 16x16)...', 'info');
+    const shaderModule = gpuDevice.createShaderModule({ code: wgslSource });
+    const pipeline = gpuDevice.createComputePipeline({
+      layout: 'auto',
+      compute: { module: shaderModule, entryPoint: 'main' }
+    });
+
+    const bindGroup = gpuDevice.createBindGroup({
+      layout: pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: bufA } },
+        { binding: 1, resource: { buffer: bufB } },
+        { binding: 2, resource: { buffer: bufC } }
+      ]
+    });
+
+    // 4. Medir tiempo de despacho y sincronización
+    const t0 = performance.now();
+    const encoder = gpuDevice.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.dispatchWorkgroups(4, 4, 1); // 4x4 workgroups de 16x16 = 64x64
+    pass.end();
+    encoder.copyBufferToBuffer(bufC, 0, stagingBuf, 0, byteSize);
+    gpuDevice.queue.submit([encoder.finish()]);
+
+    await stagingBuf.mapAsync(GPUMapMode.READ);
+    const t1 = performance.now();
+    const totalGpuTime = t1 - t0;
+
+    const gpuResult = new Float32Array(stagingBuf.getMappedRange().slice(0));
+    stagingBuf.unmap();
+
+    // 5. Verificación CPU
+    logConsole('🧠 Calculando referencia CPU de verificación (4096 productos punto)...', 'info');
+    let maxDiff = 0.0;
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        let sum = 0.0;
+        for (let k = 0; k < N; k++) {
+          sum += matA[r * N + k] * matB[k * N + c];
+        }
+        const diff = Math.abs(sum - gpuResult[r * N + c]);
+        if (diff > maxDiff) maxDiff = diff;
+      }
+    }
+
+    const totalOps = 2 * N * N * N; // 524,288 FLOPs
+    const gflops = (totalOps / (totalGpuTime / 1000)) / 1e9;
+
+    document.getElementById('realGpuTime').innerHTML = `${totalGpuTime.toFixed(2)} <span class="stat-unit">ms</span>`;
+    document.getElementById('realOpsTotal').innerHTML = `${totalOps.toLocaleString()} <span class="stat-unit">FLOPs</span>`;
+    document.getElementById('realThroughput').innerHTML = `${gflops.toFixed(2)} <span class="stat-unit">GFLOP/s</span>`;
+
+    if (maxDiff < 1e-4) {
+      document.getElementById('realVerification').innerHTML = '<span style="color: #34d399;">✅ 100% Exacto (Error: 0.00000)</span>';
+      logConsole(`✅ Verificación superada: Coincidencia matemática exacta (Diferencia máxima = ${maxDiff.toFixed(6)}).`, 'success');
+    } else {
+      document.getElementById('realVerification').innerHTML = `<span style="color: #f87171;">⚠️ Dif: ${maxDiff.toFixed(4)}</span>`;
+      logConsole(`⚠️ Discrepancia detectada: Diferencia = ${maxDiff}`, 'warn');
+    }
+
+    logConsole(`📊 Telemetría: Tiempo GPU = ${totalGpuTime.toFixed(2)} ms | Rendimiento = ${gflops.toFixed(2)} GFLOP/s.`, 'success');
+    logConsole(`⚡ Tráfico DRAM ahorrado: 93.75% gracias al tiling en SRAM de 16x16.`, 'info');
+  }
+
+  async function runRealReductionBenchmark() {
+    logConsole('====================================================', 'info');
+    logConsole('🌲 [INICIO] Despachando Reducción en Árbol (1024 floats) en GPU...', 'info');
+    const count = 1024;
+    const byteSize = count * 4;
+    const numBlocks = 4; // 4 workgroups de 256
+
+    const dataIn = new Float32Array(count);
+    let cpuExpectedSum = 0.0;
+    for (let i = 0; i < count; i++) {
+      dataIn[i] = 1.0; // Suma esperada = 1024.0
+      cpuExpectedSum += dataIn[i];
+    }
+
+    const bufIn = gpuDevice.createBuffer({ size: byteSize, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    const bufOut = gpuDevice.createBuffer({ size: numBlocks * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+    const stagingBuf = gpuDevice.createBuffer({ size: numBlocks * 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+
+    gpuDevice.queue.writeBuffer(bufIn, 0, dataIn);
+
+    const wgslSource = `
+      const WG_SIZE: u32 = 256u;
+
+      @group(0) @binding(0) var<storage, read> datos_in: array<f32>;
+      @group(0) @binding(1) var<storage, read_write> bloques_out: array<f32>;
+
+      var<workgroup> s_data: array<f32, 256>;
+
+      @compute @workgroup_size(256)
+      fn main(
+          @builtin(global_invocation_id) gid: vec3<u32>,
+          @builtin(local_invocation_id) lid: vec3<u32>,
+          @builtin(workgroup_id) wgid: vec3<u32>
+      ) {
+          let tid = lid.x;
+          // 1. Carga cooperativa
+          s_data[tid] = datos_in[gid.x];
+          workgroupBarrier();
+
+          // 2. Plegado logarítmico sin divergencia
+          for (var stride: u32 = WG_SIZE / 2u; stride > 0u; stride = stride >> 1u) {
+              if (tid < stride) {
+                  s_data[tid] = s_data[tid] + s_data[tid + stride];
+              }
+              workgroupBarrier();
+          }
+
+          // 3. Consolidación hilo 0
+          if (tid == 0u) {
+              bloques_out[wgid.x] = s_data[0];
+          }
+      }
+    `;
+
+    logConsole('⚡ Compilando shader WGSL de Reducción con bucle logarítmico O(log N)...', 'info');
+    const shaderModule = gpuDevice.createShaderModule({ code: wgslSource });
+    const pipeline = gpuDevice.createComputePipeline({
+      layout: 'auto',
+      compute: { module: shaderModule, entryPoint: 'main' }
+    });
+
+    const bindGroup = gpuDevice.createBindGroup({
+      layout: pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: bufIn } },
+        { binding: 1, resource: { buffer: bufOut } }
+      ]
+    });
+
+    const t0 = performance.now();
+    const encoder = gpuDevice.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.dispatchWorkgroups(numBlocks, 1, 1);
+    pass.end();
+    encoder.copyBufferToBuffer(bufOut, 0, stagingBuf, 0, numBlocks * 4);
+    gpuDevice.queue.submit([encoder.finish()]);
+
+    await stagingBuf.mapAsync(GPUMapMode.READ);
+    const t1 = performance.now();
+    const totalGpuTime = t1 - t0;
+
+    const partialSums = new Float32Array(stagingBuf.getMappedRange().slice(0));
+    stagingBuf.unmap();
+
+    let totalGpuSum = 0.0;
+    for (let i = 0; i < numBlocks; i++) {
+      totalGpuSum += partialSums[i];
+    }
+
+    const totalOps = count - 1; // 1023 sumas
+    const throughput = (count / (totalGpuTime / 1000)) / 1e6;
+    const diff = Math.abs(totalGpuSum - cpuExpectedSum);
+
+    document.getElementById('realGpuTime').innerHTML = `${totalGpuTime.toFixed(2)} <span class="stat-unit">ms</span>`;
+    document.getElementById('realOpsTotal').innerHTML = `${count} ➔ 1 <span class="stat-unit">elementos</span>`;
+    document.getElementById('realThroughput').innerHTML = `${throughput.toFixed(2)} <span class="stat-unit">Melem/s</span>`;
+
+    if (diff < 1e-4) {
+      document.getElementById('realVerification').innerHTML = `<span style="color: #34d399;">✅ Suma = ${totalGpuSum.toFixed(1)} (100% OK)</span>`;
+      logConsole(`✅ Suma GPU consolidada: ${totalGpuSum.toFixed(1)} == CPU: ${cpuExpectedSum.toFixed(1)}.`, 'success');
+      logConsole(`🎯 Pasos en hardware: 8 iteraciones de plegado paralelo por bloque en lugar de 1024 secuenciales.`, 'info');
+    } else {
+      document.getElementById('realVerification').innerHTML = `<span style="color: #f87171;">⚠️ Error: ${diff}</span>`;
+      logConsole(`⚠️ Discrepancia en suma: GPU=${totalGpuSum} vs CPU=${cpuExpectedSum}`, 'warn');
+    }
+  }
+
+  // Inicialización
+  window.addEventListener('DOMContentLoaded', () => {
+    renderCodeLines('codeShaderContainer', gemmShaderCode);
+    renderCodeLines('codeHostContainer', hostJsCode);
+    renderSpotlightButtons();
+    renderSimulators();
+    setSpotlight('all', document.querySelector('#spotlightBtnGroup .btn'));
+    checkWebGPU();
+  });
+</script>
+
+</body>
+</html>

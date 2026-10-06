@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compute Shader WGSL: Convolución Bidimensional y Filtro de Sobel — Code Spotlight Visualizer</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f293d;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.3);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --purple: #c084fc;
+      --code-bg: #1e1e1e;
+
+      /* Tokens de Sintaxis VS Code Dark+ para WGSL */
+      --syn-keyword: #c586c0;    /* return, if */
+      --syn-storage: #569cd6;    /* var, let, fn */
+      --syn-type: #4ec9b0;       /* vec2, vec3, vec4, i32, u32, f32, texture_2d, texture_storage_2d, rgba8unorm */
+      --syn-var: #9cdcfe;        /* identificadores, coords, dims, gx, gy */
+      --syn-func: #dcdcaa;       /* obtener_luminancia, clamp, textureLoad, textureDimensions, sqrt, textureStore */
+      --syn-num: #b5cea8;        /* 0, 1, 2, 16, 256, 0.299, 0.587, 0.114 */
+      --syn-comment: #6a9955;    /* comentarios */
+      --syn-decorator: #ffd700;  /* @group, @binding, @compute, @workgroup_size, @builtin */
+      --syn-builtin: #4fc1ff;    /* global_invocation_id, write */
+      --syn-op: #d4d4d4;         /* =, +, -, *, /, <, >, ;, :, ,, . */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 1.5rem 1.25rem;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+    }
+
+    .badge-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .badge.purple {
+      background: rgba(192, 132, 252, 0.15);
+      color: var(--purple);
+      border-color: rgba(192, 132, 252, 0.35);
+    }
+
+    h1 {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 850px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* TOOLBAR INTERACTIVA (SPOTLIGHT) */
+    .interactive-toolbar {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 0.85rem 1.15rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .toolbar-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 0.42rem 0.8rem;
+      border-radius: 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      user-select: none;
+    }
+
+    .btn:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: #475569;
+    }
+
+    .btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+
+    .btn-action {
+      background: #0f766e;
+      border-color: #14b8a6;
+      color: #fff;
+    }
+    .btn-action:hover {
+      background: #115e59;
+      color: #fff;
+    }
+
+    /* BANNER EXPLICATIVO SINCRONIZADO */
+    .explanation-banner {
+      background: rgba(17, 24, 39, 0.95);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 10px 10px 0;
+      padding: 1rem 1.35rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+      color: #f1f5f9;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      transition: all 0.3s ease;
+    }
+
+    .explanation-banner .icon {
+      font-size: 1.4rem;
+      line-height: 1;
+      margin-top: 0.15rem;
+      color: var(--accent);
+    }
+
+    .explanation-content h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .explanation-content p {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .explanation-quote {
+      margin-top: 0.4rem;
+      padding: 0.4rem 0.75rem;
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 2px solid var(--accent);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #93c5fd;
+      font-style: italic;
+    }
+
+    /* LAYOUT PRINCIPAL: 2 COLUMNAS (EDITOR VS PANEL TÉCNICO) */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1100px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* VENTANA VS CODE DARK+ */
+    .editor-window {
+      background-color: var(--code-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+    }
+
+    .window-titlebar {
+      background-color: #323233;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      position: relative;
+      user-select: none;
+      border-bottom: 1px solid #252526;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .control-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-close { background-color: #ff5f56; }
+    .dot-minimize { background-color: #ffbd2e; }
+    .dot-maximize { background-color: #27c93f; }
+
+    .window-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.78rem;
+      color: #aaa;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .editor-tabs {
+      display: flex;
+      background-color: #252526;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      font-size: 0.82rem;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border-top: 2px solid var(--accent);
+      border-right: 1px solid #252526;
+      cursor: pointer;
+    }
+
+    .tab-icon {
+      color: #e34c26;
+      font-weight: 900;
+      font-size: 0.75rem;
+    }
+
+    .breadcrumbs {
+      background-color: #1e1e1e;
+      padding: 5px 16px;
+      font-size: 0.75rem;
+      color: #888;
+      border-bottom: 1px solid #282828;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .breadcrumbs span {
+      color: #bbb;
+    }
+
+    /* CONTENEDOR DE CÓDIGO */
+    .code-container {
+      background: var(--code-bg);
+      padding: 0.75rem 0;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", "Fira Code", Consolas, Menlo, Monaco, monospace;
+      font-size: 0.84rem;
+      line-height: 1.6;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 1rem;
+      transition: all 0.2s ease;
+      position: relative;
+      white-space: pre;
+    }
+
+    .code-line.spotlight {
+      background: rgba(56, 189, 248, 0.16);
+      border-left: 3px solid var(--accent);
+      padding-left: calc(1rem - 3px);
+    }
+
+    .code-line.dimmed {
+      opacity: 0.28;
+      filter: grayscale(40%);
+    }
+
+    .line-num {
+      width: 2.2rem;
+      color: #555;
+      text-align: right;
+      margin-right: 1.25rem;
+      user-select: none;
+      font-size: 0.78rem;
+    }
+
+    .line-content {
+      flex: 1;
+    }
+
+    /* ESTILOS DE SINTAXIS */
+    .kw { color: var(--syn-keyword); font-weight: 600; }
+    .st { color: var(--syn-storage); }
+    .tp { color: var(--syn-type); }
+    .vr { color: var(--syn-var); }
+    .fn { color: var(--syn-func); }
+    .nm { color: var(--syn-num); }
+    .cm { color: var(--syn-comment); font-style: italic; }
+    .dc { color: var(--syn-decorator); font-weight: 600; }
+    .bi { color: var(--syn-builtin); }
+    .op { color: var(--syn-op); }
+
+    /* PANEL LATERAL DE APOYO TÉCNICO Y MATEMÁTICO */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .hud-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .hud-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* MATRICES DE SOBEL */
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .matrix-box {
+      background: #0b1120;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 0.6rem;
+      text-align: center;
+    }
+
+    .matrix-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #94a3b8;
+      margin-bottom: 0.4rem;
+    }
+
+    .matrix-table {
+      margin: 0 auto;
+      border-collapse: collapse;
+      font-family: monospace;
+      font-size: 0.82rem;
+    }
+
+    .matrix-table td {
+      width: 24px;
+      height: 24px;
+      text-align: center;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+    }
+
+    .matrix-table td.pos { color: var(--success); font-weight: 700; }
+    .matrix-table td.neg { color: var(--danger); font-weight: 700; }
+    .matrix-table td.zero { color: #64748b; }
+
+    /* FÓRMULAS MATEMÁTICAS */
+    .formula-box {
+      background: #090e1a;
+      border: 1px dashed #334155;
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      margin-bottom: 0.5rem;
+      line-height: 1.5;
+    }
+
+    .formula-box span.hi {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* ALERTA DE ARQUITECTURA: CUELLO DE BOTELLA */
+    .bottleneck-alert {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 8px;
+      padding: 0.85rem;
+    }
+
+    .bottleneck-alert h4 {
+      color: var(--danger);
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .bottleneck-alert p {
+      color: #fca5a5;
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+    }
+
+    .stat-chip {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.4rem 0.5rem;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .stat-label {
+      font-size: 0.68rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+
+    /* TOAST DE COPIADO */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #10b981;
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* ATAJOS DE TECLADO */
+    .keyboard-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    kbd {
+      background: #334155;
+      color: #f8fafc;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-family: inherit;
+      border: 1px solid #475569;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- CABECERA -->
+  <header>
+    <div>
+      <div class="badge-group">
+        <span class="badge">Capítulo 4 • Apartado 4</span>
+        <span class="badge purple">Algoritmo 1: Convolución 2D</span>
+      </div>
+      <h1>Compute Shader WGSL: Filtro de Sobel</h1>
+      <p class="subtitle">
+        Implementación canónica en WebGPU con tratamiento seguro de bordes mediante clamping,
+        luminancia ITU-R BT.601 y convolución discreta ortogonal 3×3.
+      </p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-action" onclick="copyFullWgsl()">
+        📋 Copiar WGSL Completo
+      </button>
+    </div>
+  </header>
+
+  <!-- TOOLBAR INTERACTIVA DE FOCO (SPOTLIGHT) -->
+  <div class="interactive-toolbar">
+    <div class="toolbar-label">
+      🎯 Fases de la Explicación / Locución
+    </div>
+    <div class="btn-group" id="spotlight-buttons">
+      <button class="btn active" data-phase="all" onclick="setSpotlight('all', this)">
+        Código Completo
+      </button>
+      <button class="btn" data-phase="fase1" onclick="setSpotlight('fase1', this)">
+        1. Texturas y Storage
+      </button>
+      <button class="btn" data-phase="fase2" onclick="setSpotlight('fase2', this)">
+        2. Función obtener_luminancia
+      </button>
+      <button class="btn" data-phase="fase3" onclick="setSpotlight('fase3', this)">
+        3. Workgroup y Límites
+      </button>
+      <button class="btn" data-phase="fase4" onclick="setSpotlight('fase4', this)">
+        4. Vecindad 3×3 (9 Lecturas)
+      </button>
+      <button class="btn" data-phase="fase5" onclick="setSpotlight('fase5', this)">
+        5. Convolución Gx / Gy
+      </button>
+      <button class="btn" data-phase="fase6" onclick="setSpotlight('fase6', this)">
+        6. Escritura textureStore
+      </button>
+    </div>
+    <div class="keyboard-hint">
+      Navegar: <kbd>←</kbd> <kbd>→</kbd>
+    </div>
+  </div>
+
+  <!-- BANNER EXPLICATIVO SINCRONIZADO CON LA LOCUCIÓN -->
+  <div class="explanation-banner" id="explanation-banner">
+    <div class="icon" id="banner-icon">💡</div>
+    <div class="explanation-content" id="banner-content">
+      <h3 id="banner-title">Visión Global del Compute Shader de Convolución 2D</h3>
+      <p id="banner-desc">
+        Este shader procesa cada píxel de forma masivamente paralela en la GPU, muestreando los 8 vecinos contiguos
+        mediante coordenadas discretas de enteros y aplicando las matrices diferenciales de Sobel.
+      </p>
+      <div class="explanation-quote" id="banner-quote">
+        "Veamos cómo trasladamos esta teoría a un Compute Shader de alto rendimiento en uve doble ge ese ele..."
+      </div>
+    </div>
+  </div>
+
+  <!-- GRID PRINCIPAL: EDITOR + HUD TÉCNICO -->
+  <div class="main-grid">
+
+    <!-- COLUMNA 1: VENTANA DEL EDITOR DE CÓDIGO (VS CODE DARK+) -->
+    <div class="editor-window">
+      <div class="window-titlebar">
+        <div class="window-controls">
+          <div class="control-dot dot-close"></div>
+          <div class="control-dot dot-minimize"></div>
+          <div class="control-dot dot-maximize"></div>
+        </div>
+        <div class="window-title">sobel_convolucion.wgsl — Visual Studio Code</div>
+      </div>
+      <div class="editor-tabs">
+        <div class="tab">
+          <span class="tab-icon">⚡</span>
+          <span>sobel_convolucion.wgsl</span>
+        </div>
+      </div>
+      <div class="breadcrumbs">
+        shaders <span class="op">&gt;</span> compute <span class="op">&gt;</span> <span>sobel_convolucion.wgsl</span> <span class="op">&gt;</span> <span class="fn" id="bc-func">cs_sobel</span>
+      </div>
+
+      <div class="code-container" id="code-block">
+
+        <!-- LÍNEAS 1 A 7: COMENTARIO Y DECLARACIÓN DE TEXTURAS (FASE 1) -->
+        <div class="code-line" data-section="fase1"><span class="line-num">1</span><span class="line-content"><span class="cm">// ============================================================================</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">2</span><span class="line-content"><span class="cm">// COMPUTE SHADER: Filtro de Convolución 2D de Sobel en WGSL</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">3</span><span class="line-content"><span class="cm">// ============================================================================</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">4</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">5</span><span class="line-content"><span class="cm">// Entrada: Textura 2D muestreable (Solo Lectura)</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">6</span><span class="line-content"><span class="dc">@group</span><span class="op">(</span><span class="nm">0</span><span class="op">)</span> <span class="dc">@binding</span><span class="op">(</span><span class="nm">0</span><span class="op">)</span> <span class="st">var</span> <span class="vr">textura_entrada</span><span class="op">:</span> <span class="tp">texture_2d</span><span class="op">&lt;</span><span class="tp">f32</span><span class="op">&gt;;</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">7</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">8</span><span class="line-content"><span class="cm">// Salida: Textura de Almacenamiento (Escritura directa de Píxeles)</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">9</span><span class="line-content"><span class="dc">@group</span><span class="op">(</span><span class="nm">0</span><span class="op">)</span> <span class="dc">@binding</span><span class="op">(</span><span class="nm">1</span><span class="op">)</span> <span class="st">var</span> <span class="vr">textura_salida</span><span class="op">:</span> <span class="tp">texture_storage_2d</span><span class="op">&lt;</span><span class="tp">rgba8unorm</span><span class="op">,</span> <span class="bi">write</span><span class="op">&gt;;</span></span></div>
+        <div class="code-line" data-section="fase1"><span class="line-num">10</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 11 A 23: FUNCIÓN AUXILIAR OBTENER LUMINANCIA (FASE 2) -->
+        <div class="code-line" data-section="fase2"><span class="line-num">11</span><span class="line-content"><span class="cm">// Función auxiliar: Extrae la luminancia perceptual ITU-R BT.601 de un píxel</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">12</span><span class="line-content"><span class="st">fn</span> <span class="fn">obtener_luminancia</span><span class="op">(</span><span class="vr">coords_enteras</span><span class="op">:</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;,</span> <span class="vr">dimensiones</span><span class="op">:</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;)</span> <span class="op">-&gt;</span> <span class="tp">f32</span> <span class="op">{</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">13</span><span class="line-content">    <span class="cm">// Tratamiento de bordes: Clamping manual para evitar lecturas fuera de memoria</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">14</span><span class="line-content">    <span class="st">let</span> <span class="vr">coords_seguras</span><span class="op">:</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;</span> <span class="op">=</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;(</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">15</span><span class="line-content">        <span class="fn">clamp</span><span class="op">(</span><span class="vr">coords_enteras</span><span class="op">,</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="nm">0</span><span class="op">,</span> <span class="nm">0</span><span class="op">),</span> <span class="vr">dimensiones</span> <span class="op">-</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="nm">1</span><span class="op">,</span> <span class="nm">1</span><span class="op">))</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">16</span><span class="line-content">    <span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">17</span><span class="line-content">    </span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">18</span><span class="line-content">    <span class="cm">// textureLoad: lectura sin interpolación ni filtrado lineal</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">19</span><span class="line-content">    <span class="st">let</span> <span class="vr">color</span><span class="op">:</span> <span class="tp">vec4</span><span class="op">&lt;</span><span class="tp">f32</span><span class="op">&gt;</span> <span class="op">=</span> <span class="fn">textureLoad</span><span class="op">(</span><span class="vr">textura_entrada</span><span class="op">,</span> <span class="vr">coords_seguras</span><span class="op">,</span> <span class="nm">0u</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">20</span><span class="line-content">    <span class="kw">return</span> <span class="nm">0.299</span> <span class="op">*</span> <span class="vr">color</span><span class="op">.</span><span class="vr">r</span> <span class="op">+</span> <span class="nm">0.587</span> <span class="op">*</span> <span class="vr">color</span><span class="op">.</span><span class="vr">g</span> <span class="op">+</span> <span class="nm">0.114</span> <span class="op">*</span> <span class="vr">color</span><span class="op">.</span><span class="vr">b</span><span class="op">;</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">21</span><span class="line-content"><span class="op">}</span></span></div>
+        <div class="code-line" data-section="fase2"><span class="line-num">22</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 23 A 36: KERNEL Y GUARDA DE LÍMITES (FASE 3) -->
+        <div class="code-line" data-section="fase3"><span class="line-num">23</span><span class="line-content"><span class="cm">// Configuración del Workgroup: 16x16 = 256 hilos por bloque de trabajo</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">24</span><span class="line-content"><span class="dc">@compute</span> <span class="dc">@workgroup_size</span><span class="op">(</span><span class="nm">16</span><span class="op">,</span> <span class="nm">16</span><span class="op">)</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">25</span><span class="line-content"><span class="st">fn</span> <span class="fn">cs_sobel</span><span class="op">(</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">26</span><span class="line-content">    <span class="dc">@builtin</span><span class="op">(</span><span class="bi">global_invocation_id</span><span class="op">)</span> <span class="vr">global_id</span><span class="op">:</span> <span class="tp">vec3</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">27</span><span class="line-content"><span class="op">)</span> <span class="op">{</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">28</span><span class="line-content">    <span class="st">let</span> <span class="vr">dims_u</span><span class="op">:</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;</span> <span class="op">=</span> <span class="fn">textureDimensions</span><span class="op">(</span><span class="vr">textura_entrada</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">29</span><span class="line-content">    <span class="st">let</span> <span class="vr">dims</span><span class="op">:</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;</span> <span class="op">=</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">dims_u</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">30</span><span class="line-content">    <span class="st">let</span> <span class="vr">x</span><span class="op">:</span> <span class="tp">i32</span> <span class="op">=</span> <span class="tp">i32</span><span class="op">(</span><span class="vr">global_id</span><span class="op">.</span><span class="vr">x</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">31</span><span class="line-content">    <span class="st">let</span> <span class="vr">y</span><span class="op">:</span> <span class="tp">i32</span> <span class="op">=</span> <span class="tp">i32</span><span class="op">(</span><span class="vr">global_id</span><span class="op">.</span><span class="vr">y</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">32</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">33</span><span class="line-content">    <span class="cm">// Guarda de límites: Evitar que hilos sobrantes escriban fuera de la imagen</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">34</span><span class="line-content">    <span class="kw">if</span> <span class="op">(</span><span class="vr">x</span> <span class="op">&gt;=</span> <span class="vr">dims</span><span class="op">.</span><span class="vr">x</span> <span class="op">||</span> <span class="vr">y</span> <span class="op">&gt;=</span> <span class="vr">dims</span><span class="op">.</span><span class="vr">y</span><span class="op">)</span> <span class="op">{</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">35</span><span class="line-content">        <span class="kw">return</span><span class="op">;</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">36</span><span class="line-content">    <span class="op">}</span></span></div>
+        <div class="code-line" data-section="fase3"><span class="line-num">37</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 38 A 51: MUESTREO DE LA VECINDAD 3X3 (FASE 4) -->
+        <div class="code-line" data-section="fase4"><span class="line-num">38</span><span class="line-content">    <span class="cm">// 1. Lectura de la vecindad 3x3 de luminancia (9 lecturas independientes a VRAM)</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">39</span><span class="line-content">    <span class="st">let</span> <span class="vr">l00</span> <span class="op">=</span> <span class="fn">obtener_luminancia</span><span class="op">(</span><span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">x</span> <span class="op">-</span> <span class="nm">1</span><span class="op">,</span> <span class="vr">y</span> <span class="op">-</span> <span class="nm">1</span><span class="op">),</span> <span class="vr">dims</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">40</span><span class="line-content">    <span class="st">let</span> <span class="vr">l10</span> <span class="op">=</span> <span class="fn">obtener_luminancia</span><span class="op">(</span><span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">x</span><span class="op">,</span>     <span class="vr">y</span> <span class="op">-</span> <span class="nm">1</span><span class="op">),</span> <span class="vr">dims</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">41</span><span class="line-content">    <span class="st">let</span> <span class="vr">l20</span> <span class="op">=</span> <span class="fn">obtener_luminancia</span><span class="op">(</span><span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">x</span> <span class="op">+</span> <span class="nm">1</span><span class="op">,</span> <span class="vr">y</span> <span class="op">-</span> <span class="nm">1</span><span class="op">),</span> <span class="vr">dims</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">42</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">43</span><span class="line-content">    <span class="st">let</span> <span class="vr">l01</span> <span class="op">=</span> <span class="fn">obtener_luminancia</span><span class="op">(</span><span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">x</span> <span class="op">-</span> <span class="nm">1</span><span class="op">,</span> <span class="vr">y</span><span class="op">),</span>     <span class="vr">dims</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">44</span><span class="line-content">    <span class="cm">// El píxel central (x, y) no interviene en las matrices clásicas de Sobel</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">45</span><span class="line-content">    <span class="st">let</span> <span class="vr">l21</span> <span class="op">=</span> <span class="fn">obtener_luminancia</span><span class="op">(</span><span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">x</span> <span class="op">+</span> <span class="nm">1</span><span class="op">,</span> <span class="vr">y</span><span class="op">),</span>     <span class="vr">dims</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">46</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">47</span><span class="line-content">    <span class="st">let</span> <span class="vr">l02</span> <span class="op">=</span> <span class="fn">obtener_luminancia</span><span class="op">(</span><span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">x</span> <span class="op">-</span> <span class="nm">1</span><span class="op">,</span> <span class="vr">y</span> <span class="op">+</span> <span class="nm">1</span><span class="op">),</span> <span class="vr">dims</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">48</span><span class="line-content">    <span class="st">let</span> <span class="vr">l12</span> <span class="op">=</span> <span class="fn">obtener_luminancia</span><span class="op">(</span><span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">x</span><span class="op">,</span>     <span class="vr">y</span> <span class="op">+</span> <span class="nm">1</span><span class="op">),</span> <span class="vr">dims</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">49</span><span class="line-content">    <span class="st">let</span> <span class="vr">l22</span> <span class="op">=</span> <span class="fn">obtener_luminancia</span><span class="op">(</span><span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">i32</span><span class="op">&gt;(</span><span class="vr">x</span> <span class="op">+</span> <span class="nm">1</span><span class="op">,</span> <span class="vr">y</span> <span class="op">+</span> <span class="nm">1</span><span class="op">),</span> <span class="vr">dims</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase4"><span class="line-num">50</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 51 A 66: CONVOLUCIÓN SOBEL GX / GY Y MAGNITUD (FASE 5) -->
+        <div class="code-line" data-section="fase5"><span class="line-num">51</span><span class="line-content">    <span class="cm">// 2. Convolución con el Kernel Horizontal (Gx)</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">52</span><span class="line-content">    <span class="cm">// Kx = [-1, 0, +1; -2, 0, +2; -1, 0, +1]</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">53</span><span class="line-content">    <span class="st">let</span> <span class="vr">gx</span><span class="op">:</span> <span class="tp">f32</span> <span class="op">=</span> <span class="op">(-</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l00</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l20</span><span class="op">)</span> <span class="op">+</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">54</span><span class="line-content">                  <span class="op">(-</span><span class="nm">2.0</span> <span class="op">*</span> <span class="vr">l01</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="nm">2.0</span> <span class="op">*</span> <span class="vr">l21</span><span class="op">)</span> <span class="op">+</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">55</span><span class="line-content">                  <span class="op">(-</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l02</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l22</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">56</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">57</span><span class="line-content">    <span class="cm">// 3. Convolución con el Kernel Vertical (Gy)</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">58</span><span class="line-content">    <span class="cm">// Ky = [-1, -2, -1;  0, 0, 0; +1, +2, +1]</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">59</span><span class="line-content">    <span class="st">let</span> <span class="vr">gy</span><span class="op">:</span> <span class="tp">f32</span> <span class="op">=</span> <span class="op">(-</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l00</span><span class="op">)</span> <span class="op">+</span> <span class="op">(-</span><span class="nm">2.0</span> <span class="op">*</span> <span class="vr">l10</span><span class="op">)</span> <span class="op">+</span> <span class="op">(-</span><span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l20</span><span class="op">)</span> <span class="op">+</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">60</span><span class="line-content">                  <span class="op">(</span> <span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l02</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span> <span class="nm">2.0</span> <span class="op">*</span> <span class="vr">l12</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span> <span class="nm">1.0</span> <span class="op">*</span> <span class="vr">l22</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">61</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">62</span><span class="line-content">    <span class="cm">// 4. Magnitud Euclídea del Gradiente Total: sqrt(Gx² + Gy²)</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">63</span><span class="line-content">    <span class="st">let</span> <span class="vr">magnitud</span><span class="op">:</span> <span class="tp">f32</span> <span class="op">=</span> <span class="fn">sqrt</span><span class="op">(</span><span class="vr">gx</span> <span class="op">*</span> <span class="vr">gx</span> <span class="op">+</span> <span class="vr">gy</span> <span class="op">*</span> <span class="vr">gy</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">64</span><span class="line-content"></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">65</span><span class="line-content">    <span class="cm">// 5. Empaquetado visual del color: Aristas blancas sobre fondo negro</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">66</span><span class="line-content">    <span class="st">let</span> <span class="vr">color_borde</span> <span class="op">=</span> <span class="tp">vec4</span><span class="op">&lt;</span><span class="tp">f32</span><span class="op">&gt;(</span><span class="vr">magnitud</span><span class="op">,</span> <span class="vr">magnitud</span><span class="op">,</span> <span class="vr">magnitud</span><span class="op">,</span> <span class="nm">1.0</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase5"><span class="line-num">67</span><span class="line-content"></span></div>
+
+        <!-- LÍNEAS 68 A 71: ESCRITURA TEXTURESTORE (FASE 6) -->
+        <div class="code-line" data-section="fase6"><span class="line-num">68</span><span class="line-content">    <span class="cm">// 6. Escritura directa en la Storage Texture (VRAM)</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">69</span><span class="line-content">    <span class="fn">textureStore</span><span class="op">(</span><span class="vr">textura_salida</span><span class="op">,</span> <span class="tp">vec2</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">&gt;(</span><span class="vr">global_id</span><span class="op">.</span><span class="vr">xy</span><span class="op">),</span> <span class="vr">color_borde</span><span class="op">);</span></span></div>
+        <div class="code-line" data-section="fase6"><span class="line-num">70</span><span class="line-content"><span class="op">}</span></span></div>
+
+      </div>
+    </div>
+
+    <!-- COLUMNA 2: PANEL DE APOYO TÉCNICO Y MATEMÁTICO -->
+    <div class="side-panel">
+
+      <!-- TARJETA 1: MÁSCARAS KERNEL DE SOBEL -->
+      <div class="hud-card">
+        <div class="hud-title">
+          <span>📐 Matrices Kernel de Sobel 3×3</span>
+          <span style="font-size:0.75rem; color:#64748b;">(1968)</span>
+        </div>
+        <div class="matrix-grid">
+          <div class="matrix-box">
+            <div class="matrix-label">Kx (Gradiente Horizontal)</div>
+            <table class="matrix-table">
+              <tr><td class="neg">-1</td><td class="zero">0</td><td class="pos">+1</td></tr>
+              <tr><td class="neg">-2</td><td class="zero">0</td><td class="pos">+2</td></tr>
+              <tr><td class="neg">-1</td><td class="zero">0</td><td class="pos">+1</td></tr>
+            </table>
+          </div>
+          <div class="matrix-box">
+            <div class="matrix-label">Ky (Gradiente Vertical)</div>
+            <table class="matrix-table">
+              <tr><td class="neg">-1</td><td class="neg">-2</td><td class="neg">-1</td></tr>
+              <tr><td class="zero">0</td><td class="zero">0</td><td class="zero">0</td></tr>
+              <tr><td class="pos">+1</td><td class="pos">+2</td><td class="pos">+1</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="formula-box">
+          <span class="hi">Gx</span> = (l20 - l00) + 2·(l21 - l01) + (l22 - l02)<br>
+          <span class="hi">Gy</span> = (l02 - l00) + 2·(l12 - l10) + (l22 - l20)
+        </div>
+      </div>
+
+      <!-- TARJETA 2: FÓRMULAS FUNDAMENTALES -->
+      <div class="hud-card">
+        <div class="hud-title">
+          <span>🔬 Fórmulas del Shader</span>
+        </div>
+        
+        <div style="font-size:0.78rem; font-weight:700; color:#94a3b8; margin-bottom:0.25rem;">
+          1. Luminancia Perceptual ITU-R BT.601:
+        </div>
+        <div class="formula-box">
+          <span class="hi">Y</span> = 0.299·<span style="color:#f87171">R</span> + 0.587·<span style="color:#4ade80">G</span> + 0.114·<span style="color:#60a5fa">B</span>
+        </div>
+
+        <div style="font-size:0.78rem; font-weight:700; color:#94a3b8; margin-bottom:0.25rem; margin-top:0.6rem;">
+          2. Magnitud Euclídea del Borde:
+        </div>
+        <div class="formula-box">
+          <span class="hi">|∇I|</span> = √( <span class="hi">Gx</span>² + <span class="hi">Gy</span>² )
+        </div>
+
+        <div style="font-size:0.78rem; font-weight:700; color:#94a3b8; margin-bottom:0.25rem; margin-top:0.6rem;">
+          3. Tratamiento Seguro de Bordes (Clamping):
+        </div>
+        <div class="formula-box">
+          coords = <span class="hi">clamp</span>(c, vec2(0,0), dims - 1)
+        </div>
+      </div>
+
+      <!-- TARJETA 3: ALERTA DE ARQUITECTURA (CUELLO DE BOTELLA) -->
+      <div class="hud-card">
+        <div class="bottleneck-alert">
+          <h4>⚠️ El Despilfarro de la Memoria Global</h4>
+          <p>
+            Cada hilo emite 9 lecturas independientes a VRAM. Al solaparse las vecindades de hilos contiguos,
+            se producen lecturas masivamente duplicadas desde la memoria externa lenta:
+          </p>
+          <div class="stats-row">
+            <div class="stat-chip">
+              <div class="stat-val" style="color:#f87171;">66%</div>
+              <div class="stat-label">Solapamiento entre hilos vecinos</div>
+            </div>
+            <div class="stat-chip">
+              <div class="stat-val" style="color:#fbbf24;">88.8%</div>
+              <div class="stat-label">Ancho de banda global desperdiciado</div>
+            </div>
+          </div>
+          <p style="margin-top:0.6rem; font-size:0.75rem; color:#94a3b8;">
+            👉 <em>En el Apartado 5 se resuelve utilizando Shared Memory (<code>var&lt;workgroup&gt;</code>) con delantal de halo.</em>
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- TOAST DE COPIADO -->
+<div class="toast" id="toast">✅ ¡Código WGSL copiado al portapapeles!</div>
+
+<script>
+  // Textos y guión narrativo sincronizados con cada fase del spotlight
+  const phaseData = {
+    'all': {
+      title: 'Visión Global del Compute Shader de Convolución 2D',
+      desc: 'Este shader procesa cada píxel de forma masivamente paralela en la GPU, muestreando los 8 vecinos contiguos mediante coordenadas discretas de enteros y aplicando las matrices diferenciales de Sobel.',
+      quote: '"Veamos cómo trasladamos esta teoría a un Compute Shader de alto rendimiento en uve doble ge ese ele..."',
+      icon: '💡',
+      func: 'cs_sobel'
+    },
+    'fase1': {
+      title: 'Fase 1: Texturas de Entrada y Salida (@group / @binding)',
+      desc: 'Declaramos la textura de entrada muestreable de solo lectura (texture_2d<f32>) y la textura de almacenamiento de salida (texture_storage_2d<rgba8unorm, write>) que permite escritura aleatoria directa de píxeles sin pasar por el cauce rasterizador.',
+      quote: '"...utilizamos una textura 2D para lectura directa y una textura de almacenamiento en formato RGBA de ocho bits sin signo para emitir la imagen procesada."',
+      icon: '📦',
+      func: 'recursos_gpu'
+    },
+    'fase2': {
+      title: 'Fase 2: Función Auxiliar obtener_luminancia (Clamping + ITU-R BT.601)',
+      desc: 'Cláusula de seguridad fundamental: la función clamp() confina las coordenadas al intervalo legal [0, dims - 1], evitando lecturas fuera de memoria. A continuación, extrae los canales con textureLoad() y aplica los coeficientes perceptuales del ojo humano.',
+      quote: '"En pantalla tenéis la función auxiliar obtener luminancia. Para cada lectura que realizamos, aplicamos una cláusula de seguridad fundamental en el procesamiento de imágenes: el tratamiento de bordes. Si un hilo intenta leer al vecino menos uno, clamp fuerza a cero impidiendo lecturas ilegales..."',
+      icon: '🛡️',
+      func: 'obtener_luminancia'
+    },
+    'fase3': {
+      title: 'Fase 3: Configuración del Workgroup (16×16) y Guarda de Límites',
+      desc: 'Configuramos una rejilla bidimensional de 16×16 hilos por bloque (256 invocaciones concurrentes). Mediante textureDimensions() obtenemos el tamaño de la imagen y descartamos cualquier hilo sobrante que caiga fuera de los márgenes útiles.',
+      quote: '"En el kernel principal configuramos un grupo de trabajo bidimensional de dieciséis por dieciséis hilos, es decir, doscientos cincuenta y seis invocaciones simultáneas. Cada hilo localiza su píxel..."',
+      icon: '⚙️',
+      func: 'cs_sobel'
+    },
+    'fase4': {
+      title: 'Fase 4: Muestreo de la Vecindad 3×3 (9 Lecturas a VRAM)',
+      desc: 'Cada hilo invoca nueve veces la función obtener_luminancia para recolectar los píxeles l00 a l22. Nota técnica: el píxel central (x, y) no interviene en el cálculo porque los coeficientes centrales de Sobel son estrictamente cero.',
+      quote: '"...lee los ocho vecinos circundantes, calcula las sumas ponderadas de G sub equis y G sub ye..."',
+      icon: '🔍',
+      func: 'cs_sobel [stencil 3x3]'
+    },
+    'fase5': {
+      title: 'Fase 5: Convolución Sobel (Gx, Gy) y Magnitud Euclídea',
+      desc: 'Multiplicamos los 9 valores por los coeficientes de las matrices ortogonales Kx (derivada horizontal) y Ky (derivada vertical). La magnitud total de la arista se obtiene calculando la hipotenusa euclídea: sqrt(Gx² + Gy²).',
+      quote: '"...calcula las sumas ponderadas de G sub equis y G sub ye, obtiene la magnitud euclídea... El resultado visual es instantáneo: una imagen limpia en blanco y negro donde las aristas brillan con total nitidez."',
+      icon: '⚡',
+      func: 'cs_sobel [gradientes]'
+    },
+    'fase6': {
+      title: 'Fase 6: Escritura Directa mediante textureStore()',
+      desc: 'Empaquetamos la magnitud en un vector vec4<f32>(magnitud, magnitud, magnitud, 1.0) y lo enviamos directamente a la memoria de la textura de salida usando textureStore(), iluminando los bordes con brillo blanco sobre fondo oscuro.',
+      quote: '"...y escribe directamente el resultado en la textura de almacenamiento mediante texture store."',
+      icon: '💾',
+      func: 'cs_sobel [textureStore]'
+    }
+  };
+
+  const phasesList = ['all', 'fase1', 'fase2', 'fase3', 'fase4', 'fase5', 'fase6'];
+  let currentPhaseIndex = 0;
+
+  function setSpotlight(phase, buttonEl) {
+    const lines = document.querySelectorAll('.code-line');
+    const buttons = document.querySelectorAll('#spotlight-buttons .btn');
+
+    // Actualizar botones
+    buttons.forEach(b => b.classList.remove('active'));
+    if (buttonEl) {
+      buttonEl.classList.add('active');
+    } else {
+      const targetBtn = document.querySelector(`#spotlight-buttons .btn[data-phase="${phase}"]`);
+      if (targetBtn) targetBtn.classList.add('active');
+    }
+
+    currentPhaseIndex = phasesList.indexOf(phase);
+
+    // Actualizar Banner
+    const info = phaseData[phase] || phaseData['all'];
+    document.getElementById('banner-icon').innerText = info.icon;
+    document.getElementById('banner-title').innerText = info.title;
+    document.getElementById('banner-desc').innerText = info.desc;
+    document.getElementById('banner-quote').innerText = info.quote;
+    document.getElementById('bc-func').innerText = info.func;
+
+    // Resaltar Líneas
+    lines.forEach(line => {
+      const section = line.getAttribute('data-section');
+      if (phase === 'all') {
+        line.classList.remove('spotlight', 'dimmed');
+      } else if (section === phase) {
+        line.classList.add('spotlight');
+        line.classList.remove('dimmed');
+      } else {
+        line.classList.remove('spotlight');
+        line.classList.add('dimmed');
+      }
+    });
+
+    // Auto-scroll suave a la primera línea destacada
+    if (phase !== 'all') {
+      const firstHighlighted = document.querySelector(`.code-line.spotlight`);
+      if (firstHighlighted) {
+        firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }
+
+  // Navegación con teclado (Flechas izquierda y derecha)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+      currentPhaseIndex = (currentPhaseIndex + 1) % phasesList.length;
+      setSpotlight(phasesList[currentPhaseIndex], null);
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      currentPhaseIndex = (currentPhaseIndex - 1 + phasesList.length) % phasesList.length;
+      setSpotlight(phasesList[currentPhaseIndex], null);
+    }
+  });
+
+  // Copiar código WGSL completo al portapapeles
+  function copyFullWgsl() {
+    const rawWgsl = `// ============================================================================
+// COMPUTE SHADER: Filtro de Convolución 2D de Sobel en WGSL
+// Archivo: sobel_convolucion.wgsl
+// ============================================================================
+
+// Entrada: Textura 2D muestreable (Solo Lectura)
+@group(0) @binding(0) var textura_entrada: texture_2d<f32>;
+
+// Salida: Textura de Almacenamiento (Escritura directa de Píxeles)
+@group(0) @binding(1) var textura_salida: texture_storage_2d<rgba8unorm, write>;
+
+// Función auxiliar: Extrae la luminancia perceptual ITU-R BT.601 de un píxel
+fn obtener_luminancia(coords_enteras: vec2<i32>, dimensiones: vec2<i32>) -> f32 {
+    // Tratamiento de bordes: Clamping manual para evitar lecturas fuera de memoria
+    let coords_seguras: vec2<u32> = vec2<u32>(
+        clamp(coords_enteras, vec2<i32>(0, 0), dimensiones - vec2<i32>(1, 1))
+    );
+    
+    let color: vec4<f32> = textureLoad(textura_entrada, coords_seguras, 0u);
+    return 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
+}
+
+// Configuración del Workgroup: 16x16 = 256 hilos por bloque de trabajo
+@compute @workgroup_size(16, 16)
+fn cs_sobel(
+    @builtin(global_invocation_id) global_id: vec3<u32>
+) {
+    let dims_u: vec2<u32> = textureDimensions(textura_entrada);
+    let dims: vec2<i32> = vec2<i32>(dims_u);
+    let x: i32 = i32(global_id.x);
+    let y: i32 = i32(global_id.y);
+
+    // Guarda de límites: Evitar que hilos sobrantes escriban fuera de la imagen
+    if (x >= dims.x || y >= dims.y) {
+        return;
+    }
+
+    // 1. Lectura de la vecindad 3x3 de luminancia (9 lecturas independientes a VRAM)
+    let l00 = obtener_luminancia(vec2<i32>(x - 1, y - 1), dims);
+    let l10 = obtener_luminancia(vec2<i32>(x,     y - 1), dims);
+    let l20 = obtener_luminancia(vec2<i32>(x + 1, y - 1), dims);
+
+    let l01 = obtener_luminancia(vec2<i32>(x - 1, y),     dims);
+    // El píxel central (x, y) no interviene en las matrices clásicas de Sobel
+    let l21 = obtener_luminancia(vec2<i32>(x + 1, y),     dims);
+
+    let l02 = obtener_luminancia(vec2<i32>(x - 1, y + 1), dims);
+    let l12 = obtener_luminancia(vec2<i32>(x,     y + 1), dims);
+    let l22 = obtener_luminancia(vec2<i32>(x + 1, y + 1), dims);
+
+    // 2. Convolución con el Kernel Horizontal (Gx)
+    // Kx = [-1, 0, +1; -2, 0, +2; -1, 0, +1]
+    let gx: f32 = (-1.0 * l00) + (1.0 * l20) +
+                  (-2.0 * l01) + (2.0 * l21) +
+                  (-1.0 * l02) + (1.0 * l22);
+
+    // 3. Convolución con el Kernel Vertical (Gy)
+    // Ky = [-1, -2, -1;  0, 0, 0; +1, +2, +1]
+    let gy: f32 = (-1.0 * l00) + (-2.0 * l10) + (-1.0 * l20) +
+                  ( 1.0 * l02) + ( 2.0 * l12) + ( 1.0 * l22);
+
+    // 4. Magnitud Euclídea del Gradiente Total
+    let magnitud: f32 = sqrt(gx * gx + gy * gy);
+
+    // 5. Empaquetado visual del color: Aristas blancas sobre fondo negro
+    let color_borde = vec4<f32>(magnitud, magnitud, magnitud, 1.0);
+
+    // 6. Escritura directa en la Storage Texture
+    textureStore(textura_salida, vec2<u32>(global_id.xy), color_borde);
+}`;
+
+    navigator.clipboard.writeText(rawWgsl).then(() => {
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    });
+  }
+</script>
+
+</body>
+</html>

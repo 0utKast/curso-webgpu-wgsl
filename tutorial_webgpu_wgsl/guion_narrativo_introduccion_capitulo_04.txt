@@ -1,0 +1,60 @@
+GUION NARRATIVO: INTRODUCCIÓN AL CAPÍTULO 4
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 4: Texturas, Samplers y Computación Gráfica Avanzada en WGSL
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Primer plano cinemático de una oblea de silicio de GPU moderna, iluminándose en tonos cian y esmeralda. Aparece en pantalla con tipografía elegante: "Capítulo 4: Texturas, Samplers y Computación Gráfica Avanzada en WGSL"]
+
+Hasta este punto de nuestro viaje por la computación nativa en el navegador, hemos conquistado los pilares fundamentales del silicio gráfico. En el primer capítulo desmontamos el mito de la CPU solitaria y comprendimos el modelo mental asíncrono de WebGPU, descubriendo cómo WebAssembly y la GPU transforman el navegador en un auténtico sistema operativo de alto rendimiento. En el segundo capítulo dominamos la sintaxis rigurosa y el sistema de tipos de WGSL, aprendiendo a estructurar la memoria en múltiplos exactos de dieciséis bytes para no sufrir las penalizaciones invisibles de alineamiento que destruyen el rendimiento.
+
+[00:00:48]
+[En pantalla: Gráfico animado del Teorema del Techo (Roofline Model) y diagrama de la memoria SRAM compartida (var<workgroup>) iluminándose al recibir baldosas en Tiled GEMM]
+
+Y en el tercer capítulo nos adentramos en la trastienda física más hostil del hardware: la Pared de Memoria y el Teorema del Techo. Comprendimos que la fuerza bruta de las ALUs es inútil si la memoria externa no puede alimentarlas. Descubrimos el poder de la memoria compartida de grupo de trabajo —esa pequeña mesa de SRAM on-chip de dieciséis kilobytes— y dominamos las barreras de sincronización para ejecutar dos de los algoritmos paralelos más exigentes de la industria: la reducción en árbol y la multiplicación de matrices por bloques, o Tiled GEMM, el corazón matemático sobre el que descansa toda la inteligencia artificial moderna.
+
+[00:01:34]
+[En pantalla: Ilustración esquemática de un búfer lineal continuo en memoria RAM: una tira horizontal infinita de números indexados como (y * width + x)]
+
+Sin embargo, si os habéis fijado en cada uno de los programas que hemos escrito hasta ahora, todos compartían una misma limitación conceptual: todos nuestros datos vivían en búferes planos lineales. Aunque en el taller anterior multiplicábamos matrices bidimensionales, para el procesador esa matriz no era más que una larga tira unidimensional de bytes en la VRAM, obligándonos a proyectar matemáticamente filas y columnas mediante la clásica fórmula de salto lineal: ye multiplicado por el ancho más equis.
+
+[00:02:18]
+[En pantalla: Animación conceptual: un hilo leyendo horizontalmente en verde (acierto de caché), pero al saltar a la fila siguiente (ye+1), la flecha salta miles de bytes en rojo parpadeante con el texto "Cache Miss Masivo"]
+
+En algoritmos lineales esto funciona, pero en cuanto intentamos procesar información espacial bidimensional —como una fotografía, un fotograma de vídeo, una simulación de fluidos o el campo visual de una red convolucional—, la memoria lineal se convierte en una trampa mortal para el rendimiento. Si un hilo lee un píxel y necesita consultar inmediatamente al vecino que tiene justo encima o justo debajo, la memoria lineal le obliga a saltar miles de posiciones de memoria de golpe. La línea de caché L1 se destruye, los aciertos de caché se desploman y la GPU vuelve a entrar en hambruna física de datos.
+
+[00:03:07]
+[En pantalla: Diagrama 2D dividiéndose recursivamente en cuadrículas, revelando el trazado continuo de una Curva de Morton (Z-Order): los píxeles adyacentes en 2D quedan pegados físicamente en memoria]
+
+Es aquí donde el Capítulo Cuatro da el salto natural más apasionante de todo nuestro curso: abandonamos la tiranía de la memoria unidimensional para conquistar el territorio para el que las GPUs fueron verdaderamente concebidas: la computación espacial bidimensional y el hardware de función fija. 
+
+Para resolver el problema del acceso bidimensional, los arquitectos de silicio crearon las Texturas de Hardware. Las texturas no son simples imágenes; son estructuras de memoria revolucionarias donde los píxeles no se guardan fila por fila, sino entrelazando sus coordenadas mediante curvas matemáticas que llenan el espacio, como la célebre Curva de Morton o Z-Order. Gracias a este prodigio de la microarquitectura, cuando consultáis un píxel en una textura, todos sus vecinos adyacentes —arriba, abajo, izquierda y derecha— se encuentran físicamente juntos en la misma línea de caché de silicio.
+
+[00:04:12]
+[En pantalla: Representación 3D de un chip de GPU destacando bloques dedicados fuera de los núcleos de sombreado: "Texture Filtering Units (TFUs)" e infografía de interpolación bilineal instantánea]
+
+Pero hay más, mucho más. Las GPUs guardan un as secreto en su silicio que ningún procesador general de CPU posee: las Unidades de Filtrado de Texturas, o TFUs por sus siglas en inglés. Estos son bloques de circuitería fija e hiperespecializada capaces de realizar interpolaciones bilineales, trilineales, corrección de perspectiva y muestreo continuo con un coste exacto de cero ciclos en vuestras unidades de cálculo. Lo que en código manual de CPU requeriría decenas de operaciones matemáticas de coma flotante por píxel, las unidades de textura de la GPU lo calculan de forma instantánea y gratuita en hardware.
+
+[00:05:02]
+[En pantalla: Tabla comparativa de tipos WGSL: texture_2d<f32>, texture_storage_2d<rgba8unorm, write>, sampler y sampler_comparison con sus instrucciones intrínsecas]
+
+A lo largo de este capítulo aprenderemos a dominar este doble arsenal en WGSL. Descubriremos la diferencia entre texturas de muestreo continuo y texturas de almacenamiento de acceso directo —texture_storage_2d—, diseñadas específicamente para que nuestros compute shaders puedan leer y escribir píxeles con precisión quirúrgica sin pasar por la tubería gráfica tradicional.
+
+[00:05:36]
+[En pantalla: Demostración visual de un filtro de Sobel extrayendo bordes luminosos de una imagen en tiempo real, junto a una campana de desenfoque gaussiano y el diagrama de halo en memoria compartida]
+
+Pondremos toda esta arquitectura al servicio de la visión artificial y el procesamiento digital de señales. Implementaremos filtros de convolución bidimensional en compute shaders: desde detectores de bordes de Sobel hasta filtros de desenfoque gaussiano y realce de nitidez. Y conectaremos lo aprendido en el capítulo anterior implementando el algoritmo de Stencil con Halo: cargaremos baldosas de imagen en la memoria compartida SRAM junto a su perímetro de seguridad, reduciendo el tráfico a la memoria global en más de un ochenta por ciento.
+
+[00:06:21]
+[En pantalla: Breve demostración del Workshop 07 en el navegador: cámara web en vivo aplicando filtros en GPU, visor interactivo de Curva de Morton y telemetría de microsegundos]
+
+Aprenderemos a orquestar todo esto desde JavaScript mediante WebGPU, utilizando métodos de transferencia ultrarrápida como copyExternalImageToTexture para enviar fotogramas de vídeo o lienzos gráficos directamente al silicio sin sobrecargar la CPU. Y culminaremos con el Taller número Siete, un laboratorio interactivo donde podréis procesar vuestras propias imágenes y vídeo en directo, visualizando la huella física de la memoria y comprobando la aceleración en vuestra propia pantalla.
+
+[00:07:00]
+[En pantalla: Portadas de los libros de referencia de O'Reilly Learning: Real-Time Rendering 4th Edition (Akenine-Möller), Programming Massively Parallel Processors (Hwu & Kirk) y Vulkan 3D Graphics Rendering Cookbook]
+
+Como en cada entrega, cada concepto, ecuación y optimización estará fundamentado en las obras canónicas de la biblioteca de O'Reilly Learning, con tratados de referencia mundial como Real-Time Rendering de Tomas Akenine-Möller y Eric Haines, y la arquitectura de procesadores masivos de Wen-mei Hwu.
+
+Ha llegado el momento de dar el salto a las dos dimensiones del silicio. Bienvenidos al Capítulo Cuatro.

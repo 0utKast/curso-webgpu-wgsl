@@ -1,0 +1,588 @@
+[00:00:00] Todo lo que se mueve hoy en torno a la
+[00:00:02] Todo lo que se mueve hoy en torno a la inteligencia artificial es más
+[00:00:04] inteligencia artificial es más
+[00:00:04] inteligencia artificial es más descorazonador cada día que pasa. Y no
+[00:00:07] descorazonador cada día que pasa. Y no
+[00:00:07] descorazonador cada día que pasa. Y no por culpa de la tecnología en sí, sino
+[00:00:10] por culpa de la tecnología en sí, sino
+[00:00:10] por culpa de la tecnología en sí, sino por el debate público que la rodea. Un
+[00:00:13] por el debate público que la rodea. Un
+[00:00:13] por el debate público que la rodea. Un circo en redes sociales y un
+[00:00:15] circo en redes sociales y un
+[00:00:15] circo en redes sociales y un sensacionalismo mediático completamente
+[00:00:17] sensacionalismo mediático completamente
+[00:00:18] sensacionalismo mediático completamente atrapados en un relato cuasi religioso.
+[00:00:21] atrapados en un relato cuasi religioso.
+[00:00:21] atrapados en un relato cuasi religioso. Especulaciones sobre una supuesta
+[00:00:23] Especulaciones sobre una supuesta
+[00:00:23] Especulaciones sobre una supuesta superinteligencia que ya produce agentes
+[00:00:26] superinteligencia que ya produce agentes
+[00:00:26] superinteligencia que ya produce agentes rebeldes y proclamas apocalípticas.
+[00:00:29] rebeldes y proclamas apocalípticas.
+[00:00:29] rebeldes y proclamas apocalípticas. sobre el fin de la civilización.
+[00:00:32] sobre el fin de la civilización.
+[00:00:32] sobre el fin de la civilización. Es un ruido ensordecedor que apela a los
+[00:00:35] Es un ruido ensordecedor que apela a los
+[00:00:35] Es un ruido ensordecedor que apela a los miedos más primitivos de la naturaleza
+[00:00:38] miedos más primitivos de la naturaleza
+[00:00:38] miedos más primitivos de la naturaleza humana y que no tiene nada de casual.
+[00:00:41] humana y que no tiene nada de casual.
+[00:00:41] humana y que no tiene nada de casual. Esta misma mañana, MiFID, antes un muro
+[00:00:44] Esta misma mañana, MiFID, antes un muro
+[00:00:44] Esta misma mañana, MiFID, antes un muro de debate tecnológico de alto nivel,
+[00:00:46] de debate tecnológico de alto nivel,
+[00:00:46] de debate tecnológico de alto nivel, aparecía plagado de mensajes repetitivos
+[00:00:50] aparecía plagado de mensajes repetitivos
+[00:00:50] aparecía plagado de mensajes repetitivos como un bombardeo coordinado,
+[00:00:52] como un bombardeo coordinado,
+[00:00:52] como un bombardeo coordinado, procedentes de cuentas de Israel y de la
+[00:00:55] procedentes de cuentas de Israel y de la
+[00:00:55] procedentes de cuentas de Israel y de la India. Todos hablaban de un supuesto
+[00:00:57] India. Todos hablaban de un supuesto
+[00:00:57] India. Todos hablaban de un supuesto empleado de Antropic que había dimitido
+[00:01:00] empleado de Antropic que había dimitido
+[00:01:00] empleado de Antropic que había dimitido para advertir al mundo de los terribles
+[00:01:02] para advertir al mundo de los terribles
+[00:01:02] para advertir al mundo de los terribles e inminentes peligros que nos acechan
+[00:01:05] e inminentes peligros que nos acechan
+[00:01:05] e inminentes peligros que nos acechan por culpa de una inteligencia artificial
+[00:01:08] por culpa de una inteligencia artificial
+[00:01:08] por culpa de una inteligencia artificial descontrolada.
+[00:01:09] descontrolada.
+[00:01:09] descontrolada. Mientras las masas que también entendió
+[00:01:12] Mientras las masas que también entendió
+[00:01:12] Mientras las masas que también entendió Ortega y Gasette siguen a lo suyo con
+[00:01:15] Ortega y Gasette siguen a lo suyo con
+[00:01:15] Ortega y Gasette siguen a lo suyo con sus supersticiones en los laboratorios
+[00:01:18] sus supersticiones en los laboratorios
+[00:01:18] sus supersticiones en los laboratorios de arquitectura de computadoras, en las
+[00:01:20] de arquitectura de computadoras, en las
+[00:01:20] de arquitectura de computadoras, en las fábricas de semiconductores y en los
+[00:01:23] fábricas de semiconductores y en los
+[00:01:23] fábricas de semiconductores y en los comités de estandarización de la web. Se
+[00:01:25] comités de estandarización de la web. Se
+[00:01:26] comités de estandarización de la web. Se sigue librando una batalla mucho más
+[00:01:28] sigue librando una batalla mucho más
+[00:01:28] sigue librando una batalla mucho más invisible y silenciosa.
+[00:01:30] invisible y silenciosa.
+[00:01:30] invisible y silenciosa. De ella no se entera casi nadie, pero es
+[00:01:33] De ella no se entera casi nadie, pero es
+[00:01:33] De ella no se entera casi nadie, pero es la que realmente importa. una guerra
+[00:01:36] la que realmente importa. una guerra
+[00:01:36] la que realmente importa. una guerra económica y geopolítica de billones de
+[00:01:39] económica y geopolítica de billones de
+[00:01:39] económica y geopolítica de billones de dólares por el control de la
+[00:01:40] dólares por el control de la
+[00:01:40] dólares por el control de la infraestructura de cómputo y el
+[00:01:42] infraestructura de cómputo y el
+[00:01:42] infraestructura de cómputo y el monopolio del silicio. Mientras ahí es
+[00:01:46] monopolio del silicio. Mientras ahí es
+[00:01:46] monopolio del silicio. Mientras ahí es donde se está decidiendo el dominio
+[00:01:48] donde se está decidiendo el dominio
+[00:01:48] donde se está decidiendo el dominio tecnológico del futuro, la rebelión de
+[00:01:50] tecnológico del futuro, la rebelión de
+[00:01:51] tecnológico del futuro, la rebelión de las masas digitales sigue buscando al
+[00:01:54] las masas digitales sigue buscando al
+[00:01:54] las masas digitales sigue buscando al coco y a las brujas que ahora se
+[00:01:56] coco y a las brujas que ahora se
+[00:01:56] coco y a las brujas que ahora se disfrazan de supuestos agentes rebeldes
+[00:01:59] disfrazan de supuestos agentes rebeldes
+[00:02:00] disfrazan de supuestos agentes rebeldes y amenazas de ciencia ficción. Los
+[00:02:02] y amenazas de ciencia ficción. Los
+[00:02:02] y amenazas de ciencia ficción. Los balances financieros de los gigantes
+[00:02:04] balances financieros de los gigantes
+[00:02:04] balances financieros de los gigantes tecnológicos, los márgenes operativos de
+[00:02:07] tecnológicos, los márgenes operativos de
+[00:02:07] tecnológicos, los márgenes operativos de las aplicaciones y la soberanía digital
+[00:02:10] las aplicaciones y la soberanía digital
+[00:02:10] las aplicaciones y la soberanía digital de los países no se deciden buscando si
+[00:02:13] de los países no se deciden buscando si
+[00:02:13] de los países no se deciden buscando si una red neuronal tiene alma. Se deciden
+[00:02:17] una red neuronal tiene alma. Se deciden
+[00:02:17] una red neuronal tiene alma. Se deciden por una pregunta técnica mucho más
+[00:02:19] por una pregunta técnica mucho más
+[00:02:19] por una pregunta técnica mucho más prosaica y aplastante. ¿Quién controla
+[00:02:22] prosaica y aplastante. ¿Quién controla
+[00:02:22] prosaica y aplastante. ¿Quién controla la capa de abstracción entre el modelo
+[00:02:24] la capa de abstracción entre el modelo
+[00:02:25] la capa de abstracción entre el modelo matemático y los transistores del
+[00:02:27] matemático y los transistores del
+[00:02:27] matemático y los transistores del procesador?
+[00:02:28] procesador?
+[00:02:28] procesador? Durante casi dos décadas, la respuesta a
+[00:02:31] Durante casi dos décadas, la respuesta a
+[00:02:31] Durante casi dos décadas, la respuesta a esa pregunta ha tenido un único nombre,
+[00:02:34] esa pregunta ha tenido un único nombre,
+[00:02:34] esa pregunta ha tenido un único nombre, Nevidia y su ecosistema de software
+[00:02:36] Nevidia y su ecosistema de software
+[00:02:37] Nevidia y su ecosistema de software cerrado, Cuda. Sin embargo, la irrupción
+[00:02:40] cerrado, Cuda. Sin embargo, la irrupción
+[00:02:40] cerrado, Cuda. Sin embargo, la irrupción de web GPU y el paradigma local First
+[00:02:44] de web GPU y el paradigma local First
+[00:02:45] de web GPU y el paradigma local First están abriendo la primera grieta
+[00:02:46] están abriendo la primera grieta
+[00:02:46] están abriendo la primera grieta estructural en este foso defensivo,
+[00:02:50] estructural en este foso defensivo,
+[00:02:50] estructural en este foso defensivo, iniciando una profunda transformación en
+[00:02:53] iniciando una profunda transformación en
+[00:02:53] iniciando una profunda transformación en la distribución del poder computacional
+[00:02:55] la distribución del poder computacional
+[00:02:55] la distribución del poder computacional en todo el planeta. Es aquí donde se
+[00:02:58] en todo el planeta. Es aquí donde se
+[00:02:58] en todo el planeta. Es aquí donde se está jugando lo verdaderamente
+[00:03:00] está jugando lo verdaderamente
+[00:03:00] está jugando lo verdaderamente importante y no en si supuestos agentes
+[00:03:03] importante y no en si supuestos agentes
+[00:03:03] importante y no en si supuestos agentes de software andan haciendo travesuras
+[00:03:06] de software andan haciendo travesuras
+[00:03:06] de software andan haciendo travesuras por la red. Para comprender la posición
+[00:03:08] por la red. Para comprender la posición
+[00:03:08] por la red. Para comprender la posición dominante de Nvidia es necesario
+[00:03:11] dominante de Nvidia es necesario
+[00:03:11] dominante de Nvidia es necesario desarmar una creencia errónea muy
+[00:03:14] desarmar una creencia errónea muy
+[00:03:14] desarmar una creencia errónea muy extendida. Su liderazgo no se basa en
+[00:03:17] extendida. Su liderazgo no se basa en
+[00:03:17] extendida. Su liderazgo no se basa en que fabriquen chips inalcanzables para
+[00:03:20] que fabriquen chips inalcanzables para
+[00:03:20] que fabriquen chips inalcanzables para otros ingenieros. Equipos de diseño de
+[00:03:23] otros ingenieros. Equipos de diseño de
+[00:03:23] otros ingenieros. Equipos de diseño de silicio de clase mundial en AMD, Intel,
+[00:03:27] silicio de clase mundial en AMD, Intel,
+[00:03:27] silicio de clase mundial en AMD, Intel, Google, Apple o Qualcom tienen la
+[00:03:29] Google, Apple o Qualcom tienen la
+[00:03:29] Google, Apple o Qualcom tienen la capacidad técnica de diseñar
+[00:03:31] capacidad técnica de diseñar
+[00:03:31] capacidad técnica de diseñar aceleradores con un número equivalente o
+[00:03:34] aceleradores con un número equivalente o
+[00:03:34] aceleradores con un número equivalente o superior de transistores. Lo que
+[00:03:37] superior de transistores. Lo que
+[00:03:37] superior de transistores. Lo que convirtió a Nvidia en una de las
+[00:03:39] convirtió a Nvidia en una de las
+[00:03:39] convirtió a Nvidia en una de las compañías más valiosas del planeta fue
+[00:03:42] compañías más valiosas del planeta fue
+[00:03:42] compañías más valiosas del planeta fue una jugada maestra de estrategia de
+[00:03:44] una jugada maestra de estrategia de
+[00:03:44] una jugada maestra de estrategia de software iniciada hace 20 años. En 2006,
+[00:03:49] software iniciada hace 20 años. En 2006,
+[00:03:49] software iniciada hace 20 años. En 2006, Jensen Wang forzó a que cada tarjeta
+[00:03:52] Jensen Wang forzó a que cada tarjeta
+[00:03:52] Jensen Wang forzó a que cada tarjeta gráfica de consumo vendida por Nvidia
+[00:03:56] gráfica de consumo vendida por Nvidia
+[00:03:56] gráfica de consumo vendida por Nvidia incluyera la circuitería necesaria para
+[00:03:59] incluyera la circuitería necesaria para
+[00:03:59] incluyera la circuitería necesaria para ejecutar cómputo de propósito general
+[00:04:02] ejecutar cómputo de propósito general
+[00:04:02] ejecutar cómputo de propósito general mediante su nueva plataforma
+[00:04:04] mediante su nueva plataforma
+[00:04:04] mediante su nueva plataforma propietaria, Cuda.
+[00:04:07] propietaria, Cuda.
+[00:04:07] propietaria, Cuda. Esta decisión encareció los costes de
+[00:04:09] Esta decisión encareció los costes de
+[00:04:09] Esta decisión encareció los costes de fabricación y redujo sus márgenes a
+[00:04:11] fabricación y redujo sus márgenes a
+[00:04:11] fabricación y redujo sus márgenes a corto plazo, pero vino acompañada de una
+[00:04:14] corto plazo, pero vino acompañada de una
+[00:04:14] corto plazo, pero vino acompañada de una estrategia de penetración implacable.
+[00:04:17] estrategia de penetración implacable.
+[00:04:17] estrategia de penetración implacable. NVIDIA regaló el software, las librerías
+[00:04:20] NVIDIA regaló el software, las librerías
+[00:04:20] NVIDIA regaló el software, las librerías y las placas de desarrollo a todas las
+[00:04:23] y las placas de desarrollo a todas las
+[00:04:23] y las placas de desarrollo a todas las universidades, facultades de ingeniería
+[00:04:25] universidades, facultades de ingeniería
+[00:04:25] universidades, facultades de ingeniería y centros de investigación del mundo.
+[00:04:29] y centros de investigación del mundo.
+[00:04:29] y centros de investigación del mundo. Como explican David Beckerk, antiguo
+[00:04:32] Como explican David Beckerk, antiguo
+[00:04:32] Como explican David Beckerk, antiguo director científico de Nvidia, y Wen May
+[00:04:34] director científico de Nvidia, y Wen May
+[00:04:34] director científico de Nvidia, y Wen May Ho, en su obra clásica sobre
+[00:04:37] Ho, en su obra clásica sobre
+[00:04:37] Ho, en su obra clásica sobre procesadores masivamente paralelos, la
+[00:04:40] procesadores masivamente paralelos, la
+[00:04:40] procesadores masivamente paralelos, la verdadera revolución de CUDA no
+[00:04:42] verdadera revolución de CUDA no
+[00:04:42] verdadera revolución de CUDA no consistió en inventar un lenguaje nuevo,
+[00:04:45] consistió en inventar un lenguaje nuevo,
+[00:04:46] consistió en inventar un lenguaje nuevo, sino en proporcionar un modelo de
+[00:04:48] sino en proporcionar un modelo de
+[00:04:48] sino en proporcionar un modelo de abstracción estructurado que permitía a
+[00:04:50] abstracción estructurado que permitía a
+[00:04:50] abstracción estructurado que permitía a los científicos programar miles de hilos
+[00:04:53] los científicos programar miles de hilos
+[00:04:53] los científicos programar miles de hilos en paralelo, sin tener que fingir que
+[00:04:55] en paralelo, sin tener que fingir que
+[00:04:55] en paralelo, sin tener que fingir que sus matrices eran píxeles ni lidiar con
+[00:04:59] sus matrices eran píxeles ni lidiar con
+[00:04:59] sus matrices eran píxeles ni lidiar con los horrores de las interfaces gráficas
+[00:05:02] los horrores de las interfaces gráficas
+[00:05:02] los horrores de las interfaces gráficas de la época. Cuando en 2012 estalló la
+[00:05:06] de la época. Cuando en 2012 estalló la
+[00:05:06] de la época. Cuando en 2012 estalló la revolución del Deep Learning con la
+[00:05:08] revolución del Deep Learning con la
+[00:05:08] revolución del Deep Learning con la célebre Red Alex Net, sus creadores Alex
+[00:05:12] célebre Red Alex Net, sus creadores Alex
+[00:05:12] célebre Red Alex Net, sus creadores Alex Krisevski, Ilia Suteber y Jeffrey Hinton
+[00:05:17] Krisevski, Ilia Suteber y Jeffrey Hinton
+[00:05:17] Krisevski, Ilia Suteber y Jeffrey Hinton la entrenaron en dos tarjetas domésticas
+[00:05:20] la entrenaron en dos tarjetas domésticas
+[00:05:20] la entrenaron en dos tarjetas domésticas para videojuegos utilizando CUDA.
+[00:05:23] para videojuegos utilizando CUDA.
+[00:05:23] para videojuegos utilizando CUDA. Toda la generación de investigadores que
+[00:05:26] Toda la generación de investigadores que
+[00:05:26] Toda la generación de investigadores que hoy lidera la industria aprendió a
+[00:05:28] hoy lidera la industria aprendió a
+[00:05:28] hoy lidera la industria aprendió a programar sobre sus primitivas. Los
+[00:05:31] programar sobre sus primitivas. Los
+[00:05:31] programar sobre sus primitivas. Los analistas de Wall Street conocen
+[00:05:33] analistas de Wall Street conocen
+[00:05:33] analistas de Wall Street conocen perfectamente esta ventaja y la definen
+[00:05:36] perfectamente esta ventaja y la definen
+[00:05:36] perfectamente esta ventaja y la definen como el foso de Cuda. Este foso
+[00:05:39] como el foso de Cuda. Este foso
+[00:05:39] como el foso de Cuda. Este foso defensivo no es el lenguaje en sí, sino
+[00:05:42] defensivo no es el lenguaje en sí, sino
+[00:05:42] defensivo no es el lenguaje en sí, sino un conjunto de librerías matemáticas de
+[00:05:45] un conjunto de librerías matemáticas de
+[00:05:45] un conjunto de librerías matemáticas de bajísimo nivel optimizadas
+[00:05:47] bajísimo nivel optimizadas
+[00:05:47] bajísimo nivel optimizadas artesanalmente durante dos décadas.
+[00:05:50] artesanalmente durante dos décadas.
+[00:05:50] artesanalmente durante dos décadas. Primero, QBLS para álgebra lineal básica
+[00:05:55] Primero, QBLS para álgebra lineal básica
+[00:05:55] Primero, QBLS para álgebra lineal básica con millones de líneas de ensamblador
+[00:05:57] con millones de líneas de ensamblador
+[00:05:57] con millones de líneas de ensamblador hiperoptimizado
+[00:05:59] hiperoptimizado
+[00:05:59] hiperoptimizado para exprimir hasta el último ciclo de
+[00:06:00] para exprimir hasta el último ciclo de
+[00:06:01] para exprimir hasta el último ciclo de reloj en multiplicaciones matriciales.
+[00:06:04] reloj en multiplicaciones matriciales.
+[00:06:04] reloj en multiplicaciones matriciales. Segundo, CUDN
+[00:06:06] Segundo, CUDN
+[00:06:06] Segundo, CUDN para redes neuronales profundas con
+[00:06:09] para redes neuronales profundas con
+[00:06:09] para redes neuronales profundas con rutinas especializadas para atención
+[00:06:11] rutinas especializadas para atención
+[00:06:11] rutinas especializadas para atención escalada, con voluciones y funciones de
+[00:06:14] escalada, con voluciones y funciones de
+[00:06:14] escalada, con voluciones y funciones de activación adaptadas al milímetro a cada
+[00:06:16] activación adaptadas al milímetro a cada
+[00:06:17] activación adaptadas al milímetro a cada silicio. Tercero, NCCL,
+[00:06:20] silicio. Tercero, NCCL,
+[00:06:20] silicio. Tercero, NCCL, el software que orquesta el intercambio
+[00:06:22] el software que orquesta el intercambio
+[00:06:22] el software que orquesta el intercambio de datos entre miles de tarjetas en
+[00:06:24] de datos entre miles de tarjetas en
+[00:06:24] de datos entre miles de tarjetas en paralelo a través de redes Infinite
+[00:06:27] paralelo a través de redes Infinite
+[00:06:27] paralelo a través de redes Infinite Band. Y cuarto, tensor RT, el compilador
+[00:06:31] Band. Y cuarto, tensor RT, el compilador
+[00:06:31] Band. Y cuarto, tensor RT, el compilador de inferencia que fusiona capas y
+[00:06:33] de inferencia que fusiona capas y
+[00:06:33] de inferencia que fusiona capas y cuantiza parámetros a 4 y 8 bits para
+[00:06:37] cuantiza parámetros a 4 y 8 bits para
+[00:06:37] cuantiza parámetros a 4 y 8 bits para descartar cálculos redundantes. Durante
+[00:06:39] descartar cálculos redundantes. Durante
+[00:06:39] descartar cálculos redundantes. Durante años, los competidores intentaron
+[00:06:41] años, los competidores intentaron
+[00:06:41] años, los competidores intentaron asaltar este trono confiando
+[00:06:44] asaltar este trono confiando
+[00:06:44] asaltar este trono confiando exclusivamente en la fuerza bruta del
+[00:06:46] exclusivamente en la fuerza bruta del
+[00:06:46] exclusivamente en la fuerza bruta del hardware. El calvario de AMD con RM
+[00:06:51] hardware. El calvario de AMD con RM
+[00:06:51] hardware. El calvario de AMD con RM fue un claro ejemplo. Diseñaron chips
+[00:06:54] fue un claro ejemplo. Diseñaron chips
+[00:06:54] fue un claro ejemplo. Diseñaron chips con especificaciones teóricas brutales
+[00:06:56] con especificaciones teóricas brutales
+[00:06:56] con especificaciones teóricas brutales en calidad precio, pero su pila de
+[00:06:58] en calidad precio, pero su pila de
+[00:06:58] en calidad precio, pero su pila de software arrastró durante años problemas
+[00:07:01] software arrastró durante años problemas
+[00:07:01] software arrastró durante años problemas crónicos de instalación, controladores
+[00:07:04] crónicos de instalación, controladores
+[00:07:04] crónicos de instalación, controladores inestables y soporte fragmentado en
+[00:07:07] inestables y soporte fragmentado en
+[00:07:07] inestables y soporte fragmentado en Linux. El laberinto burocrático de Open
+[00:07:10] Linux. El laberinto burocrático de Open
+[00:07:10] Linux. El laberinto burocrático de Open CL, diseñado originalmente por Apple y
+[00:07:13] CL, diseñado originalmente por Apple y
+[00:07:13] CL, diseñado originalmente por Apple y transferido a Cronos, intentó ser el
+[00:07:15] transferido a Cronos, intentó ser el
+[00:07:15] transferido a Cronos, intentó ser el estándar abierto, pero fue víctima de la
+[00:07:18] estándar abierto, pero fue víctima de la
+[00:07:18] estándar abierto, pero fue víctima de la lentitud de los comités. requería
+[00:07:21] lentitud de los comités. requería
+[00:07:21] lentitud de los comités. requería demasiado código repetitivo y carecía de
+[00:07:24] demasiado código repetitivo y carecía de
+[00:07:24] demasiado código repetitivo y carecía de librerías matemáticas de alto nivel. Y
+[00:07:27] librerías matemáticas de alto nivel. Y
+[00:07:27] librerías matemáticas de alto nivel. Y finalmente, el candado en GitHub.
+[00:07:29] finalmente, el candado en GitHub.
+[00:07:29] finalmente, el candado en GitHub. Cualquier repositorio puntero de
+[00:07:31] Cualquier repositorio puntero de
+[00:07:31] Cualquier repositorio puntero de inteligencia artificial incluía
+[00:07:33] inteligencia artificial incluía
+[00:07:33] inteligencia artificial incluía dependencias directas de librerías de
+[00:07:36] dependencias directas de librerías de
+[00:07:36] dependencias directas de librerías de Nvidia, haciendo que el código fuera
+[00:07:38] Nvidia, haciendo que el código fuera
+[00:07:38] Nvidia, haciendo que el código fuera literalmente inejecutable en hardware
+[00:07:41] literalmente inejecutable en hardware
+[00:07:41] literalmente inejecutable en hardware rival. Pero al final han empezado a
+[00:07:44] rival. Pero al final han empezado a
+[00:07:44] rival. Pero al final han empezado a aparecer grietas en el muro y han
+[00:07:46] aparecer grietas en el muro y han
+[00:07:46] aparecer grietas en el muro y han aparecido en el abismo económico que
+[00:07:48] aparecido en el abismo económico que
+[00:07:48] aparecido en el abismo económico que separa el entrenamiento de la
+[00:07:50] separa el entrenamiento de la
+[00:07:50] separa el entrenamiento de la inferencia. Tal como detalla con
+[00:07:52] inferencia. Tal como detalla con
+[00:07:52] inferencia. Tal como detalla con maestría Chip Huyen en su obra de
+[00:07:54] maestría Chip Huyen en su obra de
+[00:07:54] maestría Chip Huyen en su obra de referencia AI Engineering, el
+[00:07:57] referencia AI Engineering, el
+[00:07:57] referencia AI Engineering, el entrenamiento es un gasto de capital
+[00:07:59] entrenamiento es un gasto de capital
+[00:07:59] entrenamiento es un gasto de capital finito. Una empresa invierte 50 o 100
+[00:08:03] finito. Una empresa invierte 50 o 100
+[00:08:03] finito. Una empresa invierte 50 o 100 millones de dólares en entrenar un
+[00:08:05] millones de dólares en entrenar un
+[00:08:05] millones de dólares en entrenar un modelo durante 2 meses y el proceso
+[00:08:07] modelo durante 2 meses y el proceso
+[00:08:07] modelo durante 2 meses y el proceso finaliza. La inferencia, en cambio, es
+[00:08:10] finaliza. La inferencia, en cambio, es
+[00:08:10] finaliza. La inferencia, en cambio, es un gasto operativo infinito. Cada vez
+[00:08:13] un gasto operativo infinito. Cada vez
+[00:08:13] un gasto operativo infinito. Cada vez que un usuario realiza una consulta,
+[00:08:15] que un usuario realiza una consulta,
+[00:08:15] que un usuario realiza una consulta, pulsa una tecla o ejecuta una acción,
+[00:08:18] pulsa una tecla o ejecuta una acción,
+[00:08:18] pulsa una tecla o ejecuta una acción, hay que pagar cómputo. Servir inferencia
+[00:08:21] hay que pagar cómputo. Servir inferencia
+[00:08:21] hay que pagar cómputo. Servir inferencia de modelos complejos desde la nube a
+[00:08:23] de modelos complejos desde la nube a
+[00:08:23] de modelos complejos desde la nube a escala de cientos de millones de
+[00:08:25] escala de cientos de millones de
+[00:08:25] escala de cientos de millones de usuarios es económicamente ruinoso y
+[00:08:28] usuarios es económicamente ruinoso y
+[00:08:28] usuarios es económicamente ruinoso y ecológicamente insostenible. Alquilar
+[00:08:31] ecológicamente insostenible. Alquilar
+[00:08:31] ecológicamente insostenible. Alquilar una sola GPU de centro de datos cuesta
+[00:08:33] una sola GPU de centro de datos cuesta
+[00:08:33] una sola GPU de centro de datos cuesta entre 2 y
+[00:08:35] entre 2 y
+[00:08:35] entre 2 y por hora y para el usuario depender
+[00:08:38] por hora y para el usuario depender
+[00:08:38] por hora y para el usuario depender siempre de la nube implica latencia de
+[00:08:40] siempre de la nube implica latencia de
+[00:08:40] siempre de la nube implica latencia de red, dependencia de conexión constante y
+[00:08:43] red, dependencia de conexión constante y
+[00:08:43] red, dependencia de conexión constante y una cesión inaceptable de la privacidad
+[00:08:45] una cesión inaceptable de la privacidad
+[00:08:46] una cesión inaceptable de la privacidad de sus datos. Para que la inteligencia
+[00:08:48] de sus datos. Para que la inteligencia
+[00:08:48] de sus datos. Para que la inteligencia artificial sea viable, debe
+[00:08:50] artificial sea viable, debe
+[00:08:50] artificial sea viable, debe descentralizarse.
+[00:08:52] descentralizarse.
+[00:08:52] descentralizarse. Los modelos deben ejecutarse en el
+[00:08:54] Los modelos deben ejecutarse en el
+[00:08:54] Los modelos deben ejecutarse en el dispositivo del usuario final bajo el
+[00:08:56] dispositivo del usuario final bajo el
+[00:08:56] dispositivo del usuario final bajo el paradigma local first. Y en el borde de
+[00:09:00] paradigma local first. Y en el borde de
+[00:09:00] paradigma local first. Y en el borde de la red, Nvidia no tiene el monopolio. La
+[00:09:03] la red, Nvidia no tiene el monopolio. La
+[00:09:03] la red, Nvidia no tiene el monopolio. La inmensa mayoría de los dispositivos del
+[00:09:05] inmensa mayoría de los dispositivos del
+[00:09:05] inmensa mayoría de los dispositivos del planeta son portátiles Mac con Apple
+[00:09:08] planeta son portátiles Mac con Apple
+[00:09:08] planeta son portátiles Mac con Apple Silicon, Ultrabooks con procesadores
+[00:09:11] Silicon, Ultrabooks con procesadores
+[00:09:11] Silicon, Ultrabooks con procesadores Intel o AMD o teléfonos móviles. En este
+[00:09:16] Intel o AMD o teléfonos móviles. En este
+[00:09:16] Intel o AMD o teléfonos móviles. En este punto de inflexión donde web GPU y su
+[00:09:18] punto de inflexión donde web GPU y su
+[00:09:18] punto de inflexión donde web GPU y su lenguaje de sombreado WGSL
+[00:09:22] lenguaje de sombreado WGSL
+[00:09:22] lenguaje de sombreado WGSL dejan de ser una simple especificación
+[00:09:25] dejan de ser una simple especificación
+[00:09:25] dejan de ser una simple especificación técnica para convertirse en la
+[00:09:27] técnica para convertirse en la
+[00:09:27] técnica para convertirse en la herramienta de emancipación más
+[00:09:29] herramienta de emancipación más
+[00:09:29] herramienta de emancipación más importante del software moderno por tres
+[00:09:32] importante del software moderno por tres
+[00:09:32] importante del software moderno por tres razones muy concretas. Primera,
+[00:09:34] razones muy concretas. Primera,
+[00:09:34] razones muy concretas. Primera, agnosticismo radical del silicio
+[00:09:37] agnosticismo radical del silicio
+[00:09:37] agnosticismo radical del silicio diseñado por consenso en el W3C por
+[00:09:40] diseñado por consenso en el W3C por
+[00:09:40] diseñado por consenso en el W3C por Apple, Google, Microsoft, Mocilla e
+[00:09:43] Apple, Google, Microsoft, Mocilla e
+[00:09:43] Apple, Google, Microsoft, Mocilla e Intel. Un compute Shader en Globsl no
+[00:09:47] Intel. Un compute Shader en Globsl no
+[00:09:47] Intel. Un compute Shader en Globsl no contiene directivas atadas a ningún
+[00:09:49] contiene directivas atadas a ningún
+[00:09:49] contiene directivas atadas a ningún fabricante. Se compila directamente a
+[00:09:52] fabricante. Se compila directamente a
+[00:09:52] fabricante. Se compila directamente a Metal en MacOS, a Direct X12 en Windows
+[00:09:56] Metal en MacOS, a Direct X12 en Windows
+[00:09:56] Metal en MacOS, a Direct X12 en Windows o a Vulcan en Linux y Android. Segunda,
+[00:10:00] o a Vulcan en Linux y Android. Segunda,
+[00:10:00] o a Vulcan en Linux y Android. Segunda, cero fricción de despliegue. El usuario
+[00:10:03] cero fricción de despliegue. El usuario
+[00:10:03] cero fricción de despliegue. El usuario no tiene que instalar SDKs pesados ni
+[00:10:06] no tiene que instalar SDKs pesados ni
+[00:10:06] no tiene que instalar SDKs pesados ni lidiar con entornos de Python. Una
+[00:10:08] lidiar con entornos de Python. Una
+[00:10:08] lidiar con entornos de Python. Una simple URL en el navegador descarga los
+[00:10:11] simple URL en el navegador descarga los
+[00:10:11] simple URL en el navegador descarga los pesos, compila los shaders en la tarjeta
+[00:10:14] pesos, compila los shaders en la tarjeta
+[00:10:14] pesos, compila los shaders en la tarjeta gráfica local y ejecuta el modelo de
+[00:10:16] gráfica local y ejecuta el modelo de
+[00:10:16] gráfica local y ejecuta el modelo de inmediato con total privacidad. Y
+[00:10:19] inmediato con total privacidad. Y
+[00:10:19] inmediato con total privacidad. Y tercera, web GPU fuera de la web con
+[00:10:22] tercera, web GPU fuera de la web con
+[00:10:22] tercera, web GPU fuera de la web con librerías nativas de bajo nivel en Rust
+[00:10:25] librerías nativas de bajo nivel en Rust
+[00:10:25] librerías nativas de bajo nivel en Rust como WGPU, proyectos como barn oyama.cpp
+[00:10:29] como WGPU, proyectos como barn oyama.cpp
+[00:10:29] como WGPU, proyectos como barn oyama.cpp CPP permiten crear aplicaciones de
+[00:10:31] CPP permiten crear aplicaciones de
+[00:10:31] CPP permiten crear aplicaciones de escritorio y servidores que aprovechan
+[00:10:34] escritorio y servidores que aprovechan
+[00:10:34] escritorio y servidores que aprovechan la aceleración por GPU universal sin
+[00:10:37] la aceleración por GPU universal sin
+[00:10:37] la aceleración por GPU universal sin tocar una sola línea de código de CUDA.
+[00:10:40] tocar una sola línea de código de CUDA.
+[00:10:40] tocar una sola línea de código de CUDA. En pantalla podéis ver la tabla
+[00:10:42] En pantalla podéis ver la tabla
+[00:10:42] En pantalla podéis ver la tabla comparativa con la distribución de
+[00:10:43] comparativa con la distribución de
+[00:10:44] comparativa con la distribución de fuerzas de esta batalla de enorme
+[00:10:46] fuerzas de esta batalla de enorme
+[00:10:46] fuerzas de esta batalla de enorme trascendencia, esta sí real entre el
+[00:10:50] trascendencia, esta sí real entre el
+[00:10:50] trascendencia, esta sí real entre el ecosistema cautivo de Nvidia y el
+[00:10:53] ecosistema cautivo de Nvidia y el
+[00:10:53] ecosistema cautivo de Nvidia y el ecosistema abierto de web GPU en torno
+[00:10:56] ecosistema abierto de web GPU en torno
+[00:10:56] ecosistema abierto de web GPU en torno al consorcio Vol 3C. Quien no conoce la
+[00:11:00] al consorcio Vol 3C. Quien no conoce la
+[00:11:00] al consorcio Vol 3C. Quien no conoce la historia de la computación cree que los
+[00:11:02] historia de la computación cree que los
+[00:11:02] historia de la computación cree que los monopolios tecnológicos son eternos.
+[00:11:05] monopolios tecnológicos son eternos.
+[00:11:05] monopolios tecnológicos son eternos. Lo que vive hoy Envidia con CUDA guarda
+[00:11:08] Lo que vive hoy Envidia con CUDA guarda
+[00:11:08] Lo que vive hoy Envidia con CUDA guarda enormes similitudes con lo ocurrido a
+[00:11:11] enormes similitudes con lo ocurrido a
+[00:11:11] enormes similitudes con lo ocurrido a finales de los años 90 con 3D FX
+[00:11:14] finales de los años 90 con 3D FX
+[00:11:14] finales de los años 90 con 3D FX Interactive y su tecnología propietaria
+[00:11:17] Interactive y su tecnología propietaria
+[00:11:17] Interactive y su tecnología propietaria Glide. En 1996
+[00:11:20] Glide. En 1996
+[00:11:20] Glide. En 1996 3DFX dominaba los gráficos 3D y parecía
+[00:11:24] 3DFX dominaba los gráficos 3D y parecía
+[00:11:24] 3DFX dominaba los gráficos 3D y parecía indestructible. Pero la industria del
+[00:11:27] indestructible. Pero la industria del
+[00:11:27] indestructible. Pero la industria del software no tolera estar cautiva
+[00:11:29] software no tolera estar cautiva
+[00:11:29] software no tolera estar cautiva eternamente. Microsoft lanzó Direct X y
+[00:11:32] eternamente. Microsoft lanzó Direct X y
+[00:11:32] eternamente. Microsoft lanzó Direct X y la industria estandarizó Open GL. En
+[00:11:36] la industria estandarizó Open GL. En
+[00:11:36] la industria estandarizó Open GL. En cuanto los desarrolladores comprobaron
+[00:11:38] cuanto los desarrolladores comprobaron
+[00:11:38] cuanto los desarrolladores comprobaron que podían programar una sola vez para
+[00:11:40] que podían programar una sola vez para
+[00:11:40] que podían programar una sola vez para cualquier tarjeta, abandonaron Glide en
+[00:11:43] cualquier tarjeta, abandonaron Glide en
+[00:11:43] cualquier tarjeta, abandonaron Glide en masa y 3DFX
+[00:11:45] masa y 3DFX
+[00:11:45] masa y 3DFX terminó quebrando en el año 2000, siendo
+[00:11:48] terminó quebrando en el año 2000, siendo
+[00:11:48] terminó quebrando en el año 2000, siendo absorbida por la propia Mvidia. Como
+[00:11:50] absorbida por la propia Mvidia. Como
+[00:11:51] absorbida por la propia Mvidia. Como formulan Patterson y Genesis en Computer
+[00:11:53] formulan Patterson y Genesis en Computer
+[00:11:53] formulan Patterson y Genesis en Computer Organization and Design. Los estándares
+[00:11:56] Organization and Design. Los estándares
+[00:11:56] Organization and Design. Los estándares abiertos siempre terminan devorando a
+[00:11:58] abiertos siempre terminan devorando a
+[00:11:58] abiertos siempre terminan devorando a las soluciones propietarias cuando la
+[00:12:00] las soluciones propietarias cuando la
+[00:12:00] las soluciones propietarias cuando la tecnología pasa de los laboratorios al
+[00:12:02] tecnología pasa de los laboratorios al
+[00:12:02] tecnología pasa de los laboratorios al consumo masivo. Seamos optimistas y
+[00:12:05] consumo masivo. Seamos optimistas y
+[00:12:05] consumo masivo. Seamos optimistas y pensemos que estamos de nuevo en ese
+[00:12:07] pensemos que estamos de nuevo en ese
+[00:12:07] pensemos que estamos de nuevo en ese mismo camino. Personalmente soy una
+[00:12:10] mismo camino. Personalmente soy una
+[00:12:10] mismo camino. Personalmente soy una persona a la que le gusta aprender, no
+[00:12:12] persona a la que le gusta aprender, no
+[00:12:12] persona a la que le gusta aprender, no saber. El camino, no la meta. En mi
+[00:12:15] saber. El camino, no la meta. En mi
+[00:12:15] saber. El camino, no la meta. En mi opinión, esa es la auténtica definición
+[00:12:17] opinión, esa es la auténtica definición
+[00:12:17] opinión, esa es la auténtica definición de la filosofía, el placer de aprender,
+[00:12:20] de la filosofía, el placer de aprender,
+[00:12:20] de la filosofía, el placer de aprender, no de creerse en posesión del saber. En
+[00:12:23] no de creerse en posesión del saber. En
+[00:12:23] no de creerse en posesión del saber. En este largo camino me acompaña desde hace
+[00:12:26] este largo camino me acompaña desde hace
+[00:12:26] este largo camino me acompaña desde hace décadas la biblioteca de Oriley, mi
+[00:12:28] décadas la biblioteca de Oriley, mi
+[00:12:28] décadas la biblioteca de Oriley, mi auténtica universidad digital. Pero mi
+[00:12:32] auténtica universidad digital. Pero mi
+[00:12:32] auténtica universidad digital. Pero mi trabajo en esa inmensa librería ha
+[00:12:34] trabajo en esa inmensa librería ha
+[00:12:34] trabajo en esa inmensa librería ha cambiado radicalmente desde que puedo
+[00:12:37] cambiado radicalmente desde que puedo
+[00:12:37] cambiado radicalmente desde que puedo recorrerla acompañado por Antigravity y
+[00:12:40] recorrerla acompañado por Antigravity y
+[00:12:40] recorrerla acompañado por Antigravity y el protocolo MCP.
+[00:12:43] el protocolo MCP.
+[00:12:43] el protocolo MCP. Todas las referencias y citas de este
+[00:12:45] Todas las referencias y citas de este
+[00:12:45] Todas las referencias y citas de este vídeo proceden de esos excelentes
+[00:12:47] vídeo proceden de esos excelentes
+[00:12:48] vídeo proceden de esos excelentes materiales y cierro esta sesión con la
+[00:12:50] materiales y cierro esta sesión con la
+[00:12:50] materiales y cierro esta sesión con la tabla bibliográfica del material de
+[00:12:52] tabla bibliográfica del material de
+[00:12:52] tabla bibliográfica del material de apoyo utilizado. Quede este vídeo como
+[00:12:55] apoyo utilizado. Quede este vídeo como
+[00:12:55] apoyo utilizado. Quede este vídeo como testimonio personal de que alguien en
+[00:12:58] testimonio personal de que alguien en
+[00:12:58] testimonio personal de que alguien en 2026, mientras la mayoría seguía
+[00:13:01] 2026, mientras la mayoría seguía
+[00:13:01] 2026, mientras la mayoría seguía defendiendo que con la inteligencia
+[00:13:02] defendiendo que con la inteligencia
+[00:13:02] defendiendo que con la inteligencia artificial dejaríamos de aprender, ya
+[00:13:05] artificial dejaríamos de aprender, ya
+[00:13:05] artificial dejaríamos de aprender, ya había comprendido, nunca mejor usada la
+[00:13:08] había comprendido, nunca mejor usada la
+[00:13:08] había comprendido, nunca mejor usada la palabra, que se ha puesto en nuestras
+[00:13:09] palabra, que se ha puesto en nuestras
+[00:13:09] palabra, que se ha puesto en nuestras manos la mejor herramienta. jamás creada
+[00:13:13] manos la mejor herramienta. jamás creada
+[00:13:13] manos la mejor herramienta. jamás creada por el ser humano para profundizar en el
+[00:13:15] por el ser humano para profundizar en el
+[00:13:15] por el ser humano para profundizar en el auténtico y real aprendizaje.
+[00:13:18] auténtico y real aprendizaje.
+[00:13:18] auténtico y real aprendizaje. El mayor de los regalos para quienes
+[00:13:20] El mayor de los regalos para quienes
+[00:13:20] El mayor de los regalos para quienes gozamos desde siempre del inmenso placer
+[00:13:23] gozamos desde siempre del inmenso placer
+[00:13:23] gozamos desde siempre del inmenso placer de aprender cada día. M.

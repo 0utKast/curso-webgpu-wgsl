@@ -1,0 +1,69 @@
+GUION NARRATIVO: APARTADO 2 DEL CAPÍTULO 4
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 4: Texturas, Samplers y Computación Gráfica Avanzada en WGSL
+Apartado 2: Unidades Fijas de Filtrado (Texture Filtering Units - TFUs) y Samplers en Silicio
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Título del apartado con tipografía moderna: "Apartado 2: Unidades Fijas de Filtrado (TFUs) y Samplers en Silicio". Al fondo, render 3D esquemático del interior de un multiprocesador de GPU resaltando dos bloques: las ALUs programables y la Unidad Fija de Textura]
+
+En el apartado anterior desentrañamos el secreto de la Curva de Morton y comprendimos por qué las texturas organizadas en baldosas espaciales salvan a la GPU del colapso de la memoria. Pero almacenar los datos de forma inteligente es solo el primer paso. En la práctica, casi nunca queremos leer un único píxel crudo; lo que realmente necesitamos es interpolar colores de forma continua, calcular transiciones suaves y proyectar imágenes a diferentes distancias.
+
+Si tuviéramos que encargarle todos estos cálculos matemáticos a las unidades de cómputo de la GPU —las ALUs que ejecutan nuestro código de sombreado—, el rendimiento se resentiría de inmediato.
+
+[00:00:46]
+[En pantalla: Diagrama de flujo que ilustra la instrucción de muestreo saliendo de la ALU hacia la TFU. La TFU se ilumina mientras la ALU entra en reposo o atiende a otro grupo de hilos]
+
+Afortunadamente, los procesadores gráficos esconden en su arquitectura una de las mayores ventajas del silicio especializado: las Unidades de Filtrado de Texturas, o TFUs por sus siglas en inglés, conocidas también como TMUs. Las TFUs no son núcleos de propósito general. Son circuitos integrados de función fija, diseñados con compuertas lógicas dedicadas exclusivamente a una tarea: leer texels, calcular pesos fraccionales e interpolar muestras a la velocidad de la luz.
+
+Cuando en nuestro shader ejecutamos una instrucción de muestreo, la ALU no realiza ninguna multiplicación. Simplemente envía la petición a la TFU y se desentiende. Mientras la TFU trabaja de forma autónoma en el silicio, la ALU queda completamente libre para ejecutar la lógica de nuestro algoritmo o atender a otro grupo de hilos en paralelo.
+
+[00:01:42]
+[En pantalla: Comparativa en dos columnas: a la izquierda, lista de 25 instrucciones de coma flotante (FMA, lerps, sumas) necesarias en software por la ALU; a la derecha, la TFU resolviendo la interpolación con una etiqueta destacada: "Coste en ALUs: CERO ciclos"]
+
+Para que valoréis el prodigio que esto representa, fijaos en la comparativa que tenéis en pantalla. Si intentáramos programar manualmente una interpolación bilineal en la ALU —o en un bucle equivalente de C plus plus en la CPU—, tendríamos que extraer partes enteras y decimales, emitir cuatro lecturas de memoria independientes y calcular doce interpolaciones lineales fundidas para los canales rojo, verde, azul y alfa. Eso supone entre veinte y treinta operaciones de coma flotante por cada píxel procesado.
+
+En la GPU, la TFU ejecuta todo ese cálculo en hardware con un coste exacto de cero ciclos de reloj en nuestras unidades de cálculo. Es aceleración física en estado puro.
+
+[00:02:35]
+[En pantalla: Dos diagramas adyacentes: a la izquierda, un cuadrado continuo con esquinas marcadas en (0.0, 0.0) y (1.0, 1.0) etiquetado como "Espacio UV Normalizado"; a la derecha, una rejilla de píxeles discretos con un punto rojo en el centro exacto de la celda: "(x + 0.5, ye + 0.5)"]
+
+Ahora bien, para controlar esta maquinaria con precisión debemos entender los dos sistemas de coordenadas que conviven en WebGPU. El primero es el espacio de coordenadas normalizadas u uve, que abarca desde cero punto cero en la esquina superior izquierda hasta uno punto cero en la esquina inferior derecha. La inmensa ventaja de este espacio es que es completamente independiente del tamaño de la imagen: vuestro algoritmo funciona exactamente igual tanto si la textura mide doscientos cincuenta y seis píxeles como si es un fotograma en cuatro ka.
+
+El segundo es el espacio discreto de texels, donde cada elemento se identifica por índices enteros equis y ye. Fijaos en un detalle crucial que a menudo confunde a los desarrolladores noveles: un texel no es un punto sin dimensiones; es una celda cuadrada en la memoria. Por definición rigurosa del estándar, el centro exacto del texel con coordenadas equis y ye se encuentra en equis más cero punto cinco, y ye más cero punto cinco. Saber alternar entre coordenadas continuas normalizadas e índices enteros es la clave para dominar tanto el filtrado como los compute shaders de visión artificial.
+
+[00:03:58]
+[En pantalla: Gráfico que aclara el concepto de Texel (en memoria VRAM) proyectándose sobre la pantalla (Píxel en Framebuffer). Se ilustran los conceptos de Magnificación (un texel grande sobre varios píxeles) y Minificación (muchos texels diminutos dentro de un píxel)]
+
+Conviene además desterrar una confusión lingüística habitual: la diferencia entre texel y píxel. Un texel, o texture element, es una muestra discreta que reside en la memoria de la textura en la V-RAM. Un píxel, o picture element, es el punto físico de salida en la pantalla o en el lienzo de vuestra aplicación. Cuando la cámara se acerca y un texel cubre varios píxeles en pantalla, hablamos de magnificación. Cuando la cámara se aleja y decenas de texels caen dentro del área de un solo píxel, entramos en el régimen de minificación.
+
+[00:04:42]
+[En pantalla: Animación que muestra los tres modos de direccionamiento: 1. clamp-to-edge con los bordes estirados; 2. repeat con la imagen clonándose en mosaico; 3. mirror-repeat reflejándose como un espejo]
+
+Para gobernar el comportamiento de la TFU en estos escenarios disponemos del Sampler, el objeto muestreador de WebGPU. El Sampler nos permite configurar, en primer lugar, los modos de direccionamiento, que deciden qué debe ocurrir cuando una coordenada u uve escapa del rango estándar de cero a uno.
+
+Disponemos de tres modos canónicos:
+El primero es clamp-to-edge, que fija cualquier coordenada exterior al valor del borde más cercano, extendiendo el color del extremo. Es el modo idóneo para interfaces de usuario, elementos aislados o mapas de sombras.
+El segundo es repeat, que ignora la parte entera y se queda con la decimal, repitiendo la textura indefinidamente en forma de mosaico continuo, ideal para texturas de suelo, ladrillos o agua.
+Y el tercero es mirror-repeat, que invierte simétricamente la imagen en cada repetición como un espejo, evitando costuras bruscas en texturas procedurales.
+
+[00:05:50]
+[En pantalla: Comparativa visual entre dos imágenes ampliadas: a la izquierda, la versión "nearest" mostrando escalones y píxeles gigantes; a la derecha, la versión "linear" con transiciones suaves generadas por la fórmula bilineal]
+
+En segundo lugar, el Sampler nos permite elegir el modo de filtrado cuando la coordenada cae entre varios texels.
+Con el modo nearest, la TFU busca el vecino más próximo y descarta la parte fraccional. El resultado es un corte nítido y pixelado, perfecto para videojuegos de estilo retro o para texturas donde cada número representa un identificador discreto.
+Con el modo linear, la TFU activa su circuito de interpolación bilineal. Localiza los cuatro texels adyacentes, calcula los pesos horizontal y vertical, y los promedia en silicio, generando degradados perfectamente suaves y continuos.
+
+[00:06:40]
+[En pantalla: Ilustración de la Pirámide de Mipmaps: desde la textura original de 1024x1024 reduciéndose progresivamente hasta 1x1. Aparece la fórmula matemática de la serie geométrica que demuestra el tercio adicional de memoria (33.3%)]
+
+Y llegamos a la joya final del hardware de filtrado: el Mipmapping, inventado por el legendario Lance Williams en mil novecientos ochenta y tres. Cuando una textura se visualiza desde muy lejos, muestrear un solo punto genera patrones de interferencia y parpadeo caótico conocidos como moiré. Para solucionarlo, almacenamos una pirámide de versiones precalculadas, cada una con la mitad de resolución que la anterior. Aunque parezca que esto consume mucha memoria, la matemática nos demuestra que la pirámide completa solo ocupa un tercio adicional, un treinta y tres por ciento más de V-RAM.
+
+[00:07:32]
+[En pantalla: Demostración visual de Filtrado Trilineal: la TFU tomando 4 muestras en el nivel d y 4 muestras en el nivel d+1 para mezclarlas con una interpolación continua]
+
+Si configuramos el filtro de mipmapping en modo nearest, la GPU salta bruscamente de un nivel a otro, produciendo molestos saltos visuales al mover la cámara. Pero si activamos el modo linear, la TFU realiza el célebre Filtrado Trilineal: toma cuatro texels del nivel de resolución actual, cuatro texels del nivel siguiente —ocho muestras en total— y los funde en un solo latido en hardware.
+
+Con las TFUs y los Samplers dominados en el silicio, estamos preparados para dar el siguiente paso: en el Apartado Tres descubriremos el catálogo de tipos de texturas en uve doble ge ese ele y las primitivas exactas para leer y escribir sobre ellas desde nuestros compute shaders.

@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caso 2: El Desastre del Padding Oculto (32 Bytes) — WGSL Code Spotlight</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --danger-dark: #dc2626;
+      --danger-bg: rgba(239, 68, 68, 0.2);
+      --code-bg: #1e1e1e;
+
+      /* Tokens de Sintaxis VS Code Dark+ */
+      --syn-keyword: #c586c0;    /* fn, if, return, struct */
+      --syn-storage: #569cd6;    /* var, let, struct */
+      --syn-type: #4ec9b0;       /* vec3, f32, u32, ParticulaPeligrosa */
+      --syn-var: #9cdcfe;        /* posicion, velocidad */
+      --syn-fn: #dcdcaa;         /* funciones */
+      --syn-num: #b5cea8;        /* 0, 3, 16, 27, 32 */
+      --syn-comment: #6a9955;    /* comentarios */
+      --syn-op: #d4d4d4;         /* : , ; { } < > */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 2rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      background: rgba(248, 113, 113, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+    }
+
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    /* BARRA DE HERRAMIENTAS INTERACTIVA (SPOTLIGHT) */
+    .interactive-toolbar {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 0.9rem 1.2rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--danger);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .btn {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #e4e4e7;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn:hover {
+      background: #3f3f46;
+      color: #fff;
+    }
+
+    .btn.active {
+      background: #dc2626;
+      border-color: #f87171;
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(248, 113, 113, 0.4);
+    }
+
+    /* BANNER EXPLICATIVO SINCRONIZADO CON LA LOCUCIÓN */
+    .explanation-banner {
+      background: rgba(30, 41, 59, 0.95);
+      border-left: 4px solid #f87171;
+      border-radius: 0 8px 8px 0;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 1rem;
+      color: #f1f5f9;
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      line-height: 1.55;
+    }
+
+    /* VENTANA VISUAL STUDIO CODE DARK+ */
+    .editor-window {
+      background-color: var(--code-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+      margin-bottom: 1.75rem;
+    }
+
+    .window-titlebar {
+      background-color: #323233;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      position: relative;
+      user-select: none;
+      border-bottom: 1px solid #252526;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .control-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-close { background-color: #ff5f56; }
+    .dot-minimize { background-color: #ffbd2e; }
+    .dot-maximize { background-color: #27c93f; }
+
+    .window-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.78rem;
+      color: #999;
+      font-weight: 500;
+    }
+
+    .editor-tabs {
+      display: flex;
+      background-color: #252526;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border-top: 2px solid #f87171;
+      border-right: 1px solid #252526;
+    }
+
+    .tab-icon {
+      color: #f87171;
+      font-size: 0.95rem;
+    }
+
+    .breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      color: #8c8c8c;
+      background-color: #1e1e1e;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .breadcrumbs span.active {
+      color: #cccccc;
+    }
+
+    /* LÍNEAS DE CÓDIGO CON RESALTADO */
+    .code-container {
+      padding: 16px 0;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 16px;
+      transition: background-color 0.2s ease, opacity 0.25s ease;
+      white-space: pre;
+    }
+
+    .code-line:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .code-line.spotlight {
+      background-color: rgba(239, 68, 68, 0.16);
+      border-left: 4px solid #f87171;
+      padding-left: 12px;
+    }
+
+    .code-line.spotlight-accent {
+      background-color: rgba(56, 189, 248, 0.16);
+      border-left: 4px solid #38bdf8;
+      padding-left: 12px;
+    }
+
+    .code-line.dimmed {
+      opacity: 0.32;
+    }
+
+    .line-number {
+      width: 44px;
+      text-align: right;
+      padding-right: 20px;
+      color: #858585;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .line-content {
+      flex-grow: 1;
+    }
+
+    /* CLASES DE TOKENIZADO VS CODE DARK+ */
+    .st { color: var(--syn-storage); font-weight: 600; }
+    .tp { color: var(--syn-type); }
+    .vr { color: var(--syn-var); }
+    .nm { color: var(--syn-num); }
+    .op { color: var(--syn-op); }
+    .cm { color: var(--syn-comment); font-style: italic; }
+    .fn { color: var(--syn-fn); }
+    .warn-cm { color: #fbbf24; font-style: italic; font-weight: 600; }
+
+    /* MAPA DE MEMORIA FÍSICA (32 BYTES / 2 PALABRAS DE 16 BYTES) */
+    .memory-map-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .memory-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .memory-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .memory-stats {
+      font-size: 0.85rem;
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.15);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-weight: 700;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .row-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin: 0.75rem 0 0.4rem 0;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      gap: 4px;
+      margin-bottom: 0.8rem;
+    }
+
+    .byte-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px 3px;
+      text-align: center;
+      transition: all 0.25s ease;
+    }
+
+    .byte-idx {
+      font-size: 0.65rem;
+      color: #64748b;
+      font-family: monospace;
+      margin-bottom: 2px;
+    }
+
+    .byte-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    /* Colores por campo */
+    .byte-vel {
+      background: rgba(16, 185, 129, 0.25);
+      border-color: #10b981;
+      color: #34d399;
+    }
+
+    .byte-vel.highlight {
+      background: #059669;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .byte-pos {
+      background: rgba(2, 132, 199, 0.25);
+      border-color: #0284c7;
+      color: #38bdf8;
+    }
+
+    .byte-pos.highlight {
+      background: #0284c7;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .byte-pad {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px dashed #ef4444;
+      color: #fca5a5;
+    }
+
+    .byte-pad.highlight {
+      background: #dc2626;
+      color: #ffffff;
+      border-style: solid;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+      transform: translateY(-2px);
+    }
+
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 0.75rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    /* RESUMEN TÉCNICO EN TARJETAS */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .memory-grid {
+        grid-template-columns: repeat(8, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .summary-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .summary-card .label {
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .summary-card .value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .summary-card .desc {
+      font-size: 0.75rem;
+      color: #71717a;
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="badge">Lección 2 • Alineamiento y Empaquetamiento en WGSL</div>
+    <h1>Caso 2: El Desastre del Padding Oculto</h1>
+    <p class="subtitle">Orden Invertido: <code>f32</code> (4B) seguido de <code>vec3&lt;f32&gt;</code> (12B) = <strong>32 Bytes en VRAM (50% Desperdicio)</strong>.</p>
+  </header>
+
+  <!-- BARRA DE HERRAMIENTAS INTERACTIVA -->
+  <div class="interactive-toolbar">
+    <div class="toolbar-label">
+      <span>⚠️ Fases de la Explicación:</span>
+    </div>
+    <div class="btn-group">
+      <button class="btn active" onclick="setSpotlight('all', this)">
+        <span>👁️ Caso 2 Completo</span>
+      </button>
+      <button class="btn" onclick="setSpotlight('velocidad', this)">
+        <span>1. velocidad (Bytes 0..3)</span>
+      </button>
+      <button class="btn" onclick="setSpotlight('pad-salto', this)">
+        <span>2. Salto Padding (Bytes 4..15)</span>
+      </button>
+      <button class="btn" onclick="setSpotlight('posicion', this)">
+        <span>3. posicion (Bytes 16..27)</span>
+      </button>
+      <button class="btn" onclick="setSpotlight('cierre-desastre', this)">
+        <span>4. Padding Cierre (28..31) y Total 32B</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- BANNER EXPLICATIVO SINCRONIZADO -->
+  <div class="explanation-banner" id="explanation-text">
+    Ahora observemos con mucho cuidado el segundo caso, donde tenemos exactamente los mismos datos, pero hemos invertido el orden de las líneas, declarando primero la velocidad y después la posición.
+  </div>
+
+  <!-- VENTANA VISUAL STUDIO CODE DARK+ -->
+  <div class="editor-window">
+    <div class="window-titlebar">
+      <div class="window-controls">
+        <div class="control-dot dot-close"></div>
+        <div class="control-dot dot-minimize"></div>
+        <div class="control-dot dot-maximize"></div>
+      </div>
+      <div class="window-title">particula_peligrosa.wgsl — Visual Studio Code</div>
+    </div>
+
+    <div class="editor-tabs">
+      <div class="tab">
+        <span class="tab-icon">⚠️</span>
+        <span>particula_peligrosa.wgsl</span>
+      </div>
+    </div>
+
+    <div class="breadcrumbs">
+      <span>src</span>
+      <span>›</span>
+      <span>shaders</span>
+      <span>›</span>
+      <span class="active">particula_peligrosa.wgsl</span>
+    </div>
+
+    <div class="code-container" id="code-block">
+      <!-- Línea 1 -->
+      <div class="code-line" data-section="all">
+        <span class="line-number">1</span>
+        <span class="line-content"><span class="cm">// Caso 2: Inversión de campos que duplica el consumo de VRAM</span></span>
+      </div>
+      <!-- Línea 2 -->
+      <div class="code-line" data-section="all">
+        <span class="line-number">2</span>
+        <span class="line-content"><span class="st">struct</span> <span class="tp">ParticulaPeligrosa</span> <span class="op">{</span></span>
+      </div>
+      <!-- Línea 3: velocidad -->
+      <div class="code-line" data-section="velocidad">
+        <span class="line-number">3</span>
+        <span class="line-content">    <span class="vr">velocidad</span><span class="op">:</span> <span class="tp">f32</span><span class="op">,</span>       <span class="cm">// Offset 0..3   (Tamaño: 4B  | Alineamiento: 4B)</span></span>
+      </div>
+      <!-- Línea 4: padding intermedio -->
+      <div class="code-line" data-section="pad-salto">
+        <span class="line-number">4</span>
+        <span class="line-content">                          <span class="warn-cm">// ⚠️ HUECO INVISIBLE DE PADDING: Bytes 4..15 (12 bytes vacíos)</span></span>
+      </div>
+      <!-- Línea 5: posicion -->
+      <div class="code-line" data-section="posicion">
+        <span class="line-number">5</span>
+        <span class="line-content">    <span class="vr">posicion</span><span class="op">:</span>  <span class="tp">vec3</span><span class="op">&lt;</span><span class="tp">f32</span><span class="op">&gt;,</span> <span class="cm">// Offset 16..27 (Tamaño: 12B | Alineamiento: 16B)</span></span>
+      </div>
+      <!-- Línea 6: padding cierre -->
+      <div class="code-line" data-section="cierre-desastre">
+        <span class="line-number">6</span>
+        <span class="line-content">                          <span class="warn-cm">// ⚠️ PADDING FINAL DE CIERRE: Bytes 28..31 (4 bytes para cerrar múltiplo de 16)</span></span>
+      </div>
+      <!-- Línea 7: cierre struct -->
+      <div class="code-line" data-section="cierre-desastre">
+        <span class="line-number">7</span>
+        <span class="line-content"><span class="op">};</span></span>
+      </div>
+      <!-- Línea 8 -->
+      <div class="code-line" data-section="cierre-desastre">
+        <span class="line-number">8</span>
+        <span class="line-content"><span class="cm">// ¡TAMAÑO TOTAL = 32 BYTES! (16B útiles + 16B de relleno muerto = 50% desperdiciado)</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAPA DE MEMORIA FÍSICA A 32 BYTES (2 PALABRAS DE 16 BYTES) -->
+  <div class="memory-map-card">
+    <div class="memory-header">
+      <div class="memory-title">
+        <span>🗺️ Mapa Físico de Memoria en la GPU (32 Bytes Totales / 2 Bloques de 128 bits)</span>
+      </div>
+      <div class="memory-stats" id="memory-badge">32 Bytes Totales • 16 Bytes Padding (50% Vacío)</div>
+    </div>
+
+    <!-- PALABRA 0: BYTES 0 AL 15 -->
+    <div class="row-title">
+      <span>Palabra 0 (Bytes 0 a 15) • Alineamiento frontera 0</span>
+      <span style="color: var(--danger);">4B Datos + 12B Hueco Invisible</span>
+    </div>
+    <div class="memory-grid" id="grid-word-0">
+      <!-- Bytes 0..3: velocidad -->
+      <div class="byte-box byte-vel" data-field="velocidad"><div class="byte-idx">0</div><div class="byte-tag">vel</div></div>
+      <div class="byte-box byte-vel" data-field="velocidad"><div class="byte-idx">1</div><div class="byte-tag">vel</div></div>
+      <div class="byte-box byte-vel" data-field="velocidad"><div class="byte-idx">2</div><div class="byte-tag">vel</div></div>
+      <div class="byte-box byte-vel" data-field="velocidad"><div class="byte-idx">3</div><div class="byte-tag">vel</div></div>
+      <!-- Bytes 4..15: Padding forzado por vec3 -->
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">4</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">5</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">6</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">7</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">8</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">9</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">10</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">11</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">12</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">13</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">14</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="pad-salto"><div class="byte-idx">15</div><div class="byte-tag">PAD</div></div>
+    </div>
+
+    <!-- PALABRA 1: BYTES 16 AL 31 -->
+    <div class="row-title">
+      <span>Palabra 1 (Bytes 16 a 31) • Alineamiento frontera 16</span>
+      <span style="color: var(--accent);">12B Datos + 4B Padding Cierre</span>
+    </div>
+    <div class="memory-grid" id="grid-word-1">
+      <!-- Bytes 16..27: posicion.xyz -->
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">16</div><div class="byte-tag">pos.x</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">17</div><div class="byte-tag">pos.x</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">18</div><div class="byte-tag">pos.x</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">19</div><div class="byte-tag">pos.x</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">20</div><div class="byte-tag">pos.y</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">21</div><div class="byte-tag">pos.y</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">22</div><div class="byte-tag">pos.y</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">23</div><div class="byte-tag">pos.y</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">24</div><div class="byte-tag">pos.z</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">25</div><div class="byte-tag">pos.z</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">26</div><div class="byte-tag">pos.z</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">27</div><div class="byte-tag">pos.z</div></div>
+      <!-- Bytes 28..31: Padding de cierre -->
+      <div class="byte-box byte-pad" data-field="cierre-desastre"><div class="byte-idx">28</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="cierre-desastre"><div class="byte-idx">29</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="cierre-desastre"><div class="byte-idx">30</div><div class="byte-tag">PAD</div></div>
+      <div class="byte-box byte-pad" data-field="cierre-desastre"><div class="byte-idx">31</div><div class="byte-tag">PAD</div></div>
+    </div>
+
+    <div class="legend-row">
+      <div class="legend-item">
+        <div class="legend-color" style="background: #059669;"></div>
+        <span><strong>velocidad (f32):</strong> Bytes 0..3 (4B datos)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #0284c7;"></div>
+        <span><strong>posicion (vec3&lt;f32&gt;):</strong> Bytes 16..27 (12B datos)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #dc2626;"></div>
+        <span><strong>Padding Muerto (Relleno):</strong> Bytes 4..15 y 28..31 (<strong>¡16 Bytes Desperdiciados!</strong>)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARJETAS DE RESUMEN TÉCNICO -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">Tamaño en VRAM</div>
+      <div class="value" style="color: var(--danger);">32 Bytes</div>
+      <div class="desc">¡Se duplicó frente a los 16B del Caso 1!</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Datos Útiles</div>
+      <div class="value">16 Bytes</div>
+      <div class="desc">4B (velocidad) + 12B (posicion)</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Espacio Desperdiciado</div>
+      <div class="value" style="color: var(--danger);">50% (16B)</div>
+      <div class="desc">12B salto inicial + 4B cierre final</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Desfase en JavaScript</div>
+      <div class="value" style="color: #fbbf24;">Fatal</div>
+      <div class="desc">P₂.pos.x invade memoria de P₁</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const explanations = {
+    'all': 'Ahora observemos con mucho cuidado el segundo caso, donde tenemos exactamente los mismos datos, pero hemos invertido el orden de las líneas, declarando primero la velocidad y después la posición. El resultado es devastador: la estructura pasa de 16 a 32 bytes con un 50% de memoria desperdiciada.',
+    'velocidad': 'La velocidad se coloca en el byte cero y ocupa hasta el byte tres.',
+    'pad-salto': 'El siguiente campo es la posición, que es un vec3 y exige empezar en una frontera de dieciséis bytes. El byte cuatro no es divisible por dieciséis, ni tampoco el cinco ni el diez. La primera dirección legal disponible es el byte dieciséis. Por lo tanto, el compilador introduce de forma silenciosa doce bytes de relleno vacío entre el byte cuatro y el quince.',
+    'posicion': 'A continuación se coloca la posición, ocupando desde el byte dieciséis hasta el veintisiete.',
+    'cierre-desastre': 'La estructura acumula veintiocho bytes, pero como su alineamiento es de dieciséis, el tamaño debe redondearse al siguiente múltiplo, que es treinta y dos, agregando otros cuatro bytes de relleno final. El resultado es devastador: la estructura ha pasado de ocupar dieciséis bytes a ocupar treinta y dos bytes únicamente por cambiar de orden dos líneas de código. La mitad de la memoria transferida es espacio vacío.'
+  };
+
+  function setSpotlight(section, buttonEl) {
+    // 1. Actualizar estado de los botones
+    if (buttonEl) {
+      document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+      buttonEl.classList.add('active');
+    }
+
+    // 2. Actualizar banner explicativo
+    const banner = document.getElementById('explanation-text');
+    banner.innerHTML = explanations[section] || explanations['all'];
+
+    // 3. Spotlight en las líneas de código
+    const lines = document.querySelectorAll('.code-line');
+    lines.forEach(line => {
+      const lineSection = line.getAttribute('data-section');
+      if (section === 'all') {
+        line.classList.remove('spotlight', 'spotlight-accent', 'dimmed');
+      } else if (lineSection === section) {
+        if (section === 'posicion') {
+          line.classList.add('spotlight-accent');
+        } else {
+          line.classList.add('spotlight');
+        }
+        line.classList.remove('dimmed');
+      } else {
+        line.classList.remove('spotlight', 'spotlight-accent');
+        line.classList.add('dimmed');
+      }
+    });
+
+    // 4. Spotlight en el mapa de memoria
+    const byteBoxes = document.querySelectorAll('.byte-box');
+    byteBoxes.forEach(box => {
+      const field = box.getAttribute('data-field');
+      box.classList.remove('highlight');
+      if (section === 'all') {
+        // En vista general no añadimos resplandor extra
+      } else if (section === 'velocidad' && field === 'velocidad') {
+        box.classList.add('highlight');
+      } else if (section === 'pad-salto' && field === 'pad-salto') {
+        box.classList.add('highlight');
+      } else if (section === 'posicion' && field === 'posicion') {
+        box.classList.add('highlight');
+      } else if (section === 'cierre-desastre' && (field === 'cierre-desastre' || field === 'pad-salto')) {
+        box.classList.add('highlight');
+      }
+    });
+  }
+
+  // Atajos de teclado para facilitar la presentación durante la grabación de vídeo
+  document.addEventListener('keydown', (e) => {
+    const buttons = document.querySelectorAll('.btn');
+    if (e.key === '1') buttons[0]?.click();
+    if (e.key === '2') buttons[1]?.click();
+    if (e.key === '3') buttons[2]?.click();
+    if (e.key === '4') buttons[3]?.click();
+    if (e.key === '5') buttons[4]?.click();
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      const activeIdx = Array.from(buttons).findIndex(b => b.classList.contains('active'));
+      const nextIdx = (activeIdx + 1) % buttons.length;
+      buttons[nextIdx].click();
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      const activeIdx = Array.from(buttons).findIndex(b => b.classList.contains('active'));
+      const prevIdx = (activeIdx - 1 + buttons.length) % buttons.length;
+      buttons[prevIdx].click();
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,68 @@
+GUION NARRATIVO: APARTADO 4 DEL CAPÍTULO 5
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 5: El Pipeline Gráfico Completo, Rasterización y la Síntesis Compute-to-Render en WebGPU
+Apartado 4: La Etapa de Fragmentos (Fragment Shader): Muestreo Continuo, Materiales e Iluminación Física
+Voz en Off / Locución de Vídeo con Indicaciones Visuales
+
+================================================================================
+
+[00:00:00]
+[En pantalla: Título cinematográfico del apartado: "Apartado 4: La Etapa de Fragmentos (Fragment Shader): Muestreo Continuo, Materiales e Iluminación Física". De fondo, animación 3D fotorrealista: una esfera metálica rugosa suspendida en el vacío es bañada por un haz de luz puntual; los reflejos especulares de microfacetas y la penumbra física reaccionan dinámicamente en tiempo real en WebGPU]
+
+Si el Vertex Shader es el arquitecto del espacio tridimensional —encargado de ubicar vértices, calcular matrices y proyectar volúmenes—, el Fragment Shader es el auténtico físico de la materia y de la luz.
+
+Una vez que el rasterizador de función fija ha evaluado las funciones de arista y ha interpolado los atributos baricéntricos con corrección de perspectiva, la GPU activa la última fase programable de la línea de montaje gráfico. La misión del Fragment Shader consiste en resolver la radiometría de cada fragmento candidato: muestrear mapas de textura continuos en silicio, evaluar la orientación microscópica de las superficies y simular cómo interactúan los fotones incidentes con la materia para emitir el color final hacia la pantalla.
+
+[00:01:05]
+[En pantalla: Esquema de la interfaz en silicio de una invocación de @fragment. A la izquierda se destacan las entradas interpoladas por hardware: @builtin(position) con coordenadas de ventana (x, y, z, 1/w) y el booleano @builtin(front_facing). A la derecha se muestra la salida radiométrica @location(0) enviada a los Render Output Units (ROPs)]
+
+En WGSL, el Fragment Shader se declara con la anotación arroba fragment. A diferencia de un Compute Shader, que procesa búferes de memoria planos, aquí el compilador y el silicio nos entregan una interfaz fuertemente tipada.
+
+Recibimos variables integradas fundamentales de hardware: arroba builtin position nos entrega las coordenadas de pantalla del píxel en equis y ye, junto con la profundidad normalizada zeta y el inverso exacto de la perspectiva uno dividido por uve doble. Asimismo, el booleano arroba builtin front facing nos revela al instante si el fragmento pertenece a la cara frontal o trasera de la malla, permitiendo corregir las normales en geometrías de doble cara como hojas o telas sin gastar un solo triángulo adicional.
+
+[00:02:15]
+[En pantalla: Animación 3D del flujo de muestreo de texturas. Se muestra la llamada WGSL textureSample(tex, samp, uv). La cámara viaja hacia el interior del chip de la GPU, ilustrando la Unidad de Filtrado de Texturas (TFU) leyendo 8 muestras de memoria en curva de Morton a través de dos niveles MIP y devolviendo el texel filtrado por hardware]
+
+El primer gran desafío del fragmento es el color de superficie. En el código WGSL, invocamos la función textureSample. Pero bajo esa inocente instrucción no se ejecuta ningún bucle de software: el cálculo se delega íntegramente a las Unidades de Filtrado de Texturas del silicio, las TFUs.
+
+Al muestrear en el dominio continuo de cero punto cero a uno punto cero, el hardware calcula en milmillonésimas de segundo la huella del píxel en la textura. Si el objeto se aleja hacia el horizonte, un único píxel cubre decenas de téxeles. Para evitar el parpadeo y el aliasing destructivo, las TFUs evalúan la tasa de cambio de las coordenadas y seleccionan automáticamente el nivel de detalle de textura, promediando los dos niveles más cercanos mediante filtrado trilineal acelerado por transistores dedicados.
+
+[00:03:30]
+[En pantalla: Animación en primer plano de un "Quad de Fragmentos" (2x2 píxeles) ejecutándose en un Warp. Se ilustra cómo las instrucciones dpdx y dpdy intercambian registros entre hilos contiguos sin tocar la memoria global. Se muestra el cálculo procedural de normales: normalize(cross(dpdx(P), dpdy(P))) y el alisado con fwidth]
+
+¿Cómo sabe el Fragment Shader a qué velocidad cambian las coordenadas si cada píxel se procesa en un hilo independiente? Aquí descubrimos uno de los secretos mejor guardados del silicio gráfico: las Derivadas Parciales de Pantalla.
+
+Las GPUs jamás ejecutan fragmentos aislados; los despachan en quads rígidos de dos por dos píxeles en estricto sincronismo. Mediante las instrucciones intrínsecas de pe de equis y de pe de ye, el chip realiza una simple resta de registros entre hilos vecinos del mismo quad.
+
+Esto nos otorga poderes extraordinarios: podemos calcular la normal física perfecta de una superficie poligonal en una sola línea de código sin cargar atributos de normales de vértice, o eliminar el aliasing de patrones procedurales usando efe width. Pero exige una disciplina absoluta: las derivadas exigen un flujo de control uniforme. Si colocáis un textureSample dentro de una bifurcación condicional divergente, los registros vecinos se vuelven inválidos y el compilador detendrá la ejecución para protegeros de artefactos visuales.
+
+[00:04:55]
+[En pantalla: Demostración visual del modelo Blinn-Phong sobre un objeto 3D. Se descomponen las tres capas de iluminación: Luz Ambiental constante, Luz Difusa de Lambert modulada por N punto L, y el destello especular de Blinn. Se muestra el vector intermedio Halfway H = normalize(L + V) comparado con el reflejo de Phong]
+
+Con las normales y texturas listas, abordamos el modelado de la luz. Durante décadas, la industria confió en el modelo de Blinn-Phong, formulado por Jim Blinn en mil novecientos setenta y siete.
+
+Blinn-Phong descompone la luz en tres términos: una base ambiental que simula el rebote indirecto, una componente difusa lambertiana modulada por el producto escalar entre la normal y la dirección de la luz, y una componente especular para los brillos intensos. La genialidad de Jim Blinn consistió en sustituir el costoso vector de reflexión de Phong por el semivector intermedio H, obtenido al normalizar la suma del vector de la luz y el vector de la cámara. Al medir la coincidencia entre la normal y este semivector, el cálculo es mucho más rápido en silicio y modela de forma más limpia el comportamiento de los brillos en ángulos rasantes.
+
+[00:06:20]
+[En pantalla: Transición estética del modelo Blinn-Phong hacia el Renderizado Basado en la Física (PBR). Comparativa lado a lado: plástico brillante con reflejo irreal frente a materiales PBR fotorrealistas (cobre oxidado, oro pulido, cuero rugoso). Aparecen los tres axiomas: Conservación de Energía, Teoría de Microfacetas y Efecto Fresnel]
+
+Sin embargo, los modelos empíricos como Blinn-Phong tienen un talón de Aquiles: violan las leyes de la termodinámica. Al sumar luz difusa y especular sin restricciones, pueden rebotar más energía de la que reciben, y son incapaces de distinguir de forma creíble entre un plástico y un metal.
+
+Por eso, el estándar moderno en WebGPU es el Renderizado Basado en la Física, o PBR. El PBR descansa sobre tres pilares inquebrantables:
+Primero, la Conservación de la Energía: la suma de luz reflejada y refractada nunca puede superar a la luz entrante.
+Segundo, la Teoría de Microfacetas: las superficies no son lisas, sino paisajes microscópicos de diminutos espejos cuya orientación estadística define la rugosidad del material.
+Y tercero, el Efecto Fresnel: a ángulos rasantes de noventa grados, absolutamente todos los materiales del universo se convierten en espejos perfectos.
+
+[00:07:45]
+[En pantalla: Desglose matemático y visual de la BRDF de Cook-Torrance. Aparecen los tres términos: D (NDF de GGX/Trowbridge-Reitz), F (Ecuación de Fresnel-Schlick) y G (Enmascaramiento geométrico de Smith). A continuación se muestra el código WGSL completo funcionando en tiempo real con mapeo tonal de Reinhard y corrección gamma]
+
+En el corazón matemático del PBR late la formulación de Cook-Torrance. La luz especular se calcula mediante el cociente entre tres factores: la distribución D de GGX, que modela cuántas microfacetas apuntan hacia la cámara; el término F de Fresnel-Schlick, que distingue cómo los dieléctricos reflejan apenas un cuatro por ciento de frente mientras los metales tiñen el reflejo con su propio albedo; y el factor geométrico G de Smith, que calcula la auto-oclusión entre micro-valles.
+
+En nuestro código WGSL implementamos el flujo estándar metálico-rugoso: regulamos con precisión matemática la absorción de los conductores, aplicamos mapeo tonal de Reinhard para comprimir el rango dinámico y corregimos la curva gamma para emitir colores cromáticamente exactos en el monitor del usuario.
+
+[00:09:15]
+[En pantalla: Los fragmentos calculados viajan a través de los buses hacia las Render Output Units (ROPs). Se ilumina el Z-Buffer y los mezcladores de color. Aparece el rótulo del próximo apartado: "Apartado 5: Pases de Render, Z-Buffer y Operaciones de Mezcla"]
+
+Con el color y la profundidad física calculados en cada fragmento, el shader culmina su tarea. Los datos viajan ahora a los circuitos de salida de la GPU, los ROPs, donde se librará la batalla final de la visibilidad y la transparencia.
+
+En el Apartado 5, descubriremos cómo orquestar los Pases de Render en WebGPU, cómo evitar el temido conflicto del Z-fighting, cómo opera el descarte ultrarrápido Early Zeta en silicio y cómo dominar las matemáticas de la mezcla de colores con Alpha Blending.

@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patrón Compute-to-Render en Silicio — VS Code Visualizer</title>
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --card-bg: #131c2e;
+      --card-border: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.3);
+      --js-yellow: #facc15;
+      --wgsl-cyan: #22d3ee;
+      --green-highlight: #4ade80;
+      --purple-highlight: #c084fc;
+      --code-bg: #1e1e1e;
+      --editor-border: #2d3748;
+
+      /* Tokens de Sintaxis VS Code Dark+ */
+      --syn-keyword: #569cd6;    /* const, let, var, fn, struct */
+      --syn-control: #c586c0;    /* return, if */
+      --syn-type: #4ec9b0;       /* GPUBufferUsage, vec3, f32 */
+      --syn-var: #9cdcfe;        /* particleBuffer, computePass */
+      --syn-prop: #9cdcfe;       /* usage, size, label, position */
+      --syn-fn: #dcdcaa;         /* createBuffer, dispatchWorkgroups, submit */
+      --syn-num: #b5cea8;        /* 512, 64, 48, 0 */
+      --syn-str: #ce9178;        /* 'Storage-to-Vertex' */
+      --syn-comment: #6a9955;    /* // comentarios */
+      --syn-decorator: #dcdcaa;  /* @group, @binding, @compute */
+      --syn-op: #d4d4d4;         /* : , = , | , { } */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "SF Pro Display", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 1.5rem;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1120px;
+    }
+
+    /* Cabecera / Badge */
+    .header-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: var(--accent);
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.35rem;
+    }
+
+    .header-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+      line-height: 1.5;
+    }
+
+    /* Barra Superior de Control */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      background: rgba(19, 28, 46, 0.85);
+      backdrop-filter: blur(12px);
+      padding: 0.85rem 1.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+    }
+
+    .toolbar-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #1e293b;
+      color: var(--text-muted);
+      border: 1px solid #334155;
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .btn:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    .btn.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+    }
+
+    .btn-copy {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      margin-left: auto;
+    }
+
+    .btn-copy:hover {
+      background: rgba(34, 197, 94, 0.3);
+      color: #ffffff;
+    }
+
+    /* Banner Explicativo Dinámico */
+    .banner {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-left: 5px solid var(--accent);
+      padding: 1rem 1.35rem;
+      border-radius: 10px;
+      margin-bottom: 1.25rem;
+      font-size: 0.93rem;
+      line-height: 1.6;
+      color: #f1f5f9;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .banner-highlight {
+      color: #38bdf8;
+      font-weight: 700;
+    }
+
+    /* Ventana VS Code */
+    .vscode-window {
+      background: var(--code-bg);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--editor-border);
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    /* Barra de Título (macOS Chrome) */
+    .vscode-titlebar {
+      background: #323233;
+      padding: 0.65rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #252526;
+    }
+
+    .mac-dots {
+      display: flex;
+      gap: 7px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot.red { background: #ff5f56; }
+    .dot.yellow { background: #ffbd2e; }
+    .dot.green { background: #27c93f; }
+
+    .window-title {
+      font-size: 0.78rem;
+      color: #a0a0a0;
+      font-family: monospace;
+    }
+
+    /* Pestañas de Archivo */
+    .vscode-tabs {
+      background: #252526;
+      display: flex;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .tab {
+      padding: 0.6rem 1.25rem;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #969696;
+      background: #2d2d2d;
+      border-right: 1px solid #1e1e1e;
+      cursor: pointer;
+      user-select: none;
+      font-family: monospace;
+    }
+
+    .tab.active {
+      background: var(--code-bg);
+      color: #ffffff;
+      border-top: 2px solid var(--accent);
+    }
+
+    .tab-icon-js { color: #facc15; font-weight: bold; font-size: 0.88rem; }
+    .tab-icon-wgsl { color: #22d3ee; font-weight: bold; font-size: 0.88rem; }
+
+    /* Migas de Pan (Breadcrumbs) */
+    .vscode-breadcrumbs {
+      background: var(--code-bg);
+      padding: 0.4rem 1.25rem;
+      font-size: 0.75rem;
+      color: #858585;
+      font-family: monospace;
+      border-bottom: 1px solid #252526;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Cuerpo del Editor */
+    .editor-body {
+      padding: 1.2rem 0;
+      overflow-x: auto;
+    }
+
+    .code-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: "JetBrains Mono", "Fira Code", Consolas, Menlo, Monaco, monospace;
+      font-size: 0.94rem;
+      line-height: 1.65;
+    }
+
+    .code-line {
+      transition: all 0.25s ease;
+    }
+
+    .code-line:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .line-num {
+      width: 52px;
+      text-align: right;
+      padding-right: 1.25rem;
+      color: #6e7681;
+      user-select: none;
+      font-size: 0.82rem;
+      vertical-align: top;
+    }
+
+    .line-content {
+      padding-left: 0.5rem;
+      white-space: pre;
+    }
+
+    /* Clases de Spotlight */
+    .code-line.dimmed {
+      opacity: 0.22;
+      filter: blur(0.4px);
+    }
+
+    .code-line.highlight {
+      background: rgba(56, 189, 248, 0.13) !important;
+      position: relative;
+    }
+
+    .code-line.highlight::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+    }
+
+    .code-line.highlight-orange {
+      background: rgba(251, 146, 60, 0.13) !important;
+      position: relative;
+    }
+
+    .code-line.highlight-orange::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #fb923c;
+      box-shadow: 0 0 12px #fb923c;
+    }
+
+    .code-line.highlight-green {
+      background: rgba(74, 222, 128, 0.13) !important;
+      position: relative;
+    }
+
+    .code-line.highlight-green::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #4ade80;
+      box-shadow: 0 0 12px #4ade80;
+    }
+
+    .code-line.highlight-purple {
+      background: rgba(192, 132, 252, 0.13) !important;
+      position: relative;
+    }
+
+    .code-line.highlight-purple::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: #c084fc;
+      box-shadow: 0 0 12px #c084fc;
+    }
+
+    /* Tokens Sintácticos */
+    .kwd { color: var(--syn-keyword); }
+    .ctl { color: var(--syn-control); }
+    .typ { color: var(--syn-type); }
+    .var { color: var(--syn-var); }
+    .prop { color: var(--syn-prop); }
+    .fn { color: var(--syn-fn); }
+    .num { color: var(--syn-num); }
+    .str { color: var(--syn-str); }
+    .cmt { color: var(--syn-comment); font-style: italic; }
+    .dec { color: var(--syn-decorator); }
+    .op { color: var(--syn-op); }
+
+    .tag-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+
+    .tag-blue { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+    .tag-green { background: rgba(74, 222, 128, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.4); }
+    .tag-orange { background: rgba(251, 146, 60, 0.2); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.4); }
+    .tag-purple { background: rgba(192, 132, 252, 0.2); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.4); }
+
+    /* Barra de Estado Inferior */
+    .vscode-statusbar {
+      background: #007acc;
+      color: #ffffff;
+      padding: 0.3rem 1rem;
+      font-size: 0.74rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    .statusbar-left, .statusbar-right {
+      display: flex;
+      gap: 1.25rem;
+    }
+
+    /* Diapositiva Preview Card */
+    .slide-badge-info {
+      margin-top: 1.5rem;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px dashed #334155;
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- CABECERA DE LA PRESENTACIÓN -->
+  <div class="header-badge">
+    <div class="badge">WebGPU Silicon Pipeline • Apartado 8</div>
+    <span style="color: var(--text-muted); font-size: 0.85rem;">BrowserOS 3D Universe</span>
+  </div>
+  <h1 class="header-title">Arquitectura Compute-to-Render sin Ida y Vuelta a CPU</h1>
+  <p class="header-desc">
+    Visualización del contrato de silicio: un único búfer en VRAM compartido entre el Compute Shader (escritura masiva paralela) y el Vertex Shader (lectura de vértices) dentro del mismo codificador de comandos.
+  </p>
+
+  <!-- BARRA DE HERRAMIENTAS INTERACTIVA -->
+  <div class="toolbar">
+    <div class="toolbar-label">
+      <span>Controles de Foco (Spotlight):</span>
+    </div>
+    <div class="btn-group">
+      <button class="btn active" onclick="setSpotlight('all', this)">Flujo Completo</button>
+      <button class="btn" onclick="setSpotlight('fase1', this)">1. Búfer Híbrido (STORAGE | VERTEX)</button>
+      <button class="btn" onclick="setSpotlight('fase2', this)">2. Compute Pass (512 × 64 hilos)</button>
+      <button class="btn" onclick="setSpotlight('fase3', this)">3. Render Pass (Zero Copy)</button>
+      <button class="btn" onclick="setSpotlight('fase4', this)">4. Disparo CPU (submit)</button>
+      <button class="btn btn-copy" onclick="copyCodeSnippet()">📋 Copiar Código Diapositiva</button>
+    </div>
+  </div>
+
+  <!-- BANNER EXPLICATIVO SINCRONIZADO -->
+  <div class="banner" id="banner-text">
+    <span class="banner-highlight">Visión Integral del Ciclo en Silicio:</span> El CPU se limita a coordinar la sumisión atómica. Toda la física (integración numérica, aceleración y actualización de posición) y la renderización ocurren íntegramente en la memoria física de vídeo (VRAM) sin pasar jamás por el bus PCIe.
+  </div>
+
+  <!-- VENTANA ESTILO VS CODE -->
+  <div class="vscode-window">
+    
+    <!-- Barra de Título macOS -->
+    <div class="vscode-titlebar">
+      <div class="mac-dots">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+      </div>
+      <div class="window-title" id="file-title">compute_to_render_host.js — WebGPU Silicon Pipeline</div>
+      <div></div>
+    </div>
+
+    <!-- Pestañas de Navegación -->
+    <div class="vscode-tabs">
+      <div class="tab active" id="tab-js" onclick="showFile('js')">
+        <span class="tab-icon-js">JS</span> compute_to_render_host.js
+      </div>
+      <div class="tab" id="tab-wgsl" onclick="showFile('wgsl')">
+        <span class="tab-icon-wgsl">WGSL</span> compute_particles.wgsl
+      </div>
+    </div>
+
+    <!-- Migas de Pan (Breadcrumbs) -->
+    <div class="vscode-breadcrumbs" id="breadcrumbs">
+      src &gt; pipeline &gt; <span>compute_to_render_host.js</span> &gt; <span>renderFrame()</span>
+    </div>
+
+    <!-- Contenido del Editor: JAVASCRIPT (Orquestación Host) -->
+    <div class="editor-body" id="editor-js">
+      <table class="code-table">
+        <tbody>
+          <!-- FASE 1: BÚFER UNIFICADO -->
+          <tr class="code-line sec-fase1" id="l1"><td class="line-num">1</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line sec-fase1" id="l2"><td class="line-num">2</td><td class="line-content"><span class="cmt">// 1. BÚFER UNIFICADO EN VRAM: USO COMBINADO STORAGE | VERTEX</span></td></tr>
+          <tr class="code-line sec-fase1" id="l3"><td class="line-num">3</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line sec-fase1" id="l4"><td class="line-num">4</td><td class="line-content"><span class="kwd">const</span> <span class="var">particleBuffer</span> <span class="op">=</span> <span class="var">device</span><span class="op">.</span><span class="fn">createBuffer</span><span class="op">({</span></td></tr>
+          <tr class="code-line sec-fase1" id="l5"><td class="line-num">5</td><td class="line-content">  <span class="prop">label</span><span class="op">:</span> <span class="str">"Búfer Unificado Partículas (Compute-to-Render)"</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-fase1" id="l6"><td class="line-num">6</td><td class="line-content">  <span class="prop">size</span><span class="op">:</span> <span class="var">PARTICLE_COUNT</span> <span class="op">*</span> <span class="num">48</span><span class="op">,</span> <span class="cmt">// 48 bytes por partícula (pos, vel, color)</span></td></tr>
+          <tr class="code-line sec-fase1" id="l7"><td class="line-num">7</td><td class="line-content">  <span class="prop">usage</span><span class="op">:</span> <span class="typ">GPUBufferUsage</span><span class="op">.</span><span class="prop">STORAGE</span> <span class="op">|</span> <span class="typ">GPUBufferUsage</span><span class="op">.</span><span class="prop">VERTEX</span> <span class="op">|</span> <span class="typ">GPUBufferUsage</span><span class="op">.</span><span class="prop">COPY_DST</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-fase1" id="l8"><td class="line-num">8</td><td class="line-content"><span class="op">});</span></td></tr>
+          <tr class="code-line" id="l9"><td class="line-num">9</td><td class="line-content"></td></tr>
+
+          <!-- ENCODING INICIO -->
+          <tr class="code-line" id="l10"><td class="line-num">10</td><td class="line-content"><span class="kwd">const</span> <span class="var">commandEncoder</span> <span class="op">=</span> <span class="var">device</span><span class="op">.</span><span class="fn">createCommandEncoder</span><span class="op">({</span> <span class="prop">label</span><span class="op">:</span> <span class="str">"FrameEncoder"</span> <span class="op">});</span></td></tr>
+          <tr class="code-line" id="l11"><td class="line-num">11</td><td class="line-content"></td></tr>
+
+          <!-- FASE 2: COMPUTE PASS -->
+          <tr class="code-line sec-fase2" id="l12"><td class="line-num">12</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line sec-fase2" id="l13"><td class="line-num">13</td><td class="line-content"><span class="cmt">// 2. PASE A: COMPUTE SHADER DISPARA 512 GRUPOS × 64 HILOS = 32.768 PARTÍCULAS</span></td></tr>
+          <tr class="code-line sec-fase2" id="l14"><td class="line-num">14</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line sec-fase2" id="l15"><td class="line-num">15</td><td class="line-content"><span class="kwd">const</span> <span class="var">computePass</span> <span class="op">=</span> <span class="var">commandEncoder</span><span class="op">.</span><span class="fn">beginComputePass</span><span class="op">({</span> <span class="prop">label</span><span class="op">:</span> <span class="str">"ComputeSimulationPass"</span> <span class="op">});</span></td></tr>
+          <tr class="code-line sec-fase2" id="l16"><td class="line-num">16</td><td class="line-content"><span class="var">computePass</span><span class="op">.</span><span class="fn">setPipeline</span><span class="op">(</span><span class="var">computePipeline</span><span class="op">);</span></td></tr>
+          <tr class="code-line sec-fase2" id="l17"><td class="line-num">17</td><td class="line-content"><span class="var">computePass</span><span class="op">.</span><span class="fn">setBindGroup</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="var">computeBindGroup</span><span class="op">);</span> <span class="cmt">// Búfer enlazado como Storage read_write</span></td></tr>
+          <tr class="code-line sec-fase2" id="l18"><td class="line-num">18</td><td class="line-content"><span class="var">computePass</span><span class="op">.</span><span class="fn">dispatchWorkgroups</span><span class="op">(</span><span class="num">512</span><span class="op">);</span> <span class="cmt">// 512 grupos × @workgroup_size(64) = 32.768 hilos</span></td></tr>
+          <tr class="code-line sec-fase2" id="l19"><td class="line-num">19</td><td class="line-content"><span class="var">computePass</span><span class="op">.</span><span class="fn">end</span><span class="op">();</span></td></tr>
+          <tr class="code-line" id="l20"><td class="line-num">20</td><td class="line-content"></td></tr>
+
+          <!-- FASE 3: RENDER PASS -->
+          <tr class="code-line sec-fase3" id="l21"><td class="line-num">21</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line sec-fase3" id="l22"><td class="line-num">22</td><td class="line-content"><span class="cmt">// 3. PASE B: EN EL MISMO CODIFICADOR, EL VERTEX SHADER CONSUME ESE IDÉNTICO BÚFER</span></td></tr>
+          <tr class="code-line sec-fase3" id="l23"><td class="line-num">23</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line sec-fase3" id="l24"><td class="line-num">24</td><td class="line-content"><span class="kwd">const</span> <span class="var">renderPass</span> <span class="op">=</span> <span class="var">commandEncoder</span><span class="op">.</span><span class="fn">beginRenderPass</span><span class="op">(</span><span class="var">renderPassDescriptor</span><span class="op">);</span></td></tr>
+          <tr class="code-line sec-fase3" id="l25"><td class="line-num">25</td><td class="line-content"><span class="var">renderPass</span><span class="op">.</span><span class="fn">setPipeline</span><span class="op">(</span><span class="var">particleRenderPipeline</span><span class="op">);</span></td></tr>
+          <tr class="code-line sec-fase3" id="l26"><td class="line-num">26</td><td class="line-content"><span class="var">renderPass</span><span class="op">.</span><span class="fn">setBindGroup</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="var">uniformsBindGroup</span><span class="op">);</span></td></tr>
+          <tr class="code-line sec-fase3" id="l27"><td class="line-num">27</td><td class="line-content"><span class="cmt">// Consumo directo como Vertex Buffer en VRAM (Zero-Copy entre etapas de silicio)</span></td></tr>
+          <tr class="code-line sec-fase3" id="l28"><td class="line-num">28</td><td class="line-content"><span class="var">renderPass</span><span class="op">.</span><span class="fn">setVertexBuffer</span><span class="op">(</span><span class="num">0</span><span class="op">,</span> <span class="var">particleBuffer</span><span class="op">);</span></td></tr>
+          <tr class="code-line sec-fase3" id="l29"><td class="line-num">29</td><td class="line-content"><span class="var">renderPass</span><span class="op">.</span><span class="fn">draw</span><span class="op">(</span><span class="num">6</span><span class="op">,</span> <span class="var">PARTICLE_COUNT</span><span class="op">,</span> <span class="num">0</span><span class="op">,</span> <span class="num">0</span><span class="op">);</span> <span class="cmt">// 6 vértices por billboard quad × 32.768 instancias</span></td></tr>
+          <tr class="code-line sec-fase3" id="l30"><td class="line-num">30</td><td class="line-content"><span class="var">renderPass</span><span class="op">.</span><span class="fn">end</span><span class="op">();</span></td></tr>
+          <tr class="code-line" id="l31"><td class="line-num">31</td><td class="line-content"></td></tr>
+
+          <!-- FASE 4: DISPARO ATÓMICO CPU -->
+          <tr class="code-line sec-fase4" id="l32"><td class="line-num">32</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line sec-fase4" id="l33"><td class="line-num">33</td><td class="line-content"><span class="cmt">// 4. EL PROCESADOR CENTRAL (CPU) SOLO EMITE LA ORDEN DE DISPARO</span></td></tr>
+          <tr class="code-line sec-fase4" id="l34"><td class="line-num">34</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line sec-fase4" id="l35"><td class="line-num">35</td><td class="line-content"><span class="kwd">const</span> <span class="var">commandBuffer</span> <span class="op">=</span> <span class="var">commandEncoder</span><span class="op">.</span><span class="fn">finish</span><span class="op">();</span></td></tr>
+          <tr class="code-line sec-fase4" id="l36"><td class="line-num">36</td><td class="line-content"><span class="cmt">// Cero partículas calculadas por el CPU: disparo atómico hacia la cola de la GPU</span></td></tr>
+          <tr class="code-line sec-fase4" id="l37"><td class="line-num">37</td><td class="line-content"><span class="var">device</span><span class="op">.</span><span class="prop">queue</span><span class="op">.</span><span class="fn">submit</span><span class="op">([</span><span class="var">commandBuffer</span><span class="op">]);</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Contenido del Editor: WGSL (Compute Kernel) -->
+    <div class="editor-body" id="editor-wgsl" style="display: none;">
+      <table class="code-table">
+        <tbody>
+          <tr class="code-line"><td class="line-num">1</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line"><td class="line-num">2</td><td class="line-content"><span class="cmt">// COMPUTE SHADER: compute_particles.wgsl (Actualización Directa en VRAM)</span></td></tr>
+          <tr class="code-line"><td class="line-num">3</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line"><td class="line-num">4</td><td class="line-content"><span class="kwd">struct</span> <span class="typ">Particle</span> <span class="op">{</span></td></tr>
+          <tr class="code-line"><td class="line-num">5</td><td class="line-content">  <span class="prop">pos</span><span class="op">:</span> <span class="typ">vec3</span><span class="op">&lt;</span><span class="typ">f32</span><span class="op">&gt;,</span> <span class="prop">pad0</span><span class="op">:</span> <span class="typ">f32</span><span class="op">,</span></td></tr>
+          <tr class="code-line"><td class="line-num">6</td><td class="line-content">  <span class="prop">vel</span><span class="op">:</span> <span class="typ">vec3</span><span class="op">&lt;</span><span class="typ">f32</span><span class="op">&gt;,</span> <span class="prop">pad1</span><span class="op">:</span> <span class="typ">f32</span><span class="op">,</span></td></tr>
+          <tr class="code-line"><td class="line-num">7</td><td class="line-content">  <span class="prop">color</span><span class="op">:</span> <span class="typ">vec4</span><span class="op">&lt;</span><span class="typ">f32</span><span class="op">&gt;,</span></td></tr>
+          <tr class="code-line"><td class="line-num">8</td><td class="line-content"><span class="op">};</span></td></tr>
+          <tr class="code-line"><td class="line-num">9</td><td class="line-content"></td></tr>
+          <tr class="code-line sec-fase1"><td class="line-num">10</td><td class="line-content"><span class="cmt">// Enlace de almacenamiento de lectura y escritura (Storage read_write)</span></td></tr>
+          <tr class="code-line sec-fase1"><td class="line-num">11</td><td class="line-content"><span class="dec">@group</span><span class="op">(</span><span class="num">0</span><span class="op">)</span> <span class="dec">@binding</span><span class="op">(</span><span class="num">0</span><span class="op">)</span> <span class="kwd">var</span><span class="op">&lt;</span><span class="kwd">storage</span><span class="op">,</span> <span class="kwd">read_write</span><span class="op">&gt;</span> <span class="var">particles</span><span class="op">:</span> <span class="typ">array</span><span class="op">&lt;</span><span class="typ">Particle</span><span class="op">&gt;;</span></td></tr>
+          <tr class="code-line"><td class="line-num">12</td><td class="line-content"></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">13</td><td class="line-content"><span class="cmt">// 64 hilos por grupo de trabajo (Simetría con los 512 grupos lanzados por el Host)</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">14</td><td class="line-content"><span class="dec">@compute</span> <span class="dec">@workgroup_size</span><span class="op">(</span><span class="num">64</span><span class="op">)</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">15</td><td class="line-content"><span class="kwd">fn</span> <span class="fn">cs_main</span><span class="op">(</span><span class="dec">@builtin</span><span class="op">(</span><span class="var">global_invocation_id</span><span class="op">)</span> <span class="var">id</span><span class="op">:</span> <span class="typ">vec3</span><span class="op">&lt;</span><span class="typ">u32</span><span class="op">&gt;)</span> <span class="op">{</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">16</td><td class="line-content">  <span class="kwd">let</span> <span class="var">idx</span> <span class="op">=</span> <span class="var">id</span><span class="op">.</span><span class="var">x</span><span class="op">;</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">17</td><td class="line-content">  <span class="ctl">if</span> <span class="op">(</span><span class="var">idx</span> <span class="op">&gt;=</span> <span class="fn">arrayLength</span><span class="op">(&amp;</span><span class="var">particles</span><span class="op">))</span> <span class="op">{</span> <span class="ctl">return</span><span class="op">;</span> <span class="op">}</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">18</td><td class="line-content"></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">19</td><td class="line-content">  <span class="kwd">var</span> <span class="var">p</span> <span class="op">=</span> <span class="var">particles</span><span class="op">[</span><span class="var">idx</span><span class="op">];</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">20</td><td class="line-content">  <span class="cmt">// Cálculo orbital y física diferencial</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">21</td><td class="line-content">  <span class="var">p</span><span class="op">.</span><span class="prop">vel</span> <span class="op">=</span> <span class="var">p</span><span class="op">.</span><span class="prop">vel</span> <span class="op">+</span> <span class="var">accel</span> <span class="op">*</span> <span class="var">sim</span><span class="op">.</span><span class="prop">dt</span><span class="op">;</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">22</td><td class="line-content">  <span class="var">p</span><span class="op">.</span><span class="prop">pos</span> <span class="op">=</span> <span class="var">p</span><span class="op">.</span><span class="prop">pos</span> <span class="op">+</span> <span class="var">p</span><span class="op">.</span><span class="prop">vel</span> <span class="op">*</span> <span class="var">sim</span><span class="op">.</span><span class="prop">dt</span><span class="op">;</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">23</td><td class="line-content"></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">24</td><td class="line-content">  <span class="cmt">// ESCRITURA DIRECTA EN VRAM: Sin copia a RAM principal</span></td></tr>
+          <tr class="code-line sec-fase2"><td class="line-num">25</td><td class="line-content">  <span class="var">particles</span><span class="op">[</span><span class="var">idx</span><span class="op">]</span> <span class="op">=</span> <span class="var">p</span><span class="op">;</span></td></tr>
+          <tr class="code-line"><td class="line-num">26</td><td class="line-content"><span class="op">}</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Barra de Estado Inferior -->
+    <div class="vscode-statusbar">
+      <div class="statusbar-left">
+        <span>WebGPU 1.0 Pipeline</span>
+        <span>Zero-Copy VRAM</span>
+        <span>Instancias: 32.768</span>
+      </div>
+      <div class="statusbar-right">
+        <span id="status-lang">JavaScript (Host)</span>
+        <span>UTF-8</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TARJETA INFORMATIVA PARA PRESENTACIÓN -->
+  <div class="slide-badge-info">
+    <div>
+      <strong style="color: #ffffff;">💡 Tip para Diapositivas:</strong> Usa las clases de foco para capturar pantallas o presentar con zoom 16:9 / 4K.
+    </div>
+    <div style="font-family: monospace; font-size: 0.8rem; color: #38bdf8;">
+      GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const banner = document.getElementById('banner-text');
+  const breadcrumbs = document.getElementById('breadcrumbs');
+  const fileTitle = document.getElementById('file-title');
+  const statusLang = document.getElementById('status-lang');
+
+  const explanations = {
+    'all': '<span class="banner-highlight">Visión Integral del Ciclo en Silicio:</span> El CPU se limita a coordinar la sumisión atómica. Toda la física (integración numérica, aceleración y actualización de posición) y la renderización ocurren íntegramente en la memoria física de vídeo (VRAM) sin pasar jamás por el bus PCIe.',
+    'fase1': '<span class="banner-highlight">Oración 1 — Búfer Híbrido en VRAM:</span> <em>"Aquí, en cambio, hemos configurado un único búfer en memoria de vídeo con los identificadores combinados GPU Buffer Usage punto STORAGE y punto VERTEX."</em> Se reserva un único segmento de VRAM capaz de actuar simultáneamente como almacenamiento de escritura del Compute Shader y como flujo de vértices del Render Pipeline.',
+    'fase2': '<span class="banner-highlight">Oración 2 — Disparo Compute y Escritura VRAM:</span> <em>"En cada fotograma, el Compute Shader ejecuta quinientos doce grupos de trabajo de sesenta y cuatro hilos cada uno; cada hilo actualiza la velocidad y posición de una partícula y la escribe directamente en la V-RAM."</em> Son 512 × 64 = 32.768 hilos concurrentes que actualizan la física sin tocar la memoria RAM del sistema.',
+    'fase3': '<span class="banner-highlight">Oración 3 — Transición Inmediata al Vertex Shader:</span> <em>"Acto seguido, en el mismo codificador de comandos, el Vertex Shader consume ese idéntico búfer sin copias intermedias."</em> Mediante <code>renderPass.setVertexBuffer(0, particleBuffer)</code>, el rasterizador lee de inmediato las posiciones recién calculadas sin latencia ni transferencias.',
+    'fase4': '<span class="banner-highlight">Oración 4 — El Disparo del CPU:</span> <em>"El procesador central no calcula una sola partícula: su único papel es dar la orden de disparo."</em> La CPU solo construye la lista de comandos y llama a <code>device.queue.submit([commandBuffer])</code>; el coste de CPU por partícula es exactamente cero.'
+  };
+
+  const highlightClassMap = {
+    'fase1': 'highlight-orange',
+    'fase2': 'highlight',
+    'fase3': 'highlight-green',
+    'fase4': 'highlight-purple'
+  };
+
+  function setSpotlight(fase, btnElement) {
+    // Actualizar botones
+    document.querySelectorAll('.btn-group .btn').forEach(b => {
+      if (!b.classList.contains('btn-copy')) b.classList.remove('active');
+    });
+    if (btnElement) btnElement.classList.add('active');
+
+    // Actualizar banner explicativo
+    banner.innerHTML = explanations[fase] || explanations['all'];
+
+    // Aplicar foco a las líneas de código
+    const lines = document.querySelectorAll('.code-line');
+    lines.forEach(line => {
+      // Limpiar clases de foco anteriores
+      line.classList.remove('highlight', 'highlight-orange', 'highlight-green', 'highlight-purple', 'dimmed');
+
+      if (fase === 'all') {
+        // En vista completa, ninguna línea se atenúa
+      } else {
+        if (line.classList.contains('sec-' + fase)) {
+          const hlClass = highlightClassMap[fase] || 'highlight';
+          line.classList.add(hlClass);
+        } else {
+          line.classList.add('dimmed');
+        }
+      }
+    });
+
+    // Actualizar migas de pan
+    if (fase === 'fase1') {
+      breadcrumbs.innerHTML = 'src &gt; pipeline &gt; <span>device.createBuffer</span> &gt; <span style="color:#fb923c">GPUBufferUsage.STORAGE | VERTEX</span>';
+    } else if (fase === 'fase2') {
+      breadcrumbs.innerHTML = 'src &gt; pipeline &gt; <span>computePass.dispatchWorkgroups(512)</span> &gt; <span style="color:#38bdf8">32.768 hilos</span>';
+    } else if (fase === 'fase3') {
+      breadcrumbs.innerHTML = 'src &gt; pipeline &gt; <span>renderPass.setVertexBuffer</span> &gt; <span style="color:#4ade80">Zero-Copy VRAM</span>';
+    } else if (fase === 'fase4') {
+      breadcrumbs.innerHTML = 'src &gt; pipeline &gt; <span>device.queue.submit</span> &gt; <span style="color:#c084fc">Orden de Disparo Atómico</span>';
+    } else {
+      breadcrumbs.innerHTML = 'src &gt; pipeline &gt; <span>compute_to_render_host.js</span> &gt; <span>renderFrame()</span>';
+    }
+  }
+
+  function showFile(type) {
+    const editorJs = document.getElementById('editor-js');
+    const editorWgsl = document.getElementById('editor-wgsl');
+    const tabJs = document.getElementById('tab-js');
+    const tabWgsl = document.getElementById('tab-wgsl');
+
+    if (type === 'js') {
+      editorJs.style.display = 'block';
+      editorWgsl.style.display = 'none';
+      tabJs.classList.add('active');
+      tabWgsl.classList.remove('active');
+      fileTitle.innerText = 'compute_to_render_host.js — WebGPU Silicon Pipeline';
+      statusLang.innerText = 'JavaScript (Host)';
+    } else {
+      editorJs.style.display = 'none';
+      editorWgsl.style.display = 'block';
+      tabJs.classList.remove('active');
+      tabWgsl.classList.add('active');
+      fileTitle.innerText = 'compute_particles.wgsl — WGSL Kernel';
+      statusLang.innerText = 'WGSL (Compute Shader)';
+    }
+    // Restablecer foco al cambiar de archivo
+    setSpotlight('all', document.querySelector('.btn-group .btn'));
+  }
+
+  function copyCodeSnippet() {
+    const code = `// ============================================================================
+// PATRÓN COMPUTE-TO-RENDER EN SILICIO (ORQUESTACIÓN ATÓMICA EN WEBGPU)
+// ============================================================================
+
+// 1. CONFIGURACIÓN DEL BÚFER HÍBRIDO EN VRAM (STORAGE + VERTEX)
+const particleBuffer = device.createBuffer({
+  size: PARTICLE_COUNT * 48, // 48 bytes por partícula (pos, vel, color)
+  usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+});
+
+const commandEncoder = device.createCommandEncoder();
+
+// 2. COMPUTE PASS: 512 GRUPOS × 64 HILOS = 32.768 PARTÍCULAS EN VRAM
+const computePass = commandEncoder.beginComputePass();
+computePass.setPipeline(computePipeline);
+computePass.setBindGroup(0, computeBindGroup);
+computePass.dispatchWorkgroups(512); // 512 grupos × 64 = 32.768 invocaciones
+computePass.end();
+
+// 3. RENDER PASS: CONSUMO DIRECTO DEL MISMO BÚFER POR EL VERTEX SHADER (ZERO-COPY)
+const renderPass = commandEncoder.beginRenderPass(renderPassDescriptor);
+renderPass.setPipeline(particleRenderPipeline);
+renderPass.setBindGroup(0, uniformsBindGroup);
+renderPass.setVertexBuffer(0, particleBuffer); // Lectura directa sin salir de VRAM
+renderPass.draw(6, PARTICLE_COUNT, 0, 0);       // 6 vértices por billboard quad
+renderPass.end();
+
+// 4. DISPARO ATÓMICO: LA CPU SOLO DA LA ORDEN (0 CÁLCULOS POR PARTÍCULA EN CPU)
+device.queue.submit([commandEncoder.finish()]);`;
+
+    navigator.clipboard.writeText(code).then(() => {
+      const btn = document.querySelector('.btn-copy');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '✅ ¡Copiado!';
+      setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+    }).catch(err => {
+      console.error('Error al copiar:', err);
+    });
+  }
+</script>
+
+</body>
+</html>

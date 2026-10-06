@@ -1,0 +1,72 @@
+================================================================================
+GUION NARRATIVO Y TÉCNICO CON INDICACIONES VISUALES PARA GRABACIÓN EN PANTALLA
+Serie: BrowserOS — Computación Nativa en la Web con Wasm, WebGPU y WGSL
+Capítulo 5: El Pipeline Gráfico Completo, Rasterización y la Síntesis Compute-to-Render en WebGPU
+Apartado 8: Taller Práctico / Laboratorio Interactivo (Workshop 08): El Universo 3D en Vivo de BrowserOS
+Archivo de la aplicación: workshop_08_browseros_3d_universe.html
+================================================================================
+
+[00:00:00]
+[En pantalla: Navegador web a pantalla completa abriendo el archivo 'workshop_08_browseros_3d_universe.html'. Primer plano del encabezado con el título "El Universo 3D en Vivo de BrowserOS" y las insignias superiores. El cursor del ratón resalta el badge verde "WebGPU: Silicio Nativo Activo" en la parte superior.]
+
+Con los fundamentos teóricos del pipeline gráfico dominados y la orquestación del Swapchain plenamente sincronizada en el host, hemos llegado al clímax práctico de este quinto capítulo: nuestro taller interactivo de ingeniería gráfica tridimensional, materializado en el archivo workshop cero ocho punto h-t-m-l.
+
+¿Qué buscamos exactamente con este taller? Nuestro objetivo fundamental no es contemplar una escena tridimensional estática, sino validar empíricamente la gran promesa de BrowserOS: demostrar cómo el silicio gráfico puede asumir simultáneamente el papel de simulador físico masivo y de motor de renderizado de alta fidelidad sin que la CPU intervenga en el cálculo y sin transferir un solo byte de ida y vuelta a través del bus PCI-Express. Al mismo tiempo, utilizaremos esta estación de trabajo para abrir el silicio de función fija y visualizar en tiempo real cómo operan el rasterizador analógico, las derivadas baricéntricas y el mapa de profundidad del Zeta Buffer.
+
+[00:00:58]
+[En pantalla: El cursor se desplaza por las tres pestañas de navegación: "1. Laboratorio 3D & Síntesis Compute-to-Render", "2. Anatomía de la Línea de Montaje de Silicio" y "3. Inspector de Código WGSL & Contrato de Silicio", deteniéndose en la primera pestaña activa.]
+
+La aplicación se estructura en tres grandes módulos de ingeniería: en la primera pestaña tenemos el Laboratorio Tres D interactivo con controles de simulación física y diagnósticos en tiempo real; en la segunda exploraremos la anatomía de la línea de montaje de silicio paso a paso; y en la tercera inspeccionaremos el código fuente de los sombreadores en uve doble ge ese ele y la orquestación en JavaScript.
+
+[00:01:25]
+[En pantalla: El cursor se sitúa en el panel izquierdo de Controles de Silicio. En el menú desplegable "Geometría & Simulación", selecciona la opción "Enjambre Vórtice Compute-to-Render (32.768 partículas)". En el canvas 3D, el toroide se sustituye instantáneamente por una nube masiva de 32.768 partículas celestes y violetas que giran en espiral alrededor de un atractor gravitatorio central. El cursor resalta en la tarjeta de telemetría "Ahorro Bus PCIe: -100% (1536 KB/f)".]
+
+Comencemos por el fundamento más revolucionario de la arquitectura moderna: la síntesis directa Compute-to-Render. Despleguemos el menú de Geometría y elijamos el Enjambre Vórtice de treinta y dos mil setecientas sesenta y ocho partículas. Observad el espectáculo en pantalla: una galaxia en miniatura que danza en vórtice a sesenta o ciento veinte fotogramas por segundo ininterrumpidos.
+
+Pero mirad la cifra clave en el cuadro de telemetría inferior: Ahorro en el Bus P-C-I-e, menos cien por cien, equivalente a mil quinientos treinta y seis kilobytes por fotograma. En un motor web antiguo o tradicional, la CPU tendría que iterar un bucle de treinta y dos mil elementos, calcular sus aceleraciones y enviar un megabyte y medio en cada fotograma a la tarjeta gráfica mediante llamadas continuas a writeBuffer, asfixiando el ancho de banda del sistema.
+
+[00:02:28]
+[En pantalla: Zoom en el código de la tarjeta de explicación inferior y ajuste dinámico del deslizador "Fuerza Vórtice / Gravedad (Compute Pass)" de 1.5 a 3.2. Las partículas aceleran su rotación centrípeta de forma instantánea y fluida sin la más mínima caída de fotogramas.]
+
+Aquí, en cambio, hemos configurado un único búfer en memoria de vídeo con los identificadores combinados GPU-Buffer-Usage punto STORAGE y punto VERTEX. En cada fotograma, el Compute Shader ejecuta quinientos doce grupos de trabajo de sesenta y cuatro hilos cada uno; cada hilo actualiza la velocidad y posición de una partícula y la escribe directamente en la V-RAM. Acto seguido, en el mismo codificador de comandos, el Vertex Shader consume ese idéntico búfer sin copias intermedias. El procesador central no calcula una sola partícula: su único papel es dar la orden de disparo.
+
+[00:03:15]
+[En pantalla: En el selector "Geometría & Simulación" se vuelve a seleccionar "Toroide 3D de Alta Densidad". En el selector "Modo de Diagnóstico / Shader", el cursor cambia de "1. Iluminación PBR" a "2. Inspección de Normales de Superficie (RGB)". El toroide cambia de su tono azulado a un vibrante gradiente tricolor: verde brillante en la coronación, rojo vivo en el flanco derecho y azul en la cara frontal.]
+
+Cambiemos ahora al Toroide tridimensional de alta densidad para examinar los fundamentos del hardware de función fija. Despleguemos el menú de Modo de Diagnóstico y elijamos la opción dos: Inspección de Normales de Superficie.
+
+En este modo, el Fragment Shader no calcula luces ni sombras; en su lugar, toma el vector normal unitario transformado por la matriz normal en el espacio del mundo y lo proyecta directamente a color mediante la ecuación normal multiplicado por cero punto cinco más cero punto cinco. Al rotar el objeto con el ratón, podéis apreciar con absoluta nitidez geométrica la orientación de cada faceta: el verde puro refleja la normal apuntando hacia el cenit en el eje ye positivo; el rojo puro señala hacia el eje equis positivo; y el azul marca la orientación hacia el eje zeta. Observad la suavidad con la que el rasterizador interpola los gradientes a lo largo de las curvas del orificio central.
+
+[00:04:18]
+[En pantalla: El cursor cambia el modo a "3. Coordenadas Baricéntricas & Malla (Wireframe)". La superficie del toroide se ilumina con una gradación multicolor en el centro de cada polígono y una cuadrícula fina de color cian brillante dibuja las aristas de los 12.800 triángulos. El cursor hace zoom con la rueda del ratón acercando la cámara al máximo sobre varios triángulos contiguos.]
+
+Pasemos ahora al Modo tres: Coordenadas Baricéntricas y Malla de Alambre procedimental. Aquí estamos presenciando la magia matemática del rasterizador de silicio. En la etapa de ensamblado de vértices hemos asignado a cada triángulo los vectores baricéntricos unitarios uno, cero, cero; cero, uno, cero; y cero, cero, uno.
+
+A medida que el rasterizador recorre los píxeles cubiertos, evalúa las funciones de arista en hardware y calcula las coordenadas lambda cero, lambda uno y lambda dos corregidas por perspectiva dividiendo entre la coordenada homogénea uve doble. En el Fragment Shader obtenemos la distancia mínima a cualquiera de los tres bordes evaluando el mínimo de las tres coordenadas. Con una sola instrucción smoothstep sobre ese valor umbral, dibujamos la malla de alambre con nitidez subpíxel sin haber duplicado ni un solo vértice y sin requerir un pase de líneas adicional.
+
+[00:05:25]
+[En pantalla: El cursor cambia el modo a "4. Mapa de Profundidad Z-Buffer (Linealizado)". La escena se transforma en un mapa de profundidad en escala de grises: las partes del toroide más próximas a la cámara son de color negro puro, y las secciones que se alejan hacia el fondo se desvanecen gradualmente en un blanco cenizo. El cursor rota el toroide haciendo que la sección delantera eclipse a la trasera.]
+
+Llegamos a uno de los fundamentos más críticos de la computación gráfica: el Modo cuatro, el Mapa de Profundidad del Zeta Buffer linealizado. En WebGPU, la textura de profundidad opera en formato depth veinticuatro plus, cubriendo el rango de cero a uno. Pero debido a la división proyectiva entre uve doble, la distribución de valores en la memoria física no es lineal: más del ochenta y cinco por ciento de la precisión en coma flotante se concentra en el primer diez por ciento de la distancia cercana a la cámara.
+
+Para que nuestro ojo pueda inspeccionar la oclusión de forma comprensible, en el shader aplicamos la fórmula de linealización de profundidad, multiplicando plano cercano por plano lejano y dividiendo entre la distancia normalizada. Mirad la frontera de contacto cuando el anillo delantero tapa al trasero: esa línea perfecta de corte la ejecuta el silicio de Early Zeta antes de que se gaste un solo ciclo de cálculo en sombreado, descartando los píxeles ocultos en una fracción de nanosegundo.
+
+[00:06:38]
+[En pantalla: El cursor regresa al modo "1. Iluminación PBR / Blinn-Phong Completa". El toroide recupera su aspecto satinado fotorrealista. El cursor desplaza el slider "Rugosidad Material" de 0.10 a 0.85, mostrando cómo el brillo especular concentrado se disipa en una superficie mate aterciopelada.]
+
+Regresemos al Modo uno para contemplar la integración final: el sombreador físico PBR con formulación Blinn-Phong. Aquí combinamos todos los atributos que acabamos de inspeccionar por separado: el vector de vista del observador, la posición de la luz, el vector medio Hache y el coeficiente de rugosidad. Al deslizar el control de rugosidad podéis comprobar cómo el silicio modula la potencia del exponente especular entre cuatro y ciento veintiocho, transformando el material de un plástico pulido brillante a un acabado mate fotorrealista.
+
+[00:07:22]
+[En pantalla: Clic en la pestaña "2. Anatomía de la Línea de Montaje de Silicio". Se despliega el diagrama vertical con las siete tarjetas interactivas. El cursor pasa sobre "1. Vertex Fetch", luego "4. Rasterizador & Baricéntricas" y "5. Early-Z Oclusion Culling", destacando las etiquetas amarillas "Función Fija" y las verdes "Programable".]
+
+Si pulsamos en la segunda pestaña, la Anatomía de la Línea de Montaje, disponéis de un mapa de arquitectura completo que diferencia de forma rigurosa qué etapas corresponden a silicio de función fija, cableado en los transistores para máxima eficiencia energética, y qué etapas son programables en nuestros shaders de uve doble ge ese ele.
+
+[00:07:50]
+[En pantalla: Clic en la tercera pestaña "3. Inspector de Código WGSL & Contrato de Silicio". El cursor conmuta entre las cuatro subpestañas: compute_particles.wgsl, pipeline_vertex.wgsl, pipeline_fragment.wgsl y host_orchestration.js, resaltando la llamada final device.queue.submit([commandEncoder.finish()]).]
+
+Y finalmente, en la tercera pestaña, podéis examinar y copiar el código fuente íntegro de cada componente: el Compute Shader de partículas con integración semi-implícita de Euler, el Vertex Shader con las matrices de proyección homogéneas, el Fragment Shader multimodal con los diagnósticos de silicio, y el archivo de orquestación en host con el patrón de sumisión atómica monolítica.
+
+[00:08:22]
+[En pantalla: Regreso a la pestaña 1 con el enjambre de 32.768 partículas orbitando a 60 FPS en pantalla completa. Transición cinemática final con los emblemas de WebGPU, WebAssembly y BrowserOS.]
+
+Con este taller práctico hemos cerrado el círculo que iniciamos al comienzo de esta serie. Hemos transformado el navegador web de un simple visualizador de documentos en un auténtico sistema operativo gráfico y computacional descentralizado, capaz de gobernar la física del silicio a la velocidad de la luz. En el próximo apartado culminaremos el capítulo con la bibliografía de referencia de O'Reilly para continuar profundizando en la vanguardia del desarrollo gráfico moderno.

@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Puente JavaScript: Construcción de Búferes Homogéneos y DataView — WGSL Code Spotlight</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --js-yellow: #facc15;
+      --js-yellow-glow: rgba(250, 204, 21, 0.3);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --code-bg: #1e1e1e;
+
+      /* Tokens de Sintaxis VS Code Dark+ (JavaScript) */
+      --syn-keyword: #569cd6;    /* const, let, for, new */
+      --syn-control: #c586c0;    /* return, if */
+      --syn-class: #4ec9b0;      /* Float32Array, ArrayBuffer, DataView, Math */
+      --syn-var: #9cdcfe;        /* bufferParticulas, base, view */
+      --syn-prop: #9cdcfe;       /* BYTES_PER_ELEMENT, byteOffset */
+      --syn-fn: #dcdcaa;         /* random, setFloat32, setUint32, writeBuffer */
+      --syn-num: #b5cea8;        /* 48, 12, 10000, 0, 1.0 */
+      --syn-bool: #569cd6;       /* true, false */
+      --syn-comment: #6a9955;    /* comentarios */
+      --syn-op: #d4d4d4;         /* = , + , * , / , < , ; , : */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 2rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      background: rgba(250, 204, 21, 0.15);
+      color: var(--js-yellow);
+      border: 1px solid rgba(250, 204, 21, 0.35);
+    }
+
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    /* BARRA DE HERRAMIENTAS INTERACTIVA (SPOTLIGHT) */
+    .interactive-toolbar {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 0.9rem 1.2rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--js-yellow);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .btn {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #e4e4e7;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn:hover {
+      background: #3f3f46;
+      color: #fff;
+    }
+
+    .btn.active {
+      background: #ca8a04;
+      border-color: #facc15;
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(250, 204, 21, 0.4);
+    }
+
+    /* BANNER EXPLICATIVO SINCRONIZADO CON LA LOCUCIÓN */
+    .explanation-banner {
+      background: rgba(30, 41, 59, 0.95);
+      border-left: 4px solid var(--js-yellow);
+      border-radius: 0 8px 8px 0;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 1rem;
+      color: #f1f5f9;
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      line-height: 1.55;
+    }
+
+    /* SELECTOR DE MODO / ESTRATEGIA */
+    .strategy-selector {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .strategy-tab {
+      flex: 1;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 0.75rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.92rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .strategy-tab:hover {
+      background: #283548;
+      color: #fff;
+    }
+
+    .strategy-tab.active {
+      background: #0f172a;
+      border-color: var(--js-yellow);
+      color: #fff;
+      box-shadow: 0 0 14px rgba(250, 204, 21, 0.15);
+    }
+
+    /* VENTANA VISUAL STUDIO CODE DARK+ */
+    .editor-window {
+      background-color: var(--code-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+      margin-bottom: 1.75rem;
+    }
+
+    .window-titlebar {
+      background-color: #323233;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      position: relative;
+      user-select: none;
+      border-bottom: 1px solid #252526;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .control-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-close { background-color: #ff5f56; }
+    .dot-minimize { background-color: #ffbd2e; }
+    .dot-maximize { background-color: #27c93f; }
+
+    .window-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.78rem;
+      color: #999;
+      font-weight: 500;
+    }
+
+    .editor-tabs {
+      display: flex;
+      background-color: #252526;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      font-size: 0.82rem;
+      background-color: #2d2d2d;
+      color: #969696;
+      cursor: pointer;
+      border-right: 1px solid #252526;
+      transition: all 0.15s ease;
+    }
+
+    .tab.active {
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border-top: 2px solid var(--js-yellow);
+    }
+
+    .tab-icon {
+      font-weight: 800;
+      color: var(--js-yellow);
+      font-size: 0.85rem;
+    }
+
+    .breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      color: #8c8c8c;
+      background-color: #1e1e1e;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .breadcrumbs span.active {
+      color: #cccccc;
+    }
+
+    /* LÍNEAS DE CÓDIGO CON RESALTADO */
+    .code-container {
+      padding: 16px 0;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.92rem;
+      line-height: 1.7;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 16px;
+      transition: background-color 0.2s ease, opacity 0.25s ease;
+      white-space: pre;
+    }
+
+    .code-line:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .code-line.spotlight {
+      background-color: rgba(250, 204, 21, 0.14);
+      border-left: 4px solid var(--js-yellow);
+      padding-left: 12px;
+    }
+
+    .code-line.spotlight-accent {
+      background-color: rgba(56, 189, 248, 0.16);
+      border-left: 4px solid #38bdf8;
+      padding-left: 12px;
+    }
+
+    .code-line.spotlight-pad {
+      background-color: rgba(239, 68, 68, 0.16);
+      border-left: 4px solid #f87171;
+      padding-left: 12px;
+    }
+
+    .code-line.dimmed {
+      opacity: 0.28;
+    }
+
+    .line-number {
+      width: 44px;
+      text-align: right;
+      padding-right: 20px;
+      color: #858585;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .line-content {
+      flex-grow: 1;
+    }
+
+    /* CLASES DE TOKENIZADO VS CODE DARK+ */
+    .kw { color: var(--syn-keyword); font-weight: 600; }
+    .ctrl { color: var(--syn-control); }
+    .cls { color: var(--syn-class); }
+    .vr { color: var(--syn-var); }
+    .pr { color: var(--syn-prop); }
+    .fn { color: var(--syn-fn); }
+    .nm { color: var(--syn-num); }
+    .bl { color: var(--syn-bool); font-weight: 600; }
+    .op { color: var(--syn-op); }
+    .cm { color: var(--syn-comment); font-style: italic; }
+    .warn-cm { color: #fbbf24; font-style: italic; font-weight: 600; }
+
+    /* MAPA DE CORRESPONDENCIA CPU (JAVASCRIPT) <-> GPU (WGSL) */
+    .memory-map-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .memory-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .memory-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .memory-stats {
+      font-size: 0.85rem;
+      color: var(--success);
+      background: rgba(52, 211, 153, 0.15);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-weight: 700;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+    }
+
+    .layout-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .layout-row.active-row {
+      border-color: var(--js-yellow);
+      background: #1e293b;
+      box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
+    }
+
+    .layout-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      font-family: monospace;
+    }
+
+    .layout-blocks {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .block {
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 6px 4px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 0.75rem;
+    }
+
+    .block .offset {
+      font-size: 0.65rem;
+      color: #94a3b8;
+    }
+
+    .block-pos { background: rgba(2, 132, 199, 0.2); border-color: #0284c7; color: #38bdf8; }
+    .block-vel { background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; color: #7dd3fc; }
+    .block-scalars { background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #34d399; }
+    .block-pad { background: rgba(239, 68, 68, 0.15); border: 1px dashed #ef4444; color: #fca5a5; }
+
+    /* TARJETAS DE RESUMEN TÉCNICO */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .layout-row {
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .summary-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .summary-card .label {
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .summary-card .value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .summary-card .desc {
+      font-size: 0.75rem;
+      color: #71717a;
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="badge">JavaScript Host • Sincronización CPU / GPU</div>
+    <h1>El Puente en JavaScript: Construcción de Búferes</h1>
+    <p class="subtitle">Trasladando el contrato de WGSL al navegador: Búfer Homogéneo (<code>Float32Array</code>) y Heterogéneo (<code>DataView</code> con <em>little-endian</em>).</p>
+  </header>
+
+  <!-- SELECTOR DE ESTRATEGIA (TABS DE ALTO NIVEL) -->
+  <div class="strategy-selector">
+    <div class="strategy-tab active" id="tab-strat-a" onclick="switchStrategy('a')">
+      <span>📄 Estrategia A: Float32Array Homogéneo (Stride Fijo)</span>
+    </div>
+    <div class="strategy-tab" id="tab-strat-b" onclick="switchStrategy('b')">
+      <span>⚙️ Estrategia B: DataView Heterogéneo (Little-Endian)</span>
+    </div>
+  </div>
+
+  <!-- BARRA DE HERRAMIENTAS INTERACTIVA (SPOTLIGHT) -->
+  <div class="interactive-toolbar">
+    <div class="toolbar-label">
+      <span>🎯 Fases de la Explicación:</span>
+    </div>
+    <div class="btn-group" id="btn-group-container">
+      <!-- Los botones se actualizan dinámicamente según la pestaña activa -->
+    </div>
+  </div>
+
+  <!-- BANNER EXPLICATIVO SINCRONIZADO CON LA LOCUCIÓN -->
+  <div class="explanation-banner" id="explanation-text">
+    En pantalla podéis ver también cómo trasladamos este contrato al código de JavaScript para que el encaje sea milimétrico. Si trabajamos con datos homogéneos de tipo decimal, definimos constantes claras como los bytes por partícula y los flotantes por partícula, rellenando con ceros los espacios de acolchado antes de llamar a writeBuffer.
+  </div>
+
+  <!-- VENTANA VISUAL STUDIO CODE DARK+ -->
+  <div class="editor-window">
+    <div class="window-titlebar">
+      <div class="window-controls">
+        <div class="control-dot dot-close"></div>
+        <div class="control-dot dot-minimize"></div>
+        <div class="control-dot dot-maximize"></div>
+      </div>
+      <div class="window-title" id="editor-filename-title">buffer_homogeneo.js — Visual Studio Code</div>
+    </div>
+
+    <div class="editor-tabs">
+      <div class="tab active" id="tab-file-a" onclick="switchStrategy('a')">
+        <span class="tab-icon">JS</span>
+        <span>buffer_homogeneo.js</span>
+      </div>
+      <div class="tab" id="tab-file-b" onclick="switchStrategy('b')">
+        <span class="tab-icon">JS</span>
+        <span>buffer_dataview.js</span>
+      </div>
+    </div>
+
+    <div class="breadcrumbs">
+      <span>src</span>
+      <span>›</span>
+      <span>host</span>
+      <span>›</span>
+      <span class="active" id="breadcrumb-filename">buffer_homogeneo.js</span>
+    </div>
+
+    <!-- CONTENEDOR CÓDIGO ESTRATEGIA A: FLOAT32ARRAY -->
+    <div class="code-container" id="code-strategy-a">
+      <div class="code-line" data-section="a-const">
+        <span class="line-number">1</span>
+        <span class="line-content"><span class="cm">// Cada partícula mide exactamente 48 bytes (48 / 4 = 12 flotantes)</span></span>
+      </div>
+      <div class="code-line" data-section="a-const">
+        <span class="line-number">2</span>
+        <span class="line-content"><span class="kw">const</span> <span class="vr">BYTES_POR_PARTICULA</span> <span class="op">=</span> <span class="nm">48</span><span class="op">;</span></span>
+      </div>
+      <div class="code-line" data-section="a-const">
+        <span class="line-number">3</span>
+        <span class="line-content"><span class="kw">const</span> <span class="vr">FLOATS_POR_PARTICULA</span> <span class="op">=</span> <span class="vr">BYTES_POR_PARTICULA</span> <span class="op">/</span> <span class="cls">Float32Array</span><span class="op">.</span><span class="pr">BYTES_PER_ELEMENT</span><span class="op">;</span> <span class="cm">// 12</span></span>
+      </div>
+      <div class="code-line" data-section="a-const">
+        <span class="line-number">4</span>
+        <span class="line-content"><span class="kw">const</span> <span class="vr">NUM_PARTICULAS</span> <span class="op">=</span> <span class="nm">10000</span><span class="op">;</span></span>
+      </div>
+      <div class="code-line" data-section="a-const">
+        <span class="line-number">5</span>
+        <span class="line-content"><span class="kw">const</span> <span class="vr">bufferParticulas</span> <span class="op">=</span> <span class="kw">new</span> <span class="cls">Float32Array</span><span class="op">(</span><span class="vr">NUM_PARTICULAS</span> <span class="op">*</span> <span class="vr">FLOATS_POR_PARTICULA</span><span class="op">);</span></span>
+      </div>
+      <div class="code-line" data-section="a-bucle">
+        <span class="line-number">6</span>
+        <span class="line-content"></span>
+      </div>
+      <div class="code-line" data-section="a-bucle">
+        <span class="line-number">7</span>
+        <span class="line-content"><span class="kw">for</span> <span class="op">(</span><span class="kw">let</span> <span class="vr">i</span> <span class="op">=</span> <span class="nm">0</span><span class="op">;</span> <span class="vr">i</span> <span class="op">&lt;</span> <span class="vr">NUM_PARTICULAS</span><span class="op">;</span> <span class="vr">i</span><span class="op">++</span><span class="op">)</span> <span class="op">{</span></span>
+      </div>
+      <div class="code-line" data-section="a-bucle">
+        <span class="line-number">8</span>
+        <span class="line-content">  <span class="kw">const</span> <span class="vr">base</span> <span class="op">=</span> <span class="vr">i</span> <span class="op">*</span> <span class="vr">FLOATS_POR_PARTICULA</span><span class="op">;</span></span>
+      </div>
+      <div class="code-line" data-section="a-bucle">
+        <span class="line-number">9</span>
+        <span class="line-content">  <span class="cm">// vec4 posicion (Offsets 0, 1, 2, 3 en floats -&gt; Bytes 0..15)</span></span>
+      </div>
+      <div class="code-line" data-section="a-bucle">
+        <span class="line-number">10</span>
+        <span class="line-content">  <span class="vr">bufferParticulas</span><span class="op">[</span><span class="vr">base</span> <span class="op">+</span> <span class="nm">0</span><span class="op">]</span> <span class="op">=</span> <span class="cls">Math</span><span class="op">.</span><span class="fn">random</span><span class="op">()</span> <span class="op">*</span> <span class="nm">100</span><span class="op">;</span> <span class="cm">// x</span></span>
+      </div>
+      <div class="code-line" data-section="a-bucle">
+        <span class="line-number">11</span>
+        <span class="line-content">  <span class="vr">bufferParticulas</span><span class="op">[</span><span class="vr">base</span> <span class="op">+</span> <span class="nm">1</span><span class="op">]</span> <span class="op">=</span> <span class="cls">Math</span><span class="op">.</span><span class="fn">random</span><span class="op">()</span> <span class="op">*</span> <span class="nm">100</span><span class="op">;</span> <span class="cm">// y</span></span>
+      </div>
+      <div class="code-line" data-section="a-bucle">
+        <span class="line-number">12</span>
+        <span class="line-content">  <span class="vr">bufferParticulas</span><span class="op">[</span><span class="vr">base</span> <span class="op">+</span> <span class="nm">2</span><span class="op">]</span> <span class="op">=</span> <span class="nm">0.0</span><span class="op">;</span>                 <span class="cm">// z</span></span>
+      </div>
+      <div class="code-line" data-section="a-bucle">
+        <span class="line-number">13</span>
+        <span class="line-content">  <span class="vr">bufferParticulas</span><span class="op">[</span><span class="vr">base</span> <span class="op">+</span> <span class="nm">3</span><span class="op">]</span> <span class="op">=</span> <span class="nm">1.0</span><span class="op">;</span>                 <span class="cm">// w</span></span>
+      </div>
+      <div class="code-line" data-section="a-pad">
+        <span class="line-number">14</span>
+        <span class="line-content">  <span class="cm">// Escalares (Offsets 8, 9, 10 en floats -&gt; Bytes 32..43)</span></span>
+      </div>
+      <div class="code-line" data-section="a-pad">
+        <span class="line-number">15</span>
+        <span class="line-content">  <span class="vr">bufferParticulas</span><span class="op">[</span><span class="vr">base</span> <span class="op">+</span> <span class="nm">8</span><span class="op">]</span>  <span class="op">=</span> <span class="nm">1.5</span><span class="op">;</span> <span class="cm">// masa</span></span>
+      </div>
+      <div class="code-line" data-section="a-pad">
+        <span class="line-number">16</span>
+        <span class="line-content">  <span class="vr">bufferParticulas</span><span class="op">[</span><span class="vr">base</span> <span class="op">+</span> <span class="nm">9</span><span class="op">]</span>  <span class="op">=</span> <span class="nm">5.0</span><span class="op">;</span> <span class="cm">// vida restante</span></span>
+      </div>
+      <div class="code-line" data-section="a-pad">
+        <span class="line-number">17</span>
+        <span class="line-content">  <span class="vr">bufferParticulas</span><span class="op">[</span><span class="vr">base</span> <span class="op">+</span> <span class="nm">10</span><span class="op">]</span> <span class="op">=</span> <span class="nm">1.0</span><span class="op">;</span> <span class="cm">// id_tipo</span></span>
+      </div>
+      <div class="code-line" data-section="a-pad">
+        <span class="line-number">18</span>
+        <span class="line-content">  <span class="warn-cm">// Offset 11 (Bytes 44..47): PADDING IMPLÍCITO DE CIERRE RELLENADO CON CERO</span></span>
+      </div>
+      <div class="code-line" data-section="a-pad">
+        <span class="line-number">19</span>
+        <span class="line-content">  <span class="vr">bufferParticulas</span><span class="op">[</span><span class="vr">base</span> <span class="op">+</span> <span class="nm">11</span><span class="op">]</span> <span class="op">=</span> <span class="nm">0.0</span><span class="op">;</span> <span class="cm">// ✅ Relleno explícito de seguridad</span></span>
+      </div>
+      <div class="code-line" data-section="a-write">
+        <span class="line-number">20</span>
+        <span class="line-content"><span class="op">}</span></span>
+      </div>
+      <div class="code-line" data-section="a-write">
+        <span class="line-number">21</span>
+        <span class="line-content"><span class="cm">// Envío limpio a la VRAM sin bloqueos de hilo</span></span>
+      </div>
+      <div class="code-line" data-section="a-write">
+        <span class="line-number">22</span>
+        <span class="line-content"><span class="vr">device</span><span class="op">.</span><span class="pr">queue</span><span class="op">.</span><span class="fn">writeBuffer</span><span class="op">(</span><span class="vr">gpuBufferParticulas</span><span class="op">,</span> <span class="nm">0</span><span class="op">,</span> <span class="vr">bufferParticulas</span><span class="op">.</span><span class="pr">buffer</span><span class="op">,</span> <span class="vr">bufferParticulas</span><span class="op">.</span><span class="pr">byteOffset</span><span class="op">,</span> <span class="vr">bufferParticulas</span><span class="op">.</span><span class="pr">byteLength</span><span class="op">);</span></span>
+      </div>
+    </div>
+
+    <!-- CONTENEDOR CÓDIGO ESTRATEGIA B: DATAVIEW -->
+    <div class="code-container" id="code-strategy-b" style="display: none;">
+      <div class="code-line" data-section="b-init">
+        <span class="line-number">1</span>
+        <span class="line-content"><span class="cm">// Búfer en bytes crudos con DataView para tipos mixtos (u32 y f32)</span></span>
+      </div>
+      <div class="code-line" data-section="b-init">
+        <span class="line-number">2</span>
+        <span class="line-content"><span class="kw">const</span> <span class="vr">rawBuffer</span> <span class="op">=</span> <span class="kw">new</span> <span class="cls">ArrayBuffer</span><span class="op">(</span><span class="vr">BYTES_POR_PARTICULA</span> <span class="op">*</span> <span class="vr">NUM_PARTICULAS</span><span class="op">);</span></span>
+      </div>
+      <div class="code-line" data-section="b-init">
+        <span class="line-number">3</span>
+        <span class="line-content"><span class="kw">const</span> <span class="vr">view</span> <span class="op">=</span> <span class="kw">new</span> <span class="cls">DataView</span><span class="op">(</span><span class="vr">rawBuffer</span><span class="op">);</span></span>
+      </div>
+      <div class="code-line" data-section="b-init">
+        <span class="line-number">4</span>
+        <span class="line-content"><span class="kw">let</span> <span class="vr">byteOffset</span> <span class="op">=</span> <span class="nm">0</span><span class="op">;</span></span>
+      </div>
+      <div class="code-line" data-section="b-fields">
+        <span class="line-number">5</span>
+        <span class="line-content"></span>
+      </div>
+      <div class="code-line" data-section="b-fields">
+        <span class="line-number">6</span>
+        <span class="line-content"><span class="kw">for</span> <span class="op">(</span><span class="kw">let</span> <span class="vr">i</span> <span class="op">=</span> <span class="nm">0</span><span class="op">;</span> <span class="vr">i</span> <span class="op">&lt;</span> <span class="vr">NUM_PARTICULAS</span><span class="op">;</span> <span class="vr">i</span><span class="op">++</span><span class="op">)</span> <span class="op">{</span></span>
+      </div>
+      <div class="code-line" data-section="b-fields">
+        <span class="line-number">7</span>
+        <span class="line-content">  <span class="cm">// Posición vec4&lt;f32&gt; (Bytes 0..15) — true = little-endian</span></span>
+      </div>
+      <div class="code-line" data-section="b-fields">
+        <span class="line-number">8</span>
+        <span class="line-content">  <span class="vr">view</span><span class="op">.</span><span class="fn">setFloat32</span><span class="op">(</span><span class="vr">byteOffset</span> <span class="op">+</span> <span class="nm">0</span><span class="op">,</span>  <span class="nm">10.5</span><span class="op">,</span> <span class="bl">true</span><span class="op">);</span></span>
+      </div>
+      <div class="code-line" data-section="b-fields">
+        <span class="line-number">9</span>
+        <span class="line-content">  <span class="vr">view</span><span class="op">.</span><span class="fn">setFloat32</span><span class="op">(</span><span class="vr">byteOffset</span> <span class="op">+</span> <span class="nm">4</span><span class="op">,</span>  <span class="nm">20.3</span><span class="op">,</span> <span class="bl">true</span><span class="op">);</span></span>
+      </div>
+      <div class="code-line" data-section="b-fields">
+        <span class="line-number">10</span>
+        <span class="line-content">  <span class="vr">view</span><span class="op">.</span><span class="fn">setFloat32</span><span class="op">(</span><span class="vr">byteOffset</span> <span class="op">+</span> <span class="nm">8</span><span class="op">,</span>  <span class="nm">0.0</span><span class="op">,</span>  <span class="bl">true</span><span class="op">);</span></span>
+      </div>
+      <div class="code-line" data-section="b-fields">
+        <span class="line-number">11</span>
+        <span class="line-content">  <span class="vr">view</span><span class="op">.</span><span class="fn">setFloat32</span><span class="op">(</span><span class="vr">byteOffset</span> <span class="op">+</span> <span class="nm">12</span><span class="op">,</span> <span class="nm">1.0</span><span class="op">,</span>  <span class="bl">true</span><span class="op">);</span></span>
+      </div>
+      <div class="code-line" data-section="b-types">
+        <span class="line-number">12</span>
+        <span class="line-content">  <span class="cm">// Escalares mixtos: float y entero uint32</span></span>
+      </div>
+      <div class="code-line" data-section="b-types">
+        <span class="line-number">13</span>
+        <span class="line-content">  <span class="vr">view</span><span class="op">.</span><span class="fn">setFloat32</span><span class="op">(</span><span class="vr">byteOffset</span> <span class="op">+</span> <span class="nm">32</span><span class="op">,</span> <span class="nm">2.5</span><span class="op">,</span>  <span class="bl">true</span><span class="op">);</span> <span class="cm">// masa (f32)</span></span>
+      </div>
+      <div class="code-line" data-section="b-types">
+        <span class="line-number">14</span>
+        <span class="line-content">  <span class="vr">view</span><span class="op">.</span><span class="fn">setFloat32</span><span class="op">(</span><span class="vr">byteOffset</span> <span class="op">+</span> <span class="nm">36</span><span class="op">,</span> <span class="nm">10.0</span><span class="op">,</span> <span class="bl">true</span><span class="op">);</span> <span class="cm">// vida (f32)</span></span>
+      </div>
+      <div class="code-line" data-section="b-types">
+        <span class="line-number">15</span>
+        <span class="line-content">  <span class="vr">view</span><span class="op">.</span><span class="fn">setUint32</span><span class="op">(</span><span class="vr">byteOffset</span>  <span class="op">+</span> <span class="nm">40</span><span class="op">,</span> <span class="nm">42</span><span class="op">,</span>   <span class="bl">true</span><span class="op">);</span> <span class="cm">// id_tipo (u32, ¡entero nativo!)</span></span>
+      </div>
+      <div class="code-line" data-section="b-pad">
+        <span class="line-number">16</span>
+        <span class="line-content">  <span class="warn-cm">// Bytes 44..47: Relleno explícito de 4 bytes</span></span>
+      </div>
+      <div class="code-line" data-section="b-pad">
+        <span class="line-number">17</span>
+        <span class="line-content">  <span class="vr">view</span><span class="op">.</span><span class="fn">setUint32</span><span class="op">(</span><span class="vr">byteOffset</span>  <span class="op">+</span> <span class="nm">44</span><span class="op">,</span> <span class="nm">0</span><span class="op">,</span>    <span class="bl">true</span><span class="op">);</span> <span class="cm">// ✅ Padding a cero</span></span>
+      </div>
+      <div class="code-line" data-section="b-pad">
+        <span class="line-number">18</span>
+        <span class="line-content">  <span class="vr">byteOffset</span> <span class="op">+=</span> <span class="vr">BYTES_POR_PARTICULA</span><span class="op">;</span> <span class="cm">// Avanzamos 48 bytes exactos</span></span>
+      </div>
+      <div class="code-line" data-section="b-pad">
+        <span class="line-number">19</span>
+        <span class="line-content"><span class="op">}</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAPA DE CORRESPONDENCIA CPU (JAVASCRIPT) <-> GPU (WGSL) -->
+  <div class="memory-map-card">
+    <div class="memory-header">
+      <div class="memory-title">
+        <span>🗺️ Mapa de Correspondencia Milimétrica (48 Bytes por Entidad)</span>
+      </div>
+      <div class="memory-stats">Encaje Perfecto • Desfase = 0</div>
+    </div>
+
+    <!-- Fila 1: Posición -->
+    <div class="layout-row" id="row-pos">
+      <div class="layout-label">Bytes 00 .. 15</div>
+      <div class="layout-blocks">
+        <div class="block block-pos">pos.x<div class="offset">Offset 0 (4B)</div></div>
+        <div class="block block-pos">pos.y<div class="offset">Offset 4 (4B)</div></div>
+        <div class="block block-pos">pos.z<div class="offset">Offset 8 (4B)</div></div>
+        <div class="block block-pos">pos.w<div class="offset">Offset 12 (4B)</div></div>
+      </div>
+    </div>
+
+    <!-- Fila 2: Velocidad -->
+    <div class="layout-row" id="row-vel">
+      <div class="layout-label">Bytes 16 .. 31</div>
+      <div class="layout-blocks">
+        <div class="block block-vel">vel.x<div class="offset">Offset 16 (4B)</div></div>
+        <div class="block block-vel">vel.y<div class="offset">Offset 20 (4B)</div></div>
+        <div class="block block-vel">vel.z<div class="offset">Offset 24 (4B)</div></div>
+        <div class="block block-vel">vel.w<div class="offset">Offset 28 (4B)</div></div>
+      </div>
+    </div>
+
+    <!-- Fila 3: Escalares y Padding -->
+    <div class="layout-row" id="row-scalars">
+      <div class="layout-label">Bytes 32 .. 47</div>
+      <div class="layout-blocks">
+        <div class="block block-scalars">masa (f32)<div class="offset">Offset 32 (4B)</div></div>
+        <div class="block block-scalars">vida (f32)<div class="offset">Offset 36 (4B)</div></div>
+        <div class="block block-scalars">id_tipo (u32)<div class="offset">Offset 40 (4B)</div></div>
+        <div class="block block-pad">PAD (cero)<div class="offset">Offset 44 (4B)</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARJETAS DE RESUMEN TÉCNICO -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">Paso por Partícula</div>
+      <div class="value" style="color: var(--js-yellow);">48 Bytes</div>
+      <div class="desc">12 Floats de 32 bits</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Formato de Bytes</div>
+      <div class="value">Little-Endian</div>
+      <div class="desc">Parámetro <code>true</code> en DataView</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Acolchado Seguro</div>
+      <div class="value" style="color: var(--success);">Relleno a 0</div>
+      <div class="desc">Garantiza lecturas limpias en GPU</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Transferencia Host</div>
+      <div class="value">writeBuffer</div>
+      <div class="desc">Copia directa sin colapsar el hilo</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentStrategy = 'a'; // 'a' o 'b'
+
+  const buttonsConfig = {
+    'a': [
+      { id: 'all-a', label: '👁️ Vista Completa', section: 'all' },
+      { id: 'btn-a1', label: '1. Constantes de Stride (48B)', section: 'a-const' },
+      { id: 'btn-a2', label: '2. Bucle y Offsets en Floats', section: 'a-bucle' },
+      { id: 'btn-a3', label: '3. Relleno de Padding con Ceros', section: 'a-pad' },
+      { id: 'btn-a4', label: '4. Envío con writeBuffer', section: 'a-write' }
+    ],
+    'b': [
+      { id: 'all-b', label: '👁️ Vista Completa', section: 'all' },
+      { id: 'btn-b1', label: '1. ArrayBuffer y DataView', section: 'b-init' },
+      { id: 'btn-b2', label: '2. Little-Endian (true)', section: 'b-fields' },
+      { id: 'btn-b3', label: '3. Tipos Mixtos (f32 y u32)', section: 'b-types' },
+      { id: 'btn-b4', label: '4. Padding Explícito en Bytes', section: 'b-pad' }
+    ]
+  };
+
+  const explanations = {
+    'all': 'En pantalla podéis ver también cómo trasladamos este contrato al código de JavaScript para que el encaje sea milimétrico. Si trabajamos con datos homogéneos de tipo decimal, definimos constantes claras como los bytes por partícula y los flotantes por partícula, rellenando con ceros los espacios de acolchado antes de llamar a writeBuffer. Y si nuestra estructura combina enteros y flotantes, la herramienta más precisa y segura en el navegador es recurrir a un DataView, escribiendo cada campo en su desplazamiento exacto en bytes mediante el formato little-endian que utilizan las tarjetas gráficas modernas.',
+    // Estrategia A
+    'a-const': 'Si trabajamos con datos homogéneos de tipo decimal, definimos constantes claras como los bytes por partícula (48 bytes) y los flotantes por partícula (12 floats), calculando de antemano el tamaño total del Float32Array.',
+    'a-bucle': 'Dentro del bucle iterativo, calculamos el índice base multiplicado por el stride de 12 floats, escribiendo los componentes de posición y velocidad en sus desplazamientos relativos exactos.',
+    'a-pad': 'Rellenamos con ceros los espacios de acolchado (offset 11, bytes 44 al 47) para neutralizar cualquier residuo de memoria antes de enviar el búfer a la tarjeta gráfica.',
+    'a-write': 'Finalmente, despachamos el búfer completo a la GPU en un único ciclo mediante device.queue.writeBuffer, garantizando una transferencia directa sin sobrecargar la CPU.',
+    // Estrategia B
+    'b-init': 'Si nuestra estructura combina enteros y flotantes, la herramienta más precisa y segura en el navegador es recurrir a un DataView sobre un ArrayBuffer crudo.',
+    'b-fields': 'Escribimos cada campo en su desplazamiento exacto en bytes pasando el tercer parámetro booleano como true, garantizando el formato little-endian que emplean las arquitecturas GPU.',
+    'b-types': 'DataView nos permite alternar con total seguridad entre flotantes con setFloat32 y enteros puros de 32 bits sin signo con setUint32, respetando el contrato de tipos de WGSL.',
+    'b-pad': 'Escribimos explícitamente ceros en los bytes 44 al 47 para asegurar que el padding de cierre coincida con el múltiplo de dieciséis antes de avanzar al siguiente elemento.'
+  };
+
+  function renderButtons(strat) {
+    const container = document.getElementById('btn-group-container');
+    container.innerHTML = '';
+    const items = buttonsConfig[strat];
+    items.forEach((item, idx) => {
+      const b = document.createElement('button');
+      b.className = 'btn' + (idx === 0 ? ' active' : '');
+      b.innerHTML = `<span>${item.label}</span>`;
+      b.onclick = () => setSpotlight(item.section, b);
+      container.appendChild(b);
+    });
+  }
+
+  function switchStrategy(strat) {
+    currentStrategy = strat;
+    
+    // Actualizar tabs superiores
+    document.getElementById('tab-strat-a').className = 'strategy-tab' + (strat === 'a' ? ' active' : '');
+    document.getElementById('tab-strat-b').className = 'strategy-tab' + (strat === 'b' ? ' active' : '');
+
+    // Actualizar tabs del editor
+    document.getElementById('tab-file-a').className = 'tab' + (strat === 'a' ? ' active' : '');
+    document.getElementById('tab-file-b').className = 'tab' + (strat === 'b' ? ' active' : '');
+
+    // Actualizar títulos
+    document.getElementById('editor-filename-title').innerText = (strat === 'a' ? 'buffer_homogeneo.js' : 'buffer_dataview.js') + ' — Visual Studio Code';
+    document.getElementById('breadcrumb-filename').innerText = strat === 'a' ? 'buffer_homogeneo.js' : 'buffer_dataview.js';
+
+    // Mostrar/ocultar bloques de código
+    document.getElementById('code-strategy-a').style.display = strat === 'a' ? 'block' : 'none';
+    document.getElementById('code-strategy-b').style.display = strat === 'b' ? 'block' : 'none';
+
+    // Renderizar botones correspondientes
+    renderButtons(strat);
+    setSpotlight('all', document.querySelector('.btn-group .btn'));
+  }
+
+  function setSpotlight(section, buttonEl) {
+    if (buttonEl) {
+      document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+      buttonEl.classList.add('active');
+    }
+
+    const banner = document.getElementById('explanation-text');
+    banner.innerHTML = explanations[section] || explanations['all'];
+
+    const activeContainer = document.getElementById(currentStrategy === 'a' ? 'code-strategy-a' : 'code-strategy-b');
+    const lines = activeContainer.querySelectorAll('.code-line');
+
+    lines.forEach(line => {
+      const lineSection = line.getAttribute('data-section');
+      if (section === 'all') {
+        line.classList.remove('spotlight', 'spotlight-accent', 'spotlight-pad', 'dimmed');
+      } else if (lineSection === section) {
+        if (section.includes('pad')) {
+          line.classList.add('spotlight-pad');
+        } else {
+          line.classList.add('spotlight');
+        }
+        line.classList.remove('dimmed');
+      } else {
+        line.classList.remove('spotlight', 'spotlight-accent', 'spotlight-pad');
+        line.classList.add('dimmed');
+      }
+    });
+
+    // Destacar filas del mapa de memoria
+    const rowPos = document.getElementById('row-pos');
+    const rowVel = document.getElementById('row-vel');
+    const rowScalars = document.getElementById('row-scalars');
+
+    rowPos.classList.remove('active-row');
+    rowVel.classList.remove('active-row');
+    rowScalars.classList.remove('active-row');
+
+    if (section === 'a-bucle' || section === 'b-fields') {
+      rowPos.classList.add('active-row');
+      rowVel.classList.add('active-row');
+    } else if (section === 'a-pad' || section === 'b-types' || section === 'b-pad') {
+      rowScalars.classList.add('active-row');
+    }
+  }
+
+  // Inicialización
+  renderButtons('a');
+
+  // Atajos de teclado para facilitar la presentación en vídeo
+  document.addEventListener('keydown', (e) => {
+    const buttons = document.querySelectorAll('.btn-group .btn');
+    if (e.key === '1') buttons[0]?.click();
+    if (e.key === '2') buttons[1]?.click();
+    if (e.key === '3') buttons[2]?.click();
+    if (e.key === '4') buttons[3]?.click();
+    if (e.key === '5') buttons[4]?.click();
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      switchStrategy(currentStrategy === 'a' ? 'b' : 'a');
+    }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      const activeIdx = Array.from(buttons).findIndex(b => b.classList.contains('active'));
+      const nextIdx = (activeIdx + 1) % buttons.length;
+      buttons[nextIdx]?.click();
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      const activeIdx = Array.from(buttons).findIndex(b => b.classList.contains('active'));
+      const prevIdx = (activeIdx - 1 + buttons.length) % buttons.length;
+      buttons[prevIdx]?.click();
+    }
+  });
+</script>
+
+</body>
+</html>

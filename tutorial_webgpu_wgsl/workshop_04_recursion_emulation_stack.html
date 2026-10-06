@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taller Práctico 4: Ausencia de Recursividad y Recorrido con Pila Privada en WGSL</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --code-bg: #1e1e1e;
+
+      /* Sintaxis VS Code Dark+ */
+      --syn-keyword: #c586c0;    /* fn, if, else, while, return, const */
+      --syn-storage: #569cd6;    /* var, let, struct */
+      --syn-type: #4ec9b0;       /* u32, f32, array, Nodo */
+      --syn-var: #9cdcfe;        /* variables, campos struct */
+      --syn-fn: #dcdcaa;         /* nombres de función */
+      --syn-num: #b5cea8;        /* literales numéricos */
+      --syn-comment: #6a9955;    /* comentarios */
+      --syn-attr: #dcdcaa;       /* @compute, @group, @binding */
+      --syn-op: #d4d4d4;         /* operadores y puntuación */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 2rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+
+    @media (max-width: 800px) {
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card p {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .card p:last-child {
+      margin-bottom: 0;
+    }
+
+    .stat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 700;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+
+    /* TOOLBAR INTERACTIVA */
+    .interactive-toolbar {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 0.9rem 1.2rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .btn {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #e4e4e7;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #3f3f46;
+      color: #fff;
+    }
+
+    .btn.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+
+    /* CAJA EXPLICATIVA SINCRONIZADA */
+    .explanation-banner {
+      background: rgba(30, 41, 59, 0.9);
+      border-left: 4px solid #38bdf8;
+      border-radius: 0 8px 8px 0;
+      padding: 0.85rem 1.2rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    /* VENTANA VISUAL STUDIO CODE */
+    .editor-window {
+      background-color: var(--code-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
+      margin-bottom: 2rem;
+    }
+
+    .window-titlebar {
+      background-color: #323233;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      position: relative;
+      user-select: none;
+      border-bottom: 1px solid #252526;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .control-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-close { background-color: #ff5f56; }
+    .dot-minimize { background-color: #ffbd2e; }
+    .dot-maximize { background-color: #27c93f; }
+
+    .window-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.78rem;
+      color: #999;
+      font-weight: 500;
+    }
+
+    .editor-tabs {
+      display: flex;
+      background-color: #252526;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border-top: 2px solid #007acc;
+      border-right: 1px solid #252526;
+    }
+
+    .tab-icon {
+      color: #e37933;
+      font-weight: bold;
+    }
+
+    .breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      color: #8c8c8c;
+      background-color: #1e1e1e;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .breadcrumbs span.active {
+      color: #cccccc;
+    }
+
+    /* LÍNEAS DE CÓDIGO */
+    .code-container {
+      padding: 16px 0;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 16px;
+      transition: background-color 0.2s ease, opacity 0.25s ease;
+      white-space: pre;
+    }
+
+    .code-line:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .code-line.spotlight {
+      background-color: rgba(56, 189, 248, 0.16);
+      border-left: 4px solid #38bdf8;
+      padding-left: 12px;
+    }
+
+    .code-line.dimmed {
+      opacity: 0.32;
+    }
+
+    .line-number {
+      width: 44px;
+      text-align: right;
+      padding-right: 20px;
+      color: #858585;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .line-content {
+      flex-grow: 1;
+    }
+
+    /* Syntax Highlighting */
+    .kw { color: var(--syn-keyword); }
+    .st { color: var(--syn-storage); }
+    .tp { color: var(--syn-type); }
+    .vr { color: var(--syn-var); }
+    .fn { color: var(--syn-fn); }
+    .nm { color: var(--syn-num); }
+    .cm { color: var(--syn-comment); font-style: italic; }
+    .at { color: var(--syn-attr); }
+    .op { color: var(--syn-op); }
+
+    /* Barra inferior */
+    .statusbar {
+      background-color: #007acc;
+      color: #ffffff;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      font-size: 0.72rem;
+      user-select: none;
+    }
+
+    .statusbar-left, .statusbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge">Taller Práctico 4 • WebGPU & WGSL</div>
+      <h1>Ausencia de Recursividad y Recorrido con Pila Privada</h1>
+      <p class="subtitle">Emulación iterativa de árboles y jerarquías (BVH) en sombreadores sin desbordamiento de registros</p>
+    </header>
+
+    <div class="info-grid">
+      <div class="card">
+        <div class="card-title">
+          <span>⚡</span> ¿Por qué la GPU prohíbe la recursividad?
+        </div>
+        <p>A diferencia de la CPU, que cuenta con memoria virtual dinámica y gigabytes de RAM para la pila de llamadas (<em>call stack</em>), cada núcleo de la GPU tiene un <strong>banco rígido y limitado de registros físicos</strong>.</p>
+        <p>Permitir llamadas recursivas provocaría desbordamientos de pila catastróficos que congelarían los procesadores masivamente paralelos.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>🎯</span> La Solución Canónica: Pila Local Fija
+        </div>
+        <p>Declaramos un array estático de <strong>16 elementos</strong> en el espacio de memoria privada (<code>function</code>), mapeado a registros rápidos del hilo.</p>
+        <p>En un árbol binario o BVH balanceado, 16 niveles permiten indexar <span class="stat-badge">2¹⁶ = 65.536 nodos</span> consumiendo solo <span class="stat-badge">64 bytes</span> por hilo, sin desbordamiento posible.</p>
+      </div>
+    </div>
+
+    <!-- Barra de control de exposición -->
+    <div class="interactive-toolbar">
+      <div class="toolbar-label">Paso a paso de la locución</div>
+      <div class="btn-group">
+        <button class="btn active" onclick="setSpotlight('all', this)">Código Completo</button>
+        <button class="btn" onclick="setSpotlight('memoria', this)">1. Array en Memoria Privada</button>
+        <button class="btn" onclick="setSpotlight('puntero', this)">2. Puntero Entero</button>
+        <button class="btn" onclick="setSpotlight('push-raiz', this)">3. Push Raíz</button>
+        <button class="btn" onclick="setSpotlight('bucle', this)">4. Bucle While</button>
+        <button class="btn" onclick="setSpotlight('pop', this)">5. Pop y Caso Base</button>
+        <button class="btn" onclick="setSpotlight('push-hijos', this)">6. Límite Rígido (Hijos)</button>
+      </div>
+    </div>
+
+    <!-- Mensaje dinámico explicativo -->
+    <div class="explanation-banner" id="explanation-text">
+      Mostrando el código WGSL completo. Selecciona cualquier paso para sincronizar el foco visual con tu explicación.
+    </div>
+
+    <!-- Ventana VS Code -->
+    <div class="editor-window">
+      <div class="window-titlebar">
+        <div class="window-controls">
+          <div class="control-dot dot-close"></div>
+          <div class="control-dot dot-minimize"></div>
+          <div class="control-dot dot-maximize"></div>
+        </div>
+        <div class="window-title">recorrido_pila_privada.wgsl — Visual Studio Code</div>
+      </div>
+
+      <div class="editor-tabs">
+        <div class="tab">
+          <span class="tab-icon">⚡</span>
+          <span>recorrido_pila_privada.wgsl</span>
+        </div>
+      </div>
+
+      <div class="breadcrumbs">
+        <span>tutorial_webgpu_wgsl</span>
+        <span>&gt;</span>
+        <span class="active">recorrido_pila_privada.wgsl</span>
+        <span>&gt;</span>
+        <span class="active" style="color:#dcdcaa;">recorrer_arbol_iterativo</span>
+      </div>
+
+      <div class="code-container" id="code-body">
+<div class="code-line" data-section="const"><span class="line-number">1</span><span class="line-content"><span class="cm">// 1. Límite estático rígido: 16 niveles cubren un árbol de hasta 65.536 nodos</span></span></div>
+<div class="code-line" data-section="const"><span class="line-number">2</span><span class="line-content"><span class="kw">const</span> <span class="vr">CAPACIDAD_PILA</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="nm">16u</span><span class="op">;</span></span></div>
+<div class="code-line"><span class="line-number">3</span><span class="line-content"></span></div>
+<div class="code-line" data-section="fn"><span class="line-number">4</span><span class="line-content"><span class="kw">fn</span> <span class="fn">recorrer_arbol_iterativo</span><span class="op">(</span><span class="vr">nodo_raiz</span><span class="op">:</span> <span class="tp">u32</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="tp">f32</span> <span class="op">{</span></span></div>
+<div class="code-line" data-section="memoria"><span class="line-number">5</span><span class="line-content">    <span class="cm">// 2. Array local en memoria privada del hilo (asignado a registros físicos)</span></span></div>
+<div class="code-line" data-section="memoria"><span class="line-number">6</span><span class="line-content">    <span class="st">var</span> <span class="vr">pila</span><span class="op">:</span> <span class="tp">array</span><span class="op">&lt;</span><span class="tp">u32</span><span class="op">,</span> <span class="nm">16</span><span class="op">&gt;;</span></span></div>
+<div class="code-line"><span class="line-number">7</span><span class="line-content">    </span></div>
+<div class="code-line" data-section="puntero"><span class="line-number">8</span><span class="line-content">    <span class="cm">// 3. Puntero entero para apilar y desapilar nodos</span></span></div>
+<div class="code-line" data-section="puntero"><span class="line-number">9</span><span class="line-content">    <span class="st">var</span> <span class="vr">ptr_pila</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="nm">0u</span><span class="op">;</span></span></div>
+<div class="code-line"><span class="line-number">10</span><span class="line-content"></span></div>
+<div class="code-line" data-section="push-raiz"><span class="line-number">11</span><span class="line-content">    <span class="cm">// 4. APILAR el nodo raíz inicial (Push)</span></span></div>
+<div class="code-line" data-section="push-raiz"><span class="line-number">12</span><span class="line-content">    <span class="vr">pila</span><span class="op">[</span><span class="vr">ptr_pila</span><span class="op">]</span> <span class="op">=</span> <span class="vr">nodo_raiz</span><span class="op">;</span></span></div>
+<div class="code-line" data-section="push-raiz"><span class="line-number">13</span><span class="line-content">    <span class="vr">ptr_pila</span> <span class="op">+=</span> <span class="nm">1u</span><span class="op">;</span></span></div>
+<div class="code-line"><span class="line-number">14</span><span class="line-content"></span></div>
+<div class="code-line"><span class="line-number">15</span><span class="line-content">    <span class="st">var</span> <span class="vr">acumulador</span><span class="op">:</span> <span class="tp">f32</span> <span class="op">=</span> <span class="nm">0.0</span><span class="op">;</span></span></div>
+<div class="code-line"><span class="line-number">16</span><span class="line-content"></span></div>
+<div class="code-line" data-section="bucle"><span class="line-number">17</span><span class="line-content">    <span class="cm">// 5. Bucle tradicional: se ejecuta mientras queden elementos en la pila</span></span></div>
+<div class="code-line" data-section="bucle"><span class="line-number">18</span><span class="line-content">    <span class="kw">while</span> <span class="op">(</span><span class="vr">ptr_pila</span> <span class="op">&gt;</span> <span class="nm">0u</span><span class="op">)</span> <span class="op">{</span></span></div>
+<div class="code-line" data-section="pop"><span class="line-number">19</span><span class="line-content">        <span class="cm">// DESAPILAR el elemento de la cúspide (Pop)</span></span></div>
+<div class="code-line" data-section="pop"><span class="line-number">20</span><span class="line-content">        <span class="vr">ptr_pila</span> <span class="op">-=</span> <span class="nm">1u</span><span class="op">;</span></span></div>
+<div class="code-line" data-section="pop"><span class="line-number">21</span><span class="line-content">        <span class="st">let</span> <span class="vr">id_actual</span><span class="op">:</span> <span class="tp">u32</span> <span class="op">=</span> <span class="vr">pila</span><span class="op">[</span><span class="vr">ptr_pila</span><span class="op">];</span></span></div>
+<div class="code-line"><span class="line-number">22</span><span class="line-content"></span></div>
+<div class="code-line" data-section="pop"><span class="line-number">23</span><span class="line-content">        <span class="st">let</span> <span class="vr">nodo</span><span class="op">:</span> <span class="tp">Nodo</span> <span class="op">=</span> <span class="vr">arbol_nodos</span><span class="op">[</span><span class="vr">id_actual</span><span class="op">];</span></span></div>
+<div class="code-line"><span class="line-number">24</span><span class="line-content"></span></div>
+<div class="code-line" data-section="pop"><span class="line-number">25</span><span class="line-content">        <span class="kw">if</span> <span class="op">(</span><span class="vr">nodo</span><span class="op">.</span><span class="vr">es_hoja</span> <span class="op">==</span> <span class="nm">1u</span><span class="op">)</span> <span class="op">{</span></span></div>
+<div class="code-line" data-section="pop"><span class="line-number">26</span><span class="line-content">            <span class="cm">// Caso base: evaluamos y acumulamos el resultado</span></span></div>
+<div class="code-line" data-section="pop"><span class="line-number">27</span><span class="line-content">            <span class="vr">acumulador</span> <span class="op">+=</span> <span class="vr">nodo</span><span class="op">.</span><span class="vr">valor</span><span class="op">;</span></span></div>
+<div class="code-line" data-section="pop"><span class="line-number">28</span><span class="line-content">        <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">29</span><span class="line-content">            <span class="cm">// Apilar hijos comprobando rígidamente el límite de registros</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">30</span><span class="line-content">            <span class="kw">if</span> <span class="op">(</span><span class="vr">nodo</span><span class="op">.</span><span class="vr">hijo_der</span> <span class="op">!=</span> <span class="nm">0u</span> <span class="op">&amp;&amp;</span> <span class="vr">ptr_pila</span> <span class="op">&lt;</span> <span class="vr">CAPACIDAD_PILA</span><span class="op">)</span> <span class="op">{</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">31</span><span class="line-content">                <span class="vr">pila</span><span class="op">[</span><span class="vr">ptr_pila</span><span class="op">]</span> <span class="op">=</span> <span class="vr">nodo</span><span class="op">.</span><span class="vr">hijo_der</span><span class="op">;</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">32</span><span class="line-content">                <span class="vr">ptr_pila</span> <span class="op">+=</span> <span class="nm">1u</span><span class="op">;</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">33</span><span class="line-content">            <span class="op">}</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">34</span><span class="line-content">            <span class="kw">if</span> <span class="op">(</span><span class="vr">nodo</span><span class="op">.</span><span class="vr">hijo_izq</span> <span class="op">!=</span> <span class="nm">0u</span> <span class="op">&amp;&amp;</span> <span class="vr">ptr_pila</span> <span class="op">&lt;</span> <span class="vr">CAPACIDAD_PILA</span><span class="op">)</span> <span class="op">{</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">35</span><span class="line-content">                <span class="vr">pila</span><span class="op">[</span><span class="vr">ptr_pila</span><span class="op">]</span> <span class="op">=</span> <span class="vr">nodo</span><span class="op">.</span><span class="vr">hijo_izq</span><span class="op">;</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">36</span><span class="line-content">                <span class="vr">ptr_pila</span> <span class="op">+=</span> <span class="nm">1u</span><span class="op">;</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">37</span><span class="line-content">            <span class="op">}</span></span></div>
+<div class="code-line" data-section="push-hijos"><span class="line-number">38</span><span class="line-content">        <span class="op">}</span></span></div>
+<div class="code-line"><span class="line-number">39</span><span class="line-content">    <span class="op">}</span></span></div>
+<div class="code-line"><span class="line-number">40</span><span class="line-content"></span></div>
+<div class="code-line" data-section="fn"><span class="line-number">41</span><span class="line-content">    <span class="kw">return</span> <span class="vr">acumulador</span><span class="op">;</span></span></div>
+<div class="code-line" data-section="fn"><span class="line-number">42</span><span class="line-content"><span class="op">}</span></span></div>
+      </div>
+
+      <div class="statusbar">
+        <div class="statusbar-left">
+          <span>⚡ WGSL (WebGPU)</span>
+          <span>UTF-8</span>
+        </div>
+        <div class="statusbar-right">
+          <span>Ln 6, Col 18</span>
+          <span>Espacios: 4</span>
+          <span>WGSL Language Support</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const descriptions = {
+      'all': 'Mostrando el código WGSL completo. Selecciona cualquier paso para sincronizar el foco visual con tu explicación.',
+      'memoria': '<strong>1. Array en Memoria Privada:</strong> La declaración <code>var pila: array&lt;u32, 16&gt;;</code> asigna espacio en los registros físicos del hilo. Al tener tamaño fijo, el compilador determina exactamente el costo de memoria por hilo.',
+      'puntero': '<strong>2. Puntero Entero:</strong> <code>var ptr_pila: u32 = 0u;</code> actúa como índice de la cima de la pila sin necesidad de aritmética de punteros compleja ni desreferenciación en memoria global.',
+      'push-raiz': '<strong>3. Apilar (Push) Raíz:</strong> Guardamos el nodo inicial en <code>pila[ptr_pila]</code> e incrementamos el puntero. Operación atómica de 1 ciclo en registros.',
+      'bucle': '<strong>4. Bucle While:</strong> <code>while (ptr_pila > 0u)</code> itera de forma determinista hasta vaciar la pila. El flujo de control se ejecuta a máxima velocidad en hardware.',
+      'pop': '<strong>5. Desapilar (Pop) y Evaluación:</strong> Decrementamos el puntero para leer el elemento superior. Si es hoja (caso base), acumulamos el valor sin crear llamadas a subrutinas.',
+      'push-hijos': '<strong>6. Apilado con Límite Rígido:</strong> Emulamos las ramas apilando los hijos derecho e izquierdo. La condición <code>ptr_pila < CAPACIDAD_PILA</code> garantiza 100% que jamás ocurrirá un desbordamiento en la GPU.'
+    };
+
+    function setSpotlight(section, buttonEl) {
+      const lines = document.querySelectorAll('.code-line');
+      const buttons = document.querySelectorAll('.btn');
+      const descEl = document.getElementById('explanation-text');
+
+      buttons.forEach(btn => btn.classList.remove('active'));
+      buttonEl.classList.add('active');
+
+      descEl.innerHTML = descriptions[section] || descriptions['all'];
+
+      if (section === 'all') {
+        lines.forEach(line => {
+          line.classList.remove('spotlight', 'dimmed');
+        });
+        return;
+      }
+
+      lines.forEach(line => {
+        if (line.getAttribute('data-section') === section) {
+          line.classList.add('spotlight');
+          line.classList.remove('dimmed');
+        } else {
+          line.classList.remove('spotlight');
+          line.classList.add('dimmed');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caso 1: Estructura Óptima (16 Bytes) — WGSL Code Spotlight</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --code-bg: #1e1e1e;
+
+      /* Tokens de Sintaxis VS Code Dark+ */
+      --syn-keyword: #c586c0;    /* fn, if, return, struct */
+      --syn-storage: #569cd6;    /* var, let, struct */
+      --syn-type: #4ec9b0;       /* vec3, f32, u32, ParticulaOptima */
+      --syn-var: #9cdcfe;        /* posicion, velocidad */
+      --syn-fn: #dcdcaa;         /* funciones */
+      --syn-num: #b5cea8;        /* 0, 11, 12, 15, 16 */
+      --syn-comment: #6a9955;    /* comentarios */
+      --syn-op: #d4d4d4;         /* : , ; { } < > */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 2rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    /* BARRA DE HERRAMIENTAS INTERACTIVA (SPOTLIGHT) */
+    .interactive-toolbar {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 0.9rem 1.2rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .btn {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #e4e4e7;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn:hover {
+      background: #3f3f46;
+      color: #fff;
+    }
+
+    .btn.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    /* BANNER EXPLICATIVO SINCRONIZADO CON LA LOCUCIÓN */
+    .explanation-banner {
+      background: rgba(30, 41, 59, 0.95);
+      border-left: 4px solid #38bdf8;
+      border-radius: 0 8px 8px 0;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 1rem;
+      color: #f1f5f9;
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      line-height: 1.55;
+    }
+
+    /* VENTANA VISUAL STUDIO CODE DARK+ */
+    .editor-window {
+      background-color: var(--code-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+      margin-bottom: 1.75rem;
+    }
+
+    .window-titlebar {
+      background-color: #323233;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      position: relative;
+      user-select: none;
+      border-bottom: 1px solid #252526;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .control-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot-close { background-color: #ff5f56; }
+    .dot-minimize { background-color: #ffbd2e; }
+    .dot-maximize { background-color: #27c93f; }
+
+    .window-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.78rem;
+      color: #999;
+      font-weight: 500;
+    }
+
+    .editor-tabs {
+      display: flex;
+      background-color: #252526;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border-top: 2px solid #007acc;
+      border-right: 1px solid #252526;
+    }
+
+    .tab-icon {
+      color: #38bdf8;
+      font-size: 0.95rem;
+    }
+
+    .breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      color: #8c8c8c;
+      background-color: #1e1e1e;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .breadcrumbs span.active {
+      color: #cccccc;
+    }
+
+    /* LÍNEAS DE CÓDIGO CON RESALTADO */
+    .code-container {
+      padding: 16px 0;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.95rem;
+      line-height: 1.7;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 16px;
+      transition: background-color 0.2s ease, opacity 0.25s ease;
+      white-space: pre;
+    }
+
+    .code-line:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .code-line.spotlight {
+      background-color: rgba(56, 189, 248, 0.16);
+      border-left: 4px solid #38bdf8;
+      padding-left: 12px;
+    }
+
+    .code-line.dimmed {
+      opacity: 0.32;
+    }
+
+    .line-number {
+      width: 44px;
+      text-align: right;
+      padding-right: 20px;
+      color: #858585;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .line-content {
+      flex-grow: 1;
+    }
+
+    /* CLASES DE TOKENIZADO VS CODE DARK+ */
+    .st { color: var(--syn-storage); font-weight: 600; }
+    .tp { color: var(--syn-type); }
+    .vr { color: var(--syn-var); }
+    .nm { color: var(--syn-num); }
+    .op { color: var(--syn-op); }
+    .cm { color: var(--syn-comment); font-style: italic; }
+    .fn { color: var(--syn-fn); }
+
+    /* MAPA DE MEMORIA FÍSICA (16 BYTES) */
+    .memory-map-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .memory-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .memory-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .memory-stats {
+      font-size: 0.85rem;
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.1);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-weight: 600;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      gap: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .byte-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px 4px;
+      text-align: center;
+      transition: all 0.25s ease;
+    }
+
+    .byte-idx {
+      font-size: 0.65rem;
+      color: #64748b;
+      font-family: monospace;
+      margin-bottom: 2px;
+    }
+
+    .byte-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    /* Colores por campo */
+    .byte-pos {
+      background: rgba(2, 132, 199, 0.25);
+      border-color: #0284c7;
+      color: #38bdf8;
+    }
+
+    .byte-pos.highlight {
+      background: #0284c7;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .byte-vel {
+      background: rgba(16, 185, 129, 0.25);
+      border-color: #10b981;
+      color: #34d399;
+    }
+
+    .byte-vel.highlight {
+      background: #059669;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 0.75rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    /* RESUMEN TÉCNICO EN TARJETAS */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .memory-grid {
+        grid-template-columns: repeat(8, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .summary-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .summary-card .label {
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .summary-card .value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .summary-card .desc {
+      font-size: 0.75rem;
+      color: #71717a;
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="badge">Lección 2 • Alineamiento y Empaquetamiento en WGSL</div>
+    <h1>Caso 1: Estructura Óptima de 16 Bytes</h1>
+    <p class="subtitle">Orden Afortunado: <code>vec3&lt;f32&gt;</code> (12B) seguido de <code>f32</code> (4B) = 16 Bytes limpios sin padding.</p>
+  </header>
+
+  <!-- BARRA DE HERRAMIENTAS INTERACTIVA -->
+  <div class="interactive-toolbar">
+    <div class="toolbar-label">
+      <span>🎯 Fases de la Explicación:</span>
+    </div>
+    <div class="btn-group">
+      <button class="btn active" onclick="setSpotlight('all', this)">
+        <span>👁️ Estructura Completa</span>
+      </button>
+      <button class="btn" onclick="setSpotlight('posicion', this)">
+        <span>1. Campo posicion (Bytes 0..11)</span>
+      </button>
+      <button class="btn" onclick="setSpotlight('velocidad', this)">
+        <span>2. Campo velocidad (Bytes 12..15)</span>
+      </button>
+      <button class="btn" onclick="setSpotlight('cierre', this)">
+        <span>3. Cierre y Alineamiento (16B)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- BANNER EXPLICATIVO SINCRONIZADO CON LA LOCUCIÓN -->
+  <div class="explanation-banner" id="explanation-text">
+    Pensemos en una estructura para una partícula física que contiene una posición con tres coordenadas y una velocidad escalar. En este primer caso, declaramos primero el campo posición como un vec3, y debajo declaramos la velocidad como un flotante simple.
+  </div>
+
+  <!-- VENTANA VISUAL STUDIO CODE DARK+ -->
+  <div class="editor-window">
+    <div class="window-titlebar">
+      <div class="window-controls">
+        <div class="control-dot dot-close"></div>
+        <div class="control-dot dot-minimize"></div>
+        <div class="control-dot dot-maximize"></div>
+      </div>
+      <div class="window-title">particula_optima.wgsl — Visual Studio Code</div>
+    </div>
+
+    <div class="editor-tabs">
+      <div class="tab">
+        <span class="tab-icon">⚡</span>
+        <span>particula_optima.wgsl</span>
+      </div>
+    </div>
+
+    <div class="breadcrumbs">
+      <span>src</span>
+      <span>›</span>
+      <span>shaders</span>
+      <span>›</span>
+      <span class="active">particula_optima.wgsl</span>
+    </div>
+
+    <div class="code-container" id="code-block">
+      <!-- Línea 1 -->
+      <div class="code-line" data-section="all">
+        <span class="line-number">1</span>
+        <span class="line-content"><span class="cm">// Caso 1: Disposición en memoria compacta sin bytes muertos</span></span>
+      </div>
+      <!-- Línea 2 -->
+      <div class="code-line" data-section="all">
+        <span class="line-number">2</span>
+        <span class="line-content"><span class="st">struct</span> <span class="tp">ParticulaOptima</span> <span class="op">{</span></span>
+      </div>
+      <!-- Línea 3: posicion -->
+      <div class="code-line" data-section="posicion">
+        <span class="line-number">3</span>
+        <span class="line-content">    <span class="vr">posicion</span><span class="op">:</span>  <span class="tp">vec3</span><span class="op">&lt;</span><span class="tp">f32</span><span class="op">&gt;,</span> <span class="cm">// Offset 0..11  (Tamaño: 12B | Alineamiento: 16B)</span></span>
+      </div>
+      <!-- Línea 4: velocidad -->
+      <div class="code-line" data-section="velocidad">
+        <span class="line-number">4</span>
+        <span class="line-content">    <span class="vr">velocidad</span><span class="op">:</span> <span class="tp">f32</span><span class="op">,</span>       <span class="cm">// Offset 12..15 (Tamaño:  4B | Alineamiento:  4B)</span></span>
+      </div>
+      <!-- Línea 5: cierre struct -->
+      <div class="code-line" data-section="cierre">
+        <span class="line-number">5</span>
+        <span class="line-content"><span class="op">};</span></span>
+      </div>
+      <!-- Línea 6 -->
+      <div class="code-line" data-section="cierre">
+        <span class="line-number">6</span>
+        <span class="line-content"><span class="cm">// Tamaño total = 16 bytes exactos | Alineamiento = 16 bytes | Padding = 0 bytes</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAPA DE MEMORIA FÍSICA A 16 BYTES -->
+  <div class="memory-map-card">
+    <div class="memory-header">
+      <div class="memory-title">
+        <span>🗺️ Mapa Físico de Memoria en la GPU (Palabra de 16 Bytes / 128 bits)</span>
+      </div>
+      <div class="memory-stats" id="memory-badge">16 Bytes Totales • 0 Bytes Padding</div>
+    </div>
+
+    <!-- Cuadrícula de 16 bytes individuales -->
+    <div class="memory-grid" id="byte-grid">
+      <!-- Bytes 0..3 (pos.x) -->
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">0</div><div class="byte-tag">pos.x</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">1</div><div class="byte-tag">pos.x</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">2</div><div class="byte-tag">pos.x</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">3</div><div class="byte-tag">pos.x</div></div>
+      <!-- Bytes 4..7 (pos.y) -->
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">4</div><div class="byte-tag">pos.y</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">5</div><div class="byte-tag">pos.y</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">6</div><div class="byte-tag">pos.y</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">7</div><div class="byte-tag">pos.y</div></div>
+      <!-- Bytes 8..11 (pos.z) -->
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">8</div><div class="byte-tag">pos.z</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">9</div><div class="byte-tag">pos.z</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">10</div><div class="byte-tag">pos.z</div></div>
+      <div class="byte-box byte-pos" data-field="posicion"><div class="byte-idx">11</div><div class="byte-tag">pos.z</div></div>
+      <!-- Bytes 12..15 (velocidad) -->
+      <div class="byte-box byte-vel" data-field="velocidad"><div class="byte-idx">12</div><div class="byte-tag">vel</div></div>
+      <div class="byte-box byte-vel" data-field="velocidad"><div class="byte-idx">13</div><div class="byte-tag">vel</div></div>
+      <div class="byte-box byte-vel" data-field="velocidad"><div class="byte-idx">14</div><div class="byte-tag">vel</div></div>
+      <div class="byte-box byte-vel" data-field="velocidad"><div class="byte-idx">15</div><div class="byte-tag">vel</div></div>
+    </div>
+
+    <div class="legend-row">
+      <div class="legend-item">
+        <div class="legend-color" style="background: #0284c7;"></div>
+        <span><strong>posicion (vec3&lt;f32&gt;):</strong> Bytes 0..11 (12 bytes útiles)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #059669;"></div>
+        <span><strong>velocidad (f32):</strong> Bytes 12..15 (4 bytes útiles)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #475569;"></div>
+        <span><strong>Padding muerto:</strong> 0 Bytes (¡Aprovechamiento 100%!)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARJETAS DE RESUMEN TÉCNICO -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">Tamaño Neto</div>
+      <div class="value">16 Bytes</div>
+      <div class="desc">12B (vec3) + 4B (f32)</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Alineamiento Struct</div>
+      <div class="value">16 Bytes</div>
+      <div class="desc">max(AlignOf(campos)) = max(16, 4)</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Padding Interno</div>
+      <div class="value" style="color: var(--success);">0 Bytes</div>
+      <div class="desc">El byte 12 es múltiplo de 4</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Mapeo JavaScript</div>
+      <div class="value">4 Floats</div>
+      <div class="desc">Float32Array([x, y, z, vel])</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const explanations = {
+    'all': 'Pensemos en una estructura para una partícula física que contiene una posición con tres coordenadas y una velocidad escalar. En el primer caso que vemos en pantalla, declaramos primero el campo posición como un vec3, y debajo declaramos la velocidad como un flotante simple.',
+    'posicion': 'El vector posición empieza en el byte cero, que es múltiplo de dieciséis, y ocupa doce bytes, cubriendo desde el byte cero hasta el once.',
+    'velocidad': 'El siguiente byte libre es el doce. Como el campo velocidad es un flotante que exige alineamiento de cuatro bytes, y doce es divisible por cuatro, entra inmediatamente a continuación ocupando del byte doce al quince.',
+    'cierre': 'Toda la estructura suma dieciséis bytes exactos. Como dieciséis es múltiplo del alineamiento máximo, no hace falta ningún relleno adicional. La estructura ocupa dieciséis bytes limpios.'
+  };
+
+  function setSpotlight(section, buttonEl) {
+    // 1. Actualizar estado de los botones
+    if (buttonEl) {
+      document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+      buttonEl.classList.add('active');
+    }
+
+    // 2. Actualizar banner explicativo
+    const banner = document.getElementById('explanation-text');
+    banner.innerHTML = explanations[section] || explanations['all'];
+
+    // 3. Spotlight en las líneas de código
+    const lines = document.querySelectorAll('.code-line');
+    lines.forEach(line => {
+      const lineSection = line.getAttribute('data-section');
+      if (section === 'all') {
+        line.classList.remove('spotlight', 'dimmed');
+      } else if (lineSection === section) {
+        line.classList.add('spotlight');
+        line.classList.remove('dimmed');
+      } else {
+        line.classList.remove('spotlight');
+        line.classList.add('dimmed');
+      }
+    });
+
+    // 4. Spotlight en el mapa de memoria
+    const byteBoxes = document.querySelectorAll('.byte-box');
+    byteBoxes.forEach(box => {
+      const field = box.getAttribute('data-field');
+      box.classList.remove('highlight');
+      if (section === 'all') {
+        // En vista general no añadimos resplandor extra
+      } else if (section === 'posicion' && field === 'posicion') {
+        box.classList.add('highlight');
+      } else if (section === 'velocidad' && field === 'velocidad') {
+        box.classList.add('highlight');
+      } else if (section === 'cierre') {
+        box.classList.add('highlight');
+      }
+    });
+  }
+
+  // Atajos de teclado para facilitar la presentación durante la grabación de vídeo
+  document.addEventListener('keydown', (e) => {
+    const sections = ['all', 'posicion', 'velocidad', 'cierre'];
+    const buttons = document.querySelectorAll('.btn');
+    if (e.key === '1') setSpotlight('all', buttons[0]);
+    if (e.key === '2') setSpotlight('posicion', buttons[1]);
+    if (e.key === '3') setSpotlight('velocidad', buttons[2]);
+    if (e.key === '4') setSpotlight('cierre', buttons[3]);
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      const activeIdx = Array.from(buttons).findIndex(b => b.classList.contains('active'));
+      const nextIdx = (activeIdx + 1) % buttons.length;
+      buttons[nextIdx].click();
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      const activeIdx = Array.from(buttons).findIndex(b => b.classList.contains('active'));
+      const prevIdx = (activeIdx - 1 + buttons.length) % buttons.length;
+      buttons[prevIdx].click();
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taller Práctico 2: Alineamiento de Memoria y Structs en WGSL</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --code-bg: #0b1120;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 2rem 1.5rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1050px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 850px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+
+    .status-ok {
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: var(--success);
+    }
+
+    .status-fail {
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      color: var(--danger);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Memory Block Layout Visualizer */
+    .memory-map {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      background: var(--code-bg);
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+    }
+
+    .memory-row {
+      display: grid;
+      grid-template-columns: 80px repeat(4, 1fr);
+      gap: 4px;
+      align-items: center;
+    }
+
+    .row-label {
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: var(--text-muted);
+    }
+
+    .byte-chunk {
+      padding: 0.4rem 0.25rem;
+      text-align: center;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 600;
+    }
+
+    .chunk-vec4-pos { background: #0284c7; color: #fff; }
+    .chunk-vec4-vel { background: #0d9488; color: #fff; }
+    .chunk-scalar-masa { background: #d97706; color: #fff; }
+    .chunk-scalar-vida { background: #7c3aed; color: #fff; }
+    .chunk-scalar-id   { background: #db2777; color: #fff; }
+    .chunk-padding     { background: #ef4444; color: #fff; text-decoration: line-through; opacity: 0.7; }
+
+    .control-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      border: 1px solid var(--card-border);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    select {
+      background: var(--code-bg);
+      color: var(--text-main);
+      margin-bottom: 1rem;
+    }
+
+    button {
+      background: linear-gradient(135deg, #0284c7, #0ea5e9);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    button:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", Menlo, Consolas, Monaco, monospace;
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      margin-top: 0.5rem;
+    }
+
+    .code-comment { color: #64748b; }
+    .code-keyword { color: #f43f5e; font-weight: 600; }
+    .code-func { color: #38bdf8; }
+    .code-type { color: #34d399; }
+    .code-builtin { color: #fbbf24; }
+
+    .log-box {
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+      max-height: 180px;
+      overflow-y: auto;
+      color: #94a3b8;
+      margin-top: 1rem;
+    }
+
+    .log-entry {
+      margin-bottom: 0.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <span class="badge">Taller Práctico 2 • Capítulo 2</span>
+      <h1>Taller Práctico 2: Alineamiento de Memoria y Structs en WGSL</h1>
+      <p class="subtitle">Demostración interactiva en vivo con Compute Shader: cuadrícula de 16 bytes por fila y simulación del descontrol cinemático por desalineamiento.</p>
+    </header>
+
+    <!-- Estado del Soporte de Hardware -->
+    <div id="gpu-status" class="status-indicator status-ok">
+      <div class="status-dot"></div>
+      <span id="gpu-status-text">Verificando compatibilidad de WebGPU en tu navegador...</span>
+    </div>
+
+    <div class="grid-2">
+      <!-- Panel de Control y Selección de Modo -->
+      <div class="card">
+        <h2 class="card-title">🧪 Modo de Empaquetamiento de Buffer</h2>
+        
+        <div class="control-group">
+          <label for="alignment-mode">Estrategia de Memoria desde la CPU (JavaScript):</label>
+          <select id="alignment-mode" onchange="actualizarVisualizador()">
+            <option value="aligned" selected>✅ Modo Alineado (Respeta los 48 bytes y el padding del WGSL)</option>
+            <option value="misaligned">❌ Modo Ingenuo / Desalineado (Empaqueta 44 bytes sin padding)</option>
+          </select>
+
+          <label for="particle-count">Número de Partículas en la Simulación:</label>
+          <select id="particle-count">
+            <option value="1000">1.000 partículas físicas</option>
+            <option value="10000" selected>10.000 partículas físicas</option>
+            <option value="100000">100.000 partículas físicas</option>
+          </select>
+        </div>
+
+        <button id="run-btn" onclick="ejecutarShaderCinematica()">⚡ Despachar Compute Shader en GPU</button>
+
+        <div class="log-box" id="execution-logs">
+          <div class="log-entry">Sistema listo. Selecciona una estrategia de empaquetamiento y pulsa ejecutar.</div>
+        </div>
+      </div>
+
+      <!-- Mapa Visual de Bytes (16 bytes por fila) -->
+      <div class="card">
+        <h2 class="card-title">🗺️ Mapa de Memoria Física (Palabras de 16 Bytes)</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+          Cada fila representa una palabra de 128 bits (16 bytes) leída por la GPU en un único ciclo de reloj.
+        </p>
+
+        <div class="memory-map" id="memory-visualizer">
+          <!-- Generado dinámicamente -->
+        </div>
+
+        <div id="status-card-feedback" style="margin-top: 1rem; font-size: 0.9rem; padding: 0.75rem; border-radius: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25);">
+          <strong>Diagnóstico:</strong> Los campos respetan el alineamiento de 16 bytes. El struct mide exactamente 48 bytes (3 palabras GPU).
+        </div>
+      </div>
+    </div>
+
+    <!-- Visor de Código WGSL -->
+    <div class="card">
+      <h2 class="card-title">📄 Código WGSL del Compute Shader</h2>
+      <pre><code><span class="code-comment">// Estructura física con reglas de alineamiento del W3C</span>
+<span class="code-keyword">struct</span> <span class="code-type">ParticulaFisica</span> {
+    posicion:  <span class="code-type">vec4</span>&lt;<span class="code-type">f32</span>&gt;, <span class="code-comment">// Offset  0..15 (Alineamiento: 16 bytes)</span>
+    velocidad: <span class="code-type">vec4</span>&lt;<span class="code-type">f32</span>&gt;, <span class="code-comment">// Offset 16..31 (Alineamiento: 16 bytes)</span>
+    masa:      <span class="code-type">f32</span>,       <span class="code-comment">// Offset 32..35 (Alineamiento:  4 bytes)</span>
+    vida:      <span class="code-type">f32</span>,       <span class="code-comment">// Offset 36..39 (Alineamiento:  4 bytes)</span>
+    id_tipo:   <span class="code-type">u32</span>,       <span class="code-comment">// Offset 40..43 (Alineamiento:  4 bytes)</span>
+    <span class="code-comment">// ⚠️ PADDING IMPLÍCITO: Bytes 44..47 reservados para completar múltiplo de 16 bytes</span>
+};
+
+<span class="code-builtin">@group</span>(0) <span class="code-builtin">@binding</span>(0) <span class="code-keyword">var</span>&lt;<span class="code-keyword">storage</span>, <span class="code-keyword">read_write</span>&gt; particulas: <span class="code-type">array</span>&lt;<span class="code-type">ParticulaFisica</span>&gt;;
+
+<span class="code-builtin">@compute</span> <span class="code-builtin">@workgroup_size</span>(64)
+<span class="code-keyword">fn</span> <span class="code-func">main</span>(<span class="code-builtin">@builtin</span>(global_invocation_id) global_id: <span class="code-type">vec3</span>&lt;<span class="code-type">u32</span>&gt;) {
+    <span class="code-keyword">let</span> i = global_id.x;
+    <span class="code-keyword">if</span> (i &gt;= <span class="code-func">arrayLength</span>(&amp;particulas)) { <span class="code-keyword">return</span>; }
+
+    <span class="code-comment">// Actualización cinemática masiva paralela en GPU</span>
+    <span class="code-keyword">let</span> dt = 0.016f; <span class="code-comment">// 16ms (60 FPS)</span>
+    particulas[i].posicion = particulas[i].posicion + particulas[i].velocidad * dt;
+    particulas[i].vida = particulas[i].vida - dt;
+}</code></pre>
+    </div>
+  </div>
+
+  <script>
+    let adapter = null;
+    let device = null;
+
+    async function initWebGPU() {
+      const statusEl = document.getElementById('gpu-status');
+      const textEl = document.getElementById('gpu-status-text');
+      const btn = document.getElementById('run-btn');
+
+      if (!navigator.gpu) {
+        statusEl.className = 'status-indicator status-fail';
+        textEl.textContent = '❌ WebGPU no está disponible. Utiliza Chrome 113+, Safari 18+ o activa WebGPU en flags.';
+        btn.disabled = true;
+        return;
+      }
+
+      try {
+        adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) throw new Error('No se encontró un adaptador GPU compatible.');
+        device = await adapter.requestDevice();
+        statusEl.className = 'status-indicator status-ok';
+        textEl.innerHTML = `✅ <strong>WebGPU Listo</strong> • Adaptador: <code>${adapter.info?.vendor || 'Hardware Nativo'}</code> (${adapter.info?.architecture || 'Acelerado'})`;
+      } catch (err) {
+        statusEl.className = 'status-indicator status-fail';
+        textEl.textContent = `❌ Error WebGPU: ${err.message}`;
+        btn.disabled = true;
+      }
+      actualizarVisualizador();
+    }
+
+    function actualizarVisualizador() {
+      const mode = document.getElementById('alignment-mode').value;
+      const container = document.getElementById('memory-visualizer');
+      const feedback = document.getElementById('status-card-feedback');
+      container.innerHTML = '';
+
+      if (mode === 'aligned') {
+        container.innerHTML = `
+          <div class="memory-row">
+            <span class="row-label">Bytes 0..15</span>
+            <div class="byte-chunk chunk-vec4-pos" style="grid-column: span 4;">posicion: vec4&lt;f32&gt; (16 bytes / X, Y, Z, W)</div>
+          </div>
+          <div class="memory-row">
+            <span class="row-label">Bytes 16..31</span>
+            <div class="byte-chunk chunk-vec4-vel" style="grid-column: span 4;">velocidad: vec4&lt;f32&gt; (16 bytes / VX, VY, VZ, 0)</div>
+          </div>
+          <div class="memory-row">
+            <span class="row-label">Bytes 32..47</span>
+            <div class="byte-chunk chunk-scalar-masa">masa (4B)</div>
+            <div class="byte-chunk chunk-scalar-vida">vida (4B)</div>
+            <div class="byte-chunk chunk-scalar-id">id (4B)</div>
+            <div class="byte-chunk chunk-padding">PADDING (4B)</div>
+          </div>
+        `;
+        feedback.innerHTML = `✅ <strong>Alineamiento Perfecto:</strong> El struct mide 48 bytes (múltiplo exacto de 16). La GPU leerá cada partícula sin desfases.`;
+        feedback.style.borderColor = 'rgba(52, 211, 153, 0.4)';
+        feedback.style.background = 'rgba(52, 211, 153, 0.1)';
+      } else {
+        container.innerHTML = `
+          <div class="memory-row">
+            <span class="row-label">Bytes 0..15</span>
+            <div class="byte-chunk chunk-vec4-pos" style="grid-column: span 4;">posicion: vec4&lt;f32&gt; (16 bytes)</div>
+          </div>
+          <div class="memory-row">
+            <span class="row-label">Bytes 16..31</span>
+            <div class="byte-chunk chunk-vec4-vel" style="grid-column: span 4;">velocidad: vec4&lt;f32&gt; (16 bytes)</div>
+          </div>
+          <div class="memory-row">
+            <span class="row-label">Bytes 32..47</span>
+            <div class="byte-chunk chunk-scalar-masa">masa (4B)</div>
+            <div class="byte-chunk chunk-scalar-vida">vida (4B)</div>
+            <div class="byte-chunk chunk-scalar-id">id (4B)</div>
+            <div class="byte-chunk chunk-vec4-pos" style="background: #dc2626;">P₂.pos.x (¡DESFASE!)</div>
+          </div>
+        `;
+        feedback.innerHTML = `❌ <strong>Desfase Fatal:</strong> Al omitir los 4 bytes de padding en JavaScript (44B por struct), la segunda partícula empieza 4 bytes antes. La GPU interpretará 'posicion.x' leyendo la memoria de 'id' o del padding, corrompiendo la simulación.`;
+        feedback.style.borderColor = 'rgba(248, 113, 113, 0.4)';
+        feedback.style.background = 'rgba(248, 113, 113, 0.1)';
+      }
+    }
+
+    function log(msg) {
+      const box = document.getElementById('execution-logs');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      box.appendChild(entry);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    const wgslShaderCode = `
+      struct ParticulaFisica {
+          posicion: vec4<f32>,
+          velocidad: vec4<f32>,
+          masa: f32,
+          vida: f32,
+          id_tipo: u32,
+      };
+
+      @group(0) @binding(0) var<storage, read_write> particulas: array<ParticulaFisica>;
+
+      @compute @workgroup_size(64)
+      fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+          let i = global_id.x;
+          if (i >= arrayLength(&particulas)) {
+              return;
+          }
+          let dt = 0.016f;
+          particulas[i].posicion = particulas[i].posicion + particulas[i].velocidad * dt;
+          particulas[i].vida = particulas[i].vida - dt;
+      }
+    `;
+
+    async function ejecutarShaderCinematica() {
+      const mode = document.getElementById('alignment-mode').value;
+      const count = parseInt(document.getElementById('particle-count').value, 10);
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+
+      log(`Iniciando prueba con ${count.toLocaleString()} partículas en modo <strong>${mode.toUpperCase()}</strong>...`);
+
+      // Definir stride en flotantes (Float32Array = 4 bytes por elemento)
+      // Modo correcto: 48 bytes = 12 flotantes.
+      // Modo erróneo: 44 bytes = 11 flotantes (omitiendo el padding).
+      const strideFloats = (mode === 'aligned') ? 12 : 11;
+      const bufferFloats = count * strideFloats;
+      const cpuArray = new Float32Array(bufferFloats);
+
+      // Rellenar datos
+      for (let i = 0; i < count; i++) {
+        const offset = i * strideFloats;
+        // Posición inicial: (x=10.0, y=20.0, z=30.0, w=1.0)
+        cpuArray[offset + 0] = 10.0;
+        cpuArray[offset + 1] = 20.0;
+        cpuArray[offset + 2] = 30.0;
+        cpuArray[offset + 3] = 1.0;
+
+        // Velocidad: (vx=1.0, vy=2.0, vz=3.0, vw=0.0)
+        cpuArray[offset + 4] = 1.0;
+        cpuArray[offset + 5] = 2.0;
+        cpuArray[offset + 6] = 3.0;
+        cpuArray[offset + 7] = 0.0;
+
+        // Escalares
+        cpuArray[offset + 8] = 5.0;  // masa
+        cpuArray[offset + 9] = 10.0; // vida
+        // id_tipo interpretado como float temporalmente para packing
+        new Uint32Array(cpuArray.buffer, (offset + 10) * 4, 1)[0] = i;
+
+        if (mode === 'aligned') {
+          cpuArray[offset + 11] = 0.0; // PADDING EXPLÍCITO (4 bytes)
+        }
+      }
+
+      const byteLength = cpuArray.byteLength;
+      log(`Buffer creado en CPU: ${byteLength.toLocaleString()} bytes (${(strideFloats * 4)} bytes/partícula).`);
+
+      try {
+        const shaderModule = device.createShaderModule({ code: wgslShaderCode });
+        const inputBuffer = device.createBuffer({
+          size: byteLength,
+          usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+        });
+
+        const stagingBuffer = device.createBuffer({
+          size: byteLength,
+          usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+        });
+
+        device.queue.writeBuffer(inputBuffer, 0, cpuArray);
+
+        const computePipeline = device.createComputePipeline({
+          layout: 'auto',
+          compute: { module: shaderModule, entryPoint: 'main' },
+        });
+
+        const bindGroup = device.createBindGroup({
+          layout: computePipeline.getBindGroupLayout(0),
+          entries: [{ binding: 0, resource: { buffer: inputBuffer } }],
+        });
+
+        const start = performance.now();
+        const commandEncoder = device.createCommandEncoder();
+        const pass = commandEncoder.beginComputePass();
+        pass.setPipeline(computePipeline);
+        pass.setBindGroup(0, bindGroup);
+        pass.dispatchWorkgroups(Math.ceil(count / 64));
+        pass.end();
+
+        commandEncoder.copyBufferToBuffer(inputBuffer, 0, stagingBuffer, 0, byteLength);
+        device.queue.submit([commandEncoder.finish()]);
+
+        await stagingBuffer.mapAsync(GPUMapMode.READ);
+        const results = new Float32Array(stagingBuffer.getMappedRange());
+        const timeTaken = (performance.now() - start).toFixed(2);
+
+        // Inspeccionar primera y segunda partícula
+        const p0_x = results[0].toFixed(3);
+        const p0_vida = results[9].toFixed(3);
+
+        // En la GPU el struct mide 48 bytes (12 flotantes) independientemente de lo que enviara la CPU
+        const p1_offset_gpu = 12; 
+        const p1_x = results[p1_offset_gpu].toFixed(3);
+        const p1_vida = results[p1_offset_gpu + 9].toFixed(3);
+
+        stagingBuffer.unmap();
+        inputBuffer.destroy();
+        stagingBuffer.destroy();
+
+        if (mode === 'aligned') {
+          log(`✅ <span style="color: var(--success)">Éxito en ${timeTaken} ms</span>: Partícula 0 Pos.X = ${p0_x} (Esperado: 10.016), Vida = ${p0_vida}.`);
+          log(`✅ Partícula 1 Pos.X = ${p1_x} (Esperado: 10.016) • Sincronización perfecta.`);
+        } else {
+          log(`⚠️ <span style="color: var(--danger)">Corrupción de memoria detectada en ${timeTaken} ms</span>:`);
+          log(`❌ Partícula 1 Pos.X = ${p1_x} (¡Esperado 10.016, pero la GPU leyó el ID o basura desplazada!)`);
+          log(`❌ La GPU leyó un struct de 48B sobre un buffer empaquetado a 44B.`);
+        }
+      } catch (err) {
+        log(`❌ Error al ejecutar pipeline: ${err.message}`);
+      }
+
+      btn.disabled = false;
+    }
+
+    window.addEventListener('DOMContentLoaded', initWebGPU);
+  </script>
+</body>
+</html>

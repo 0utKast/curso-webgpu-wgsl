@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Contrato de Hardware: GPUBindGroupLayout y GPUBindGroup — VS Code Visualizer</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --js-yellow: #facc15;
+      --wgsl-cyan: #22d3ee;
+      --code-bg: #1e1e1e;
+      --editor-border: #2d3748;
+
+      /* Tokens de Sintaxis VS Code Dark+ */
+      --syn-keyword: #569cd6;    /* const, let, var, fn */
+      --syn-control: #c586c0;    /* return, if */
+      --syn-type: #4ec9b0;       /* texture_2d, sampler, GPUBindGroupLayout */
+      --syn-var: #9cdcfe;        /* bindGroupLayout, entries, binding */
+      --syn-prop: #9cdcfe;       /* visibility, sampleType, format */
+      --syn-fn: #dcdcaa;         /* createBindGroupLayout, createBindGroup, createView */
+      --syn-num: #b5cea8;        /* 0, 1, 2 */
+      --syn-str: #ce9178;        /* 'float', '2d', 'write-only', 'rgba8unorm', 'filtering' */
+      --syn-comment: #6a9955;    /* // comentarios */
+      --syn-decorator: #dcdcaa;  /* @group, @binding */
+      --syn-op: #d4d4d4;         /* : , = , { } , [ ] */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "SF Pro Display", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 1.5rem;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    /* Barra Superior de Control */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      padding: 0.85rem 1.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+    }
+
+    .toolbar-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .toolbar-title span {
+      background: rgba(56, 189, 248, 0.15);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #1e293b;
+      color: var(--text-muted);
+      border: 1px solid #475569;
+      padding: 0.4rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    .btn.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Banner Explicativo Dinámico */
+    .banner {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9));
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-left: 4px solid var(--accent);
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      color: #e2e8f0;
+      min-height: 3rem;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Ventana VS Code */
+    .vscode-window {
+      background: var(--code-bg);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--editor-border);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    /* Barra de Título (macOS Chrome) */
+    .vscode-titlebar {
+      background: #323233;
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #252526;
+    }
+
+    .mac-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot.red { background: #ff5f56; }
+    .dot.yellow { background: #ffbd2e; }
+    .dot.green { background: #27c93f; }
+
+    .window-title {
+      font-size: 0.78rem;
+      color: #999999;
+      font-family: monospace;
+    }
+
+    /* Pestañas de Archivo */
+    .vscode-tabs {
+      background: #252526;
+      display: flex;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .tab {
+      padding: 0.55rem 1.2rem;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #969696;
+      background: #2d2d2d;
+      border-right: 1px solid #1e1e1e;
+      cursor: pointer;
+      user-select: none;
+      font-family: monospace;
+    }
+
+    .tab.active {
+      background: var(--code-bg);
+      color: #ffffff;
+      border-top: 2px solid var(--accent);
+    }
+
+    .tab-icon-js { color: #facc15; font-weight: bold; font-size: 0.9rem; }
+    .tab-icon-wgsl { color: #22d3ee; font-weight: bold; font-size: 0.9rem; }
+
+    /* Migas de Pan (Breadcrumbs) */
+    .vscode-breadcrumbs {
+      background: var(--code-bg);
+      padding: 0.35rem 1rem;
+      font-size: 0.75rem;
+      color: #858585;
+      font-family: monospace;
+      border-bottom: 1px solid #252526;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Cuerpo del Editor */
+    .editor-body {
+      padding: 1rem 0;
+      overflow-x: auto;
+    }
+
+    .code-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: "JetBrains Mono", "Fira Code", Consolas, Menlo, Monaco, monospace;
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .code-line {
+      transition: all 0.25s ease;
+    }
+
+    .code-line:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .line-num {
+      width: 50px;
+      text-align: right;
+      padding-right: 1.25rem;
+      color: #6e7681;
+      user-select: none;
+      font-size: 0.82rem;
+      vertical-align: top;
+    }
+
+    .line-content {
+      padding-left: 0.5rem;
+      white-space: pre;
+    }
+
+    /* Clases de Spotlight */
+    .code-line.dimmed {
+      opacity: 0.22;
+      filter: blur(0.5px);
+    }
+
+    .code-line.highlight {
+      background: rgba(56, 189, 248, 0.12) !important;
+      position: relative;
+    }
+
+    .code-line.highlight::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    /* Tokens Sintácticos */
+    .kwd { color: var(--syn-keyword); }
+    .ctl { color: var(--syn-control); }
+    .typ { color: var(--syn-type); }
+    .var { color: var(--syn-var); }
+    .prop { color: var(--syn-prop); }
+    .fn { color: var(--syn-fn); }
+    .num { color: var(--syn-num); }
+    .str { color: var(--syn-str); }
+    .cmt { color: var(--syn-comment); font-style: italic; }
+    .dec { color: var(--syn-decorator); }
+    .op { color: var(--syn-op); }
+    .badge-b0 { background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 1px 5px; border-radius: 4px; font-weight: bold; }
+    .badge-b1 { background: rgba(250, 204, 21, 0.2); color: #facc15; padding: 1px 5px; border-radius: 4px; font-weight: bold; }
+    .badge-b2 { background: rgba(52, 211, 153, 0.2); color: #34d399; padding: 1px 5px; border-radius: 4px; font-weight: bold; }
+
+    /* Barra de Estado Inferior */
+    .vscode-statusbar {
+      background: #007acc;
+      color: #ffffff;
+      padding: 0.25rem 0.85rem;
+      font-size: 0.72rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: monospace;
+    }
+
+    .statusbar-left, .statusbar-right {
+      display: flex;
+      gap: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- BARRA DE HERRAMIENTAS INTERACTIVA -->
+  <div class="toolbar">
+    <div class="toolbar-title">
+      <span>WebGPU Host Contract</span>
+      Orquestación de BindGroups y Shaders
+    </div>
+    <div class="btn-group">
+      <button class="btn active" onclick="setSpotlight('all', this)">Vista Completa</button>
+      <button class="btn" onclick="setSpotlight('b0', this)">Enlace 0: Textura Entrada</button>
+      <button class="btn" onclick="setSpotlight('b1', this)">Enlace 1: Storage Texture</button>
+      <button class="btn" onclick="setSpotlight('b2', this)">Enlace 2: Sampler</button>
+      <button class="btn" onclick="setSpotlight('bg', this)">Instanciación BindGroup</button>
+      <button class="btn" onclick="toggleView(this)">Cambiar a WGSL</button>
+    </div>
+  </div>
+
+  <!-- BANNER EXPLICATIVO SINCRONIZADO -->
+  <div class="banner" id="banner-text">
+    <strong>Contrato Completo del Pipeline:</strong> Se define el <code>GPUBindGroupLayout</code> formalizando los tipos exactos exigidos por el shader, y se instancia el <code>GPUBindGroup</code> conectando las vistas de memoria física en VRAM.
+  </div>
+
+  <!-- VENTANA ESTILO VS CODE -->
+  <div class="vscode-window">
+    
+    <!-- Barra de Título -->
+    <div class="vscode-titlebar">
+      <div class="mac-dots">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+      </div>
+      <div class="window-title" id="file-title">pipeline_orchestration.js — WebGPU Video Compute</div>
+      <div></div>
+    </div>
+
+    <!-- Pestañas -->
+    <div class="vscode-tabs">
+      <div class="tab active" id="tab-js" onclick="showFile('js')">
+        <span class="tab-icon-js">JS</span> pipeline_orchestration.js
+      </div>
+      <div class="tab" id="tab-wgsl" onclick="showFile('wgsl')">
+        <span class="tab-icon-wgsl">WGSL</span> shader_contract.wgsl
+      </div>
+    </div>
+
+    <!-- Migas de Pan -->
+    <div class="vscode-breadcrumbs" id="breadcrumbs">
+      src &gt; host &gt; <span>pipeline_orchestration.js</span> &gt; <span>device.createBindGroupLayout</span>
+    </div>
+
+    <!-- Contenido del Editor: JAVASCRIPT -->
+    <div class="editor-body" id="editor-js">
+      <table class="code-table">
+        <tbody>
+          <tr class="code-line" id="l1"><td class="line-num">1</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line" id="l2"><td class="line-num">2</td><td class="line-content"><span class="cmt">// 1. CONTRATO FORMAL DEL PIPELINE: GPUBindGroupLayout</span></td></tr>
+          <tr class="code-line" id="l3"><td class="line-num">3</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line" id="l4"><td class="line-num">4</td><td class="line-content"><span class="kwd">const</span> <span class="var">bindGroupLayout</span> <span class="op">=</span> <span class="var">device</span><span class="op">.</span><span class="fn">createBindGroupLayout</span><span class="op">({</span></td></tr>
+          <tr class="code-line" id="l5"><td class="line-num">5</td><td class="line-content">  <span class="prop">label</span><span class="op">:</span> <span class="str">"Contrato Pipeline Convolución 2D"</span><span class="op">,</span></td></tr>
+          <tr class="code-line" id="l6"><td class="line-num">6</td><td class="line-content">  <span class="prop">entries</span><span class="op">:</span> <span class="op">[</span></td></tr>
+          <tr class="code-line sec-b0" id="l7"><td class="line-num">7</td><td class="line-content">    <span class="cmt">// [ENLACE 0]: Textura Muestreable (Entrada de Solo Lectura)</span></td></tr>
+          <tr class="code-line sec-b0" id="l8"><td class="line-num">8</td><td class="line-content">    <span class="op">{</span></td></tr>
+          <tr class="code-line sec-b0" id="l9"><td class="line-num">9</td><td class="line-content">      <span class="prop">binding</span><span class="op">:</span> <span class="num">0</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-b0" id="l10"><td class="line-num">10</td><td class="line-content">      <span class="prop">visibility</span><span class="op">:</span> <span class="typ">GPUShaderStage</span><span class="op">.</span><span class="prop">COMPUTE</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-b0" id="l11"><td class="line-num">11</td><td class="line-content">      <span class="prop">texture</span><span class="op">:</span> <span class="op">{</span> <span class="prop">sampleType</span><span class="op">:</span> <span class="str">'float'</span><span class="op">,</span> <span class="prop">viewDimension</span><span class="op">:</span> <span class="str">'2d'</span> <span class="op">}</span></td></tr>
+          <tr class="code-line sec-b0" id="l12"><td class="line-num">12</td><td class="line-content">    <span class="op">},</span></td></tr>
+          <tr class="code-line sec-b1" id="l13"><td class="line-num">13</td><td class="line-content">    <span class="cmt">// [ENLACE 1]: Storage Texture (Salida de Solo Escritura con Formato rgba8unorm)</span></td></tr>
+          <tr class="code-line sec-b1" id="l14"><td class="line-num">14</td><td class="line-content">    <span class="op">{</span></td></tr>
+          <tr class="code-line sec-b1" id="l15"><td class="line-num">15</td><td class="line-content">      <span class="prop">binding</span><span class="op">:</span> <span class="num">1</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-b1" id="l16"><td class="line-num">16</td><td class="line-content">      <span class="prop">visibility</span><span class="op">:</span> <span class="typ">GPUShaderStage</span><span class="op">.</span><span class="prop">COMPUTE</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-b1" id="l17"><td class="line-num">17</td><td class="line-content">      <span class="prop">storageTexture</span><span class="op">:</span> <span class="op">{</span> <span class="prop">access</span><span class="op">:</span> <span class="str">'write-only'</span><span class="op">,</span> <span class="prop">format</span><span class="op">:</span> <span class="str">'rgba8unorm'</span><span class="op">,</span> <span class="prop">viewDimension</span><span class="op">:</span> <span class="str">'2d'</span> <span class="op">}</span></td></tr>
+          <tr class="code-line sec-b1" id="l18"><td class="line-num">18</td><td class="line-content">    <span class="op">},</span></td></tr>
+          <tr class="code-line sec-b2" id="l19"><td class="line-num">19</td><td class="line-content">    <span class="cmt">// [ENLACE 2]: Muestreador de Filtrado Bilineal</span></td></tr>
+          <tr class="code-line sec-b2" id="l20"><td class="line-num">20</td><td class="line-content">    <span class="op">{</span></td></tr>
+          <tr class="code-line sec-b2" id="l21"><td class="line-num">21</td><td class="line-content">      <span class="prop">binding</span><span class="op">:</span> <span class="num">2</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-b2" id="l22"><td class="line-num">22</td><td class="line-content">      <span class="prop">visibility</span><span class="op">:</span> <span class="typ">GPUShaderStage</span><span class="op">.</span><span class="prop">COMPUTE</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-b2" id="l23"><td class="line-num">23</td><td class="line-content">      <span class="prop">sampler</span><span class="op">:</span> <span class="op">{</span> <span class="prop">type</span><span class="op">:</span> <span class="str">'filtering'</span> <span class="op">}</span></td></tr>
+          <tr class="code-line sec-b2" id="l24"><td class="line-num">24</td><td class="line-content">    <span class="op">}</span></td></tr>
+          <tr class="code-line" id="l25"><td class="line-num">25</td><td class="line-content">  <span class="op">]</span></td></tr>
+          <tr class="code-line" id="l26"><td class="line-num">26</td><td class="line-content"><span class="op">});</span></td></tr>
+          <tr class="code-line" id="l27"><td class="line-num">27</td><td class="line-content"></td></tr>
+          <tr class="code-line" id="l28"><td class="line-num">28</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line" id="l29"><td class="line-num">29</td><td class="line-content"><span class="cmt">// 2. CONEXIÓN CON EL SILICIO: GPUBindGroup (Asignación de Memoria Física)</span></td></tr>
+          <tr class="code-line" id="l30"><td class="line-num">30</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line sec-bg" id="l31"><td class="line-num">31</td><td class="line-content"><span class="kwd">const</span> <span class="var">bindGroup</span> <span class="op">=</span> <span class="var">device</span><span class="op">.</span><span class="fn">createBindGroup</span><span class="op">({</span></td></tr>
+          <tr class="code-line sec-bg" id="l32"><td class="line-num">32</td><td class="line-content">  <span class="prop">label</span><span class="op">:</span> <span class="str">"BindGroup de Convolución en Vivo"</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-bg" id="l33"><td class="line-num">33</td><td class="line-content">  <span class="prop">layout</span><span class="op">:</span> <span class="var">bindGroupLayout</span><span class="op">,</span></td></tr>
+          <tr class="code-line sec-bg" id="l34"><td class="line-num">34</td><td class="line-content">  <span class="prop">entries</span><span class="op">:</span> <span class="op">[</span></td></tr>
+          <tr class="code-line sec-bg" id="l35"><td class="line-num">35</td><td class="line-content">    <span class="op">{</span> <span class="prop">binding</span><span class="op">:</span> <span class="num">0</span><span class="op">,</span> <span class="prop">resource</span><span class="op">:</span> <span class="var">texturaEntrada</span><span class="op">.</span><span class="fn">createView</span><span class="op">()</span> <span class="op">},</span>  <span class="cmt">// VRAM Entrada</span></td></tr>
+          <tr class="code-line sec-bg" id="l36"><td class="line-num">36</td><td class="line-content">    <span class="op">{</span> <span class="prop">binding</span><span class="op">:</span> <span class="num">1</span><span class="op">,</span> <span class="prop">resource</span><span class="op">:</span> <span class="var">texturaSalida</span><span class="op">.</span><span class="fn">createView</span><span class="op">()</span> <span class="op">},</span>   <span class="cmt">// VRAM Salida</span></td></tr>
+          <tr class="code-line sec-bg" id="l37"><td class="line-num">37</td><td class="line-content">    <span class="op">{</span> <span class="prop">binding</span><span class="op">:</span> <span class="num">2</span><span class="op">,</span> <span class="prop">resource</span><span class="op">:</span> <span class="var">sampler</span> <span class="op">}</span>                          <span class="cmt">// TFU Sampler</span></td></tr>
+          <tr class="code-line sec-bg" id="l38"><td class="line-num">38</td><td class="line-content">  <span class="op">]</span></td></tr>
+          <tr class="code-line sec-bg" id="l39"><td class="line-num">39</td><td class="line-content"><span class="op">});</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Contenido del Editor: WGSL (Oculto inicialmente) -->
+    <div class="editor-body" id="editor-wgsl" style="display: none;">
+      <table class="code-table">
+        <tbody>
+          <tr class="code-line"><td class="line-num">1</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line"><td class="line-num">2</td><td class="line-content"><span class="cmt">// CONTRATO EN EL SOMBREADOR (WGSL)</span></td></tr>
+          <tr class="code-line"><td class="line-num">3</td><td class="line-content"><span class="cmt">// ============================================================================</span></td></tr>
+          <tr class="code-line"><td class="line-num">4</td><td class="line-content"></td></tr>
+          <tr class="code-line sec-b0"><td class="line-num">5</td><td class="line-content"><span class="cmt">// Enlace 0: Textura de entrada muestreable (tipo float / f32)</span></td></tr>
+          <tr class="code-line sec-b0"><td class="line-num">6</td><td class="line-content"><span class="dec">@group</span><span class="op">(</span><span class="num">0</span><span class="op">)</span> <span class="dec">@binding</span><span class="op">(</span><span class="num">0</span><span class="op">)</span> <span class="kwd">var</span> <span class="var">textura_entrada</span><span class="op">:</span> <span class="typ">texture_2d</span><span class="op">&lt;</span><span class="typ">f32</span><span class="op">&gt;;</span></td></tr>
+          <tr class="code-line"><td class="line-num">7</td><td class="line-content"></td></tr>
+          <tr class="code-line sec-b1"><td class="line-num">8</td><td class="line-content"><span class="cmt">// Enlace 1: Storage Texture de solo escritura (formato rgba8unorm)</span></td></tr>
+          <tr class="code-line sec-b1"><td class="line-num">9</td><td class="line-content"><span class="dec">@group</span><span class="op">(</span><span class="num">0</span><span class="op">)</span> <span class="dec">@binding</span><span class="op">(</span><span class="num">1</span><span class="op">)</span> <span class="kwd">var</span> <span class="var">textura_salida</span><span class="op">:</span> <span class="typ">texture_storage_2d</span><span class="op">&lt;</span><span class="typ">rgba8unorm</span><span class="op">,</span> <span class="kwd">write</span><span class="op">&gt;;</span></td></tr>
+          <tr class="code-line"><td class="line-num">10</td><td class="line-content"></td></tr>
+          <tr class="code-line sec-b2"><td class="line-num">11</td><td class="line-content"><span class="cmt">// Enlace 2: Muestreador de filtrado bilineal continuo</span></td></tr>
+          <tr class="code-line sec-b2"><td class="line-num">12</td><td class="line-content"><span class="dec">@group</span><span class="op">(</span><span class="num">0</span><span class="op">)</span> <span class="dec">@binding</span><span class="op">(</span><span class="num">2</span><span class="op">)</span> <span class="kwd">var</span> <span class="var">muestreador</span><span class="op">:</span> <span class="typ">sampler</span><span class="op">;</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Barra de Estado Inferior -->
+    <div class="vscode-statusbar">
+      <div class="statusbar-left">
+        <span>WebGPU 1.0 (Standard)</span>
+        <span>UTF-8</span>
+      </div>
+      <div class="statusbar-right">
+        <span id="status-lang">JavaScript</span>
+        <span>Espacios: 2</span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const banner = document.getElementById('banner-text');
+
+  const explanations = {
+    all: "<strong>Contrato Completo del Pipeline:</strong> Se define el <code>GPUBindGroupLayout</code> formalizando los tipos exactos exigidos por el shader, y se instancia el <code>GPUBindGroup</code> conectando las vistas de memoria física en VRAM.",
+    b0: "<strong>Enlace 0 (Binding 0):</strong> Declarado como textura muestreable de tipo <code>float</code> en 2D. En WGSL corresponde a <code>@binding(0) var textura_entrada: texture_2d&lt;f32&gt;</code>. Recibe la vista de la textura alimentada por <code>copyExternalImageToTexture</code>.",
+    b1: "<strong>Enlace 1 (Binding 1):</strong> Declarado como <code>storageTexture</code> con acceso <code>write-only</code> y formato <code>rgba8unorm</code>. En WGSL corresponde a <code>@binding(1) var textura_salida: texture_storage_2d&lt;rgba8unorm, write&gt;</code>. Permite escrituras arbitrarias con <code>textureStore</code>.",
+    b2: "<strong>Enlace 2 (Binding 2):</strong> Declarado como <code>sampler</code> de tipo <code>filtering</code>. En WGSL corresponde a <code>@binding(2) var muestreador: sampler</code>. Controla la interpolación bilineal de la TFU en hardware.",
+    bg: "<strong>Instanciación del GPUBindGroup:</strong> Conecta el layout formal con los objetos reales de la VRAM invocando <code>texturaEntrada.createView()</code>, <code>texturaSalida.createView()</code> y el objeto <code>sampler</code>."
+  };
+
+  function setSpotlight(section, btn) {
+    document.querySelectorAll('.btn-group .btn').forEach(b => {
+      if (b.innerText !== "Cambiar a WGSL" && b.innerText !== "Cambiar a JavaScript") {
+        b.classList.remove('active');
+      }
+    });
+    if (btn) btn.classList.add('active');
+
+    const lines = document.querySelectorAll('.code-line');
+    
+    if (section === 'all') {
+      lines.forEach(l => {
+        l.classList.remove('dimmed');
+        l.classList.remove('highlight');
+      });
+      banner.innerHTML = explanations.all;
+      return;
+    }
+
+    lines.forEach(l => {
+      if (l.classList.contains(`sec-${section}`)) {
+        l.classList.remove('dimmed');
+        l.classList.add('highlight');
+      } else {
+        l.classList.add('dimmed');
+        l.classList.remove('highlight');
+      }
+    });
+
+    banner.innerHTML = explanations[section] || explanations.all;
+  }
+
+  let currentView = 'js';
+
+  function toggleView(btn) {
+    if (currentView === 'js') {
+      showFile('wgsl');
+      btn.innerText = "Cambiar a JavaScript";
+    } else {
+      showFile('js');
+      btn.innerText = "Cambiar a WGSL";
+    }
+  }
+
+  function showFile(type) {
+    currentView = type;
+    const tabJs = document.getElementById('tab-js');
+    const tabWgsl = document.getElementById('tab-wgsl');
+    const editorJs = document.getElementById('editor-js');
+    const editorWgsl = document.getElementById('editor-wgsl');
+    const fileTitle = document.getElementById('file-title');
+    const breadcrumbs = document.getElementById('breadcrumbs');
+    const statusLang = document.getElementById('status-lang');
+
+    if (type === 'js') {
+      tabJs.classList.add('active');
+      tabWgsl.classList.remove('active');
+      editorJs.style.display = 'block';
+      editorWgsl.style.display = 'none';
+      fileTitle.innerText = "pipeline_orchestration.js — WebGPU Video Compute";
+      breadcrumbs.innerHTML = "src &gt; host &gt; <span>pipeline_orchestration.js</span> &gt; <span>device.createBindGroupLayout</span>";
+      statusLang.innerText = "JavaScript";
+    } else {
+      tabWgsl.classList.add('active');
+      tabJs.classList.remove('active');
+      editorJs.style.display = 'none';
+      editorWgsl.style.display = 'block';
+      fileTitle.innerText = "shader_contract.wgsl — WebGPU Texture Shaders";
+      breadcrumbs.innerHTML = "src &gt; shaders &gt; <span>shader_contract.wgsl</span> &gt; <span>@binding declarations</span>";
+      statusLang.innerText = "WGSL";
+    }
+    setSpotlight('all', document.querySelector('.btn-group .btn'));
+  }
+</script>
+
+</body>
+</html>
