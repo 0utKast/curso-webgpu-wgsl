@@ -7,9 +7,11 @@ Este documento contiene la descripción enciclopédica, el desglose conceptual y
 ## 📦 Repositorio y Descarga de Materiales
 
 * **Repositorio Principal:** [https://github.com/0utKast/curso-webgpu-wgsl](https://github.com/0utKast/curso-webgpu-wgsl)
-* **Descarga Directa del Libro Completo (PDF):** [Descargar libro.pdf (Release v1.0.0)](https://github.com/0utKast/curso-webgpu-wgsl/releases/download/v1.0.0/libro.pdf)
-* **Visor del Libro en GitHub:** [`libro_webgpu_wgsl/libro.pdf`](libro_webgpu_wgsl/libro.pdf)
+* **Descarga Directa del Compendio Bibliográfico y Recursos de WGSL (PDF):** [Descargar bibliografia_webgpu_wgsl_browseros.pdf](https://github.com/0utKast/curso-webgpu-wgsl/releases/download/v1.0.0/bibliografia_webgpu_wgsl_browseros.pdf)
+* **Visor del PDF en GitHub:** [`tutorial_webgpu_wgsl/bibliografia_webgpu_wgsl_browseros.pdf`](tutorial_webgpu_wgsl/bibliografia_webgpu_wgsl_browseros.pdf)
 * **Release Oficial:** [GitHub Release v1.0.0](https://github.com/0utKast/curso-webgpu-wgsl/releases/tag/v1.0.0)
+
+> *Nota:* El PDF proporcionado corresponde a la bibliografía canónica, auditoría de O'Reilly y directorio exhaustivo de recursos online de WebGPU/WGSL. El libro monográfico del curso en PDF es una meta editorial futura.
 
 ---
 

@@ -6,17 +6,18 @@ Este proyecto reúne todo el código fuente, talleres prácticos interactivos, v
 
 ---
 
-## 📥 Descarga Directa del Libro y Materiales en PDF
+## 📥 Descarga Directa de la Bibliografía y Recursos de WGSL (PDF)
 
-El curso incluye manuales técnicos y libros maquetados en alta resolución:
+El curso incluye un compendio documental maquetado en alta resolución que recoge los fundamentos teóricos, la auditoría editorial y el directorio de recursos web normativos:
 
-* **[Descargar Libro Completo en PDF: Arquitectura de WebGPU y WGSL](https://github.com/0utKast/curso-webgpu-wgsl/blob/main/libro_webgpu_wgsl/libro.pdf)**  
-  *(Enlace directo de descarga: [Descarga RAW directa](https://raw.githubusercontent.com/0utKast/curso-webgpu-wgsl/main/libro_webgpu_wgsl/libro.pdf) | [Release oficial v1.0.0](https://github.com/0utKast/curso-webgpu-wgsl/releases/tag/v1.0.0))*
+* **[Descargar Compendio Bibliográfico Canónico y Fuentes de WGSL (PDF)](https://github.com/0utKast/curso-webgpu-wgsl/releases/download/v1.0.0/bibliografia_webgpu_wgsl_browseros.pdf)**  
+  *(Enlace directo de descarga: [Descarga directa PDF v1.0.0](https://github.com/0utKast/curso-webgpu-wgsl/releases/download/v1.0.0/bibliografia_webgpu_wgsl_browseros.pdf) | [Visor en GitHub](https://github.com/0utKast/curso-webgpu-wgsl/blob/main/tutorial_webgpu_wgsl/bibliografia_webgpu_wgsl_browseros.pdf))*
 * **[Ensayo Histórico: El Foso de CUDA y la Guerra del Silicio WebGPU (PDF)](https://github.com/0utKast/curso-webgpu-wgsl/blob/main/tutorial_webgpu_wgsl/el_foso_de_cuda_y_la_guerra_del_silicio_webgpu.pdf)**
 * **[Capítulo 01: Modelo Mental de WebGPU & WebAssembly (PDF)](https://github.com/0utKast/curso-webgpu-wgsl/blob/main/tutorial_webgpu_wgsl/capitulo_01_modelo_mental_webgpu_wasm.pdf)**
 * **[Capítulo 02: Fundamentos del Lenguaje WGSL y Tipos en Silicio (PDF)](https://github.com/0utKast/curso-webgpu-wgsl/blob/main/tutorial_webgpu_wgsl/capitulo_02_fundamentos_wgsl.pdf)**
 * **[Capítulo 03: Compute Shaders, Jerarquía de Memoria y GEMM (PDF)](https://github.com/0utKast/curso-webgpu-wgsl/blob/main/tutorial_webgpu_wgsl/capitulo_03_compute_shaders_jerarquia_memoria.pdf)**
-* **[Bibliografía Técnica Canónica y Fuentes de O'Reilly Learning (PDF)](https://github.com/0utKast/curso-webgpu-wgsl/blob/main/tutorial_webgpu_wgsl/bibliografia_webgpu_wgsl_browseros.pdf)**
+
+> **Nota editorial:** El compendio bibliográfico reúne las fuentes oficiales del W3C, enlaces interactivos de Google (Tour of WGSL), repositorios comunitarios y la literatura canónica de silicio de la biblioteca O'Reilly Learning. La versión de libro monográfico recopilatorio en PDF se encuentra actualmente en fase de redacción para futuras entregas.
 
 ---
 
