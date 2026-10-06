@@ -75,21 +75,19 @@ Simuladores visuales desarrollados para asimilar conceptos complejos de arquitec
   * Safari 18+ (macOS Sequoia / iOS 18).
   * Firefox Nightly (con `dom.webgpu.enabled` en `about:config`).
 
-### Ejecución
-1. Clona el repositorio en tu máquina local:
+### Ejecución Inmediata (Sin Servidores ni Dependencias)
+Todos los talleres y visualizadores están diseñados bajo la filosofía **Zero-Configuration**: son archivos HTML autónomos y autocontenidos (con el CSS, el JavaScript y los shaders en WGSL integrados internamente sin llamadas de red ni dependencias externas).
+
+1. **Descarga o clona el repositorio:**
    ```bash
    git clone https://github.com/0utKast/curso-webgpu-wgsl.git
-   cd curso-webgpu-wgsl
    ```
-2. Dado que los navegadores bloquean ciertas operaciones de buffers y texturas locales bajo el protocolo `file://` debido a la política de orígenes de seguridad (CORS), se recomienda servir los archivos con un servidor HTTP local estático:
-   ```bash
-   # Opción 1: Con Python 3
-   python3 -m http.server 8080
+   *(o descarga los archivos individualmente desde GitHub)*.
 
-   # Opción 2: Con Node.js
-   npx serve .
-   ```
-3. Abre tu navegador en `http://localhost:8080/tutorial_webgpu_wgsl/` y selecciona cualquiera de los talleres `workshop_01_...` a `workshop_08_...`.
+2. **Doble clic y listo:**
+   Haz doble clic sobre cualquier archivo `.html` dentro de la carpeta `tutorial_webgpu_wgsl/` (o arrástralo directamente a una pestaña de tu navegador). Se ejecutará de inmediato en tu GPU local.
+
+*(No necesitas instalar Node.js, ni Python, ni configurar ningún servidor web local).*
 
 ---
 
